@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "BudgetGuard",
+    "slug": "budgetguard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "budgetguard",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.budgetguard.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#2563eb"
+      },
+      "package": "com.budgetguard.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
+  }
+}

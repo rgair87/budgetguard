@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --version)",
+      "Bash(npm --version)",
+      "Bash(node --version)",
+      "Bash(npx --version)",
+      "Bash(npm install -g pnpm@latest)",
+      "Bash(pnpm install)",
+      "Bash(psql --version)",
+      "Bash(docker --version)",
+      "Bash(winget install PostgreSQL.PostgreSQL.17 --accept-source-agreements --accept-package-agreements)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/PostgreSQL/17/bin\")",
+      "Bash(export PATH=\"/c/Program Files/PostgreSQL/17/bin:$PATH\")",
+      "Bash(psql -U postgres -c \"SELECT 1\")",
+      "Bash(PGPASSWORD=postgres psql -U postgres -h localhost -c \"SELECT 1\")",
+      "Bash(PGPASSWORD=postgres psql -U postgres -h localhost -c \"CREATE DATABASE budgetguard;\")",
+      "Bash(PGPASSWORD=postgres psql -U postgres -h localhost -d budgetguard -c \"CREATE EXTENSION IF NOT EXISTS \"\"uuid-ossp\"\"; CREATE EXTENSION IF NOT EXISTS \"\"pgcrypto\"\";\")",
+      "Bash(openssl genrsa -out \"C:/Users/ronal/noscripts/apps/server/keys/private.pem\" 2048)",
+      "Bash(openssl rsa -in \"C:/Users/ronal/noscripts/apps/server/keys/private.pem\" -pubout -out \"C:/Users/ronal/noscripts/apps/server/keys/public.pem\")",
+      "Bash(openssl rand -hex 16)",
+      "Bash(pnpm db:migrate)",
+      "Bash(pnpm --filter @budgetguard/server add -D pino-pretty)",
+      "Bash(pnpm db:seed)",
+      "Bash(pnpm dev:server)",
+      "Bash(curl -s http://localhost:3001/api/health)"
+    ]
+  }
+}
