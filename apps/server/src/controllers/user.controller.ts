@@ -1,9 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import * as userService from '../services/user.service.js';
-import * as accountService from '../services/plaid.service.js';
-import * as budgetService from '../services/budget.service.js';
-import * as subscriptionService from '../services/subscription.service.js';
-import * as notificationService from '../services/notification.service.js';
 
 export async function getProfile(
   req: Request,
@@ -51,22 +47,9 @@ export async function getDashboard(
   try {
     const userId = req.userId!;
 
-    const [accounts, budgets, subscriptions, notifications] =
-      await Promise.all([
-        accountService.getAccounts(userId),
-        budgetService.getActive(userId),
-        subscriptionService.getAll(userId),
-        notificationService.getAll(userId, { page: 1, limit: 5 }),
-      ]);
+    const summary = await userService.getDashboardSummary(userId);
 
-    res.status(200).json({
-      data: {
-        accounts,
-        budgets,
-        subscriptions,
-        recentNotifications: notifications,
-      },
-    });
+    res.status(200).json({ data: summary });
   } catch (error) {
     next(error);
   }

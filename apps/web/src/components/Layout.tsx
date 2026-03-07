@@ -1,5 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth-context';
+import { api } from '../lib/api';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
@@ -13,6 +15,16 @@ const navItems = [
 export function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
+
+  // Poll for unread notification count every 30 seconds
+  const { data: unreadCount } = useQuery({
+    queryKey: ['notifications-unread-count'],
+    queryFn: async () => {
+      const res = await api.get<any>('/notifications', { page: 1, limit: 1 });
+      return res.data?.unreadCount ?? 0;
+    },
+    refetchInterval: 30_000,
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -28,6 +40,11 @@ export function Layout() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
+              {typeof unreadCount === 'number' && unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
             <div className="text-sm text-gray-600">
               {user?.firstName || user?.email}

@@ -4,6 +4,9 @@ import * as notificationsController from '../controllers/notifications.controlle
 
 export const notificationRoutes = Router();
 
+// SSE stream endpoint (must be before the general authenticate middleware)
+notificationRoutes.get('/stream', authenticate, notificationsController.streamNotifications);
+
 notificationRoutes.use(authenticate);
 
 notificationRoutes.get('/', notificationsController.listNotifications);

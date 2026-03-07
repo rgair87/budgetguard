@@ -4,6 +4,7 @@ import { query } from '../config/database.js';
 import { env } from '../config/env.js';
 import { NotFoundError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { sendToUser } from './sse.js';
 import type PgBoss from 'pg-boss';
 
 const expo = new Expo();
@@ -175,6 +176,17 @@ export async function send(params: {
   );
 
   const notificationId = result.rows[0].id;
+
+  // Push real-time update to any connected SSE clients
+  sendToUser(userId, 'notification', {
+    id: notificationId,
+    type,
+    title,
+    body,
+    actionUrl,
+    relatedEntity,
+    createdAt: new Date().toISOString(),
+  });
 
   // Enqueue delivery jobs for each channel
   if (boss) {

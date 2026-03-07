@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as notificationService from '../services/notification.service.js';
+import { addClient, removeClient } from '../services/sse.js';
 
 export async function listNotifications(
   req: Request,
@@ -91,4 +92,36 @@ export async function updateSettings(
   } catch (error) {
     next(error);
   }
+}
+
+export function streamNotifications(
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void {
+  const userId = req.userId!;
+
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  // Send initial connection confirmation
+  res.write(`event: connected\ndata: ${JSON.stringify({ userId })}\n\n`);
+
+  // Register this client
+  addClient(userId, res);
+
+  // Send heartbeat ping every 30 seconds to keep connection alive
+  const heartbeat = setInterval(() => {
+    res.write(`: ping\n\n`);
+  }, 30_000);
+
+  // Clean up on client disconnect
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    removeClient(userId, res);
+  });
 }
