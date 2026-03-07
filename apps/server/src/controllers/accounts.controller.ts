@@ -11,7 +11,7 @@ export async function listAccounts(
 
     const accounts = await accountService.getAccounts(userId);
 
-    res.status(200).json({ accounts });
+    res.status(200).json({ data: accounts });
   } catch (error) {
     next(error);
   }
@@ -33,7 +33,7 @@ export async function getAccount(
       return;
     }
 
-    res.status(200).json({ account });
+    res.status(200).json({ data: account });
   } catch (error) {
     next(error);
   }
@@ -67,7 +67,7 @@ export async function refreshBalance(
 
     const account = await accountService.refreshBalance(userId, id);
 
-    res.status(200).json({ account });
+    res.status(200).json({ data: account });
   } catch (error) {
     next(error);
   }

@@ -17,7 +17,7 @@ export async function listNotifications(
       limit,
     });
 
-    res.status(200).json(result);
+    res.status(200).json({ data: result });
   } catch (error) {
     next(error);
   }
@@ -34,7 +34,7 @@ export async function markRead(
 
     await notificationService.markRead(userId, id);
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ data: { success: true } });
   } catch (error) {
     next(error);
   }
@@ -50,7 +50,7 @@ export async function markAllRead(
 
     await notificationService.markAllRead(userId);
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ data: { success: true } });
   } catch (error) {
     next(error);
   }
@@ -87,7 +87,7 @@ export async function updateSettings(
       preferences
     );
 
-    res.status(200).json({ settings });
+    res.status(200).json({ data: settings });
   } catch (error) {
     next(error);
   }

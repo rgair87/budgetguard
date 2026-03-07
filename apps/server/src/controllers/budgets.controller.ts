@@ -11,7 +11,7 @@ export async function listBudgets(
 
     const budgets = await budgetService.getActive(userId);
 
-    res.status(200).json({ budgets });
+    res.status(200).json({ data: budgets });
   } catch (error) {
     next(error);
   }
@@ -33,7 +33,7 @@ export async function getBudget(
       return;
     }
 
-    res.status(200).json({ budget });
+    res.status(200).json({ data: budget });
   } catch (error) {
     next(error);
   }
@@ -63,7 +63,7 @@ export async function createBudget(
       period,
     });
 
-    res.status(201).json({ budget });
+    res.status(201).json({ data: budget });
   } catch (error) {
     next(error);
   }
@@ -81,7 +81,7 @@ export async function updateBudget(
 
     const budget = await budgetService.update(userId, id, updates);
 
-    res.status(200).json({ budget });
+    res.status(200).json({ data: budget });
   } catch (error) {
     next(error);
   }
@@ -114,7 +114,7 @@ export async function generateBudget(
 
     const result = await budgetService.triggerGeneration(userId);
 
-    res.status(202).json({ generation_id: result.generationId });
+    res.status(202).json({ data: { generation_id: result.generationId } });
   } catch (error) {
     next(error);
   }
@@ -130,7 +130,7 @@ export async function getGenerationHistory(
 
     const history = await budgetService.getGenerationHistory(userId);
 
-    res.status(200).json({ history });
+    res.status(200).json({ data: history });
   } catch (error) {
     next(error);
   }
@@ -146,7 +146,7 @@ export async function getSmartSuggestions(
 
     const suggestions = await budgetService.getSmartSuggestions(userId);
 
-    res.status(200).json({ suggestions });
+    res.status(200).json({ data: suggestions });
   } catch (error) {
     next(error);
   }

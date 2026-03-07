@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { Account } from '@budgetguard/shared';
+import { PlaidLinkButton } from '../components/PlaidLink';
 
 const fmtCurrency = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -75,9 +76,9 @@ export function AccountsPage() {
             Manage your linked bank accounts and credit cards.
           </p>
         </div>
-        <button className="btn-primary">
+        <PlaidLinkButton onSuccess={() => queryClient.invalidateQueries({ queryKey: ['accounts'] })}>
           Link New Account
-        </button>
+        </PlaidLinkButton>
       </div>
 
       {/* Accounts List */}
@@ -92,9 +93,11 @@ export function AccountsPage() {
           <p className="mt-2 text-sm text-gray-500">
             Get started by linking your bank account or credit card.
           </p>
-          <button className="btn-primary mt-6">
-            Link Your First Account
-          </button>
+          <div className="mt-6">
+            <PlaidLinkButton onSuccess={() => queryClient.invalidateQueries({ queryKey: ['accounts'] })}>
+              Link Your First Account
+            </PlaidLinkButton>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

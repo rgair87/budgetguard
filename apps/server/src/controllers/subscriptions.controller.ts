@@ -11,7 +11,7 @@ export async function listSubscriptions(
 
     const subscriptions = await subscriptionService.getAll(userId);
 
-    res.status(200).json({ subscriptions });
+    res.status(200).json({ data: subscriptions });
   } catch (error) {
     next(error);
   }
@@ -33,7 +33,7 @@ export async function getSubscription(
       return;
     }
 
-    res.status(200).json({ subscription });
+    res.status(200).json({ data: subscription });
   } catch (error) {
     next(error);
   }
@@ -63,7 +63,7 @@ export async function classifySubscription(
       keep_reason,
     });
 
-    res.status(200).json({ subscription: result });
+    res.status(200).json({ data: result });
   } catch (error) {
     next(error);
   }
@@ -84,7 +84,7 @@ export async function getCancelGuide(
       return;
     }
 
-    res.status(200).json({ guide });
+    res.status(200).json({ data: guide });
   } catch (error) {
     next(error);
   }
@@ -100,7 +100,7 @@ export async function detect(
 
     const result = await subscriptionService.triggerDetection(userId);
 
-    res.status(202).json(result);
+    res.status(202).json({ data: result });
   } catch (error) {
     next(error);
   }

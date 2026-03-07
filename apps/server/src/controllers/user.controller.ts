@@ -20,7 +20,7 @@ export async function getProfile(
       return;
     }
 
-    res.status(200).json({ profile });
+    res.status(200).json({ data: profile });
   } catch (error) {
     next(error);
   }
@@ -37,7 +37,7 @@ export async function updateProfile(
 
     const profile = await userService.updateProfile(userId, updates);
 
-    res.status(200).json({ profile });
+    res.status(200).json({ data: profile });
   } catch (error) {
     next(error);
   }
@@ -60,7 +60,7 @@ export async function getDashboard(
       ]);
 
     res.status(200).json({
-      dashboard: {
+      data: {
         accounts,
         budgets,
         subscriptions,

@@ -11,7 +11,7 @@ export async function createLinkToken(
 
     const linkToken = await plaidService.createLinkToken(userId);
 
-    res.status(200).json({ link_token: linkToken });
+    res.status(200).json({ data: linkToken });
   } catch (error) {
     next(error);
   }
@@ -39,7 +39,7 @@ export async function exchangeToken(
       metadata
     );
 
-    res.status(200).json({ accounts });
+    res.status(200).json({ data: accounts });
   } catch (error) {
     next(error);
   }

@@ -42,13 +42,13 @@ export async function listTransactions(
       filters.endDate = req.query.endDate as string;
     }
 
-    const result = await transactionService.getTransactions(
-      userId,
-      { page, limit },
-      filters
-    );
+    const result = await transactionService.getTransactions(userId, {
+      ...filters,
+      page,
+      limit,
+    });
 
-    res.status(200).json(result);
+    res.json({ data: result.transactions, pagination: result.pagination });
   } catch (error) {
     next(error);
   }
@@ -78,7 +78,7 @@ export async function getSpendingSummary(
       endDate
     );
 
-    res.status(200).json({ summary });
+    res.status(200).json({ data: summary });
   } catch (error) {
     next(error);
   }
@@ -107,10 +107,11 @@ export async function searchTransactions(
     const results = await transactionService.search(
       userId,
       query,
-      { page, limit }
+      page,
+      limit
     );
 
-    res.status(200).json(results);
+    res.json({ data: results.transactions, pagination: results.pagination });
   } catch (error) {
     next(error);
   }

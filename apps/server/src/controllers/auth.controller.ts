@@ -23,7 +23,7 @@ export async function register(
       lastName,
     });
 
-    res.status(201).json(tokens);
+    res.status(201).json({ data: tokens });
   } catch (error) {
     next(error);
   }
@@ -46,7 +46,7 @@ export async function login(
 
     const tokens = await authService.login({ email, password });
 
-    res.status(200).json(tokens);
+    res.status(200).json({ data: tokens });
   } catch (error) {
     next(error);
   }
@@ -70,7 +70,7 @@ export async function refresh(
 
     const tokens = await authService.refresh(refreshToken);
 
-    res.status(200).json(tokens);
+    res.status(200).json({ data: tokens });
   } catch (error) {
     next(error);
   }

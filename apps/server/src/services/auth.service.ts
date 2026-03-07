@@ -18,12 +18,13 @@ const publicKey = fs.readFileSync(env.JWT_PUBLIC_KEY_PATH, 'utf8');
 
 export { publicKey };
 
-export async function register(
-  email: string,
-  password: string,
-  firstName?: string,
-  lastName?: string
-) {
+export async function register(input: {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+}) {
+  const { email, password, firstName, lastName } = input;
   const existing = await query(
     'SELECT id FROM users WHERE email = $1',
     [email.toLowerCase().trim()]
@@ -66,7 +67,8 @@ export async function register(
   };
 }
 
-export async function login(email: string, password: string) {
+export async function login(input: { email: string; password: string }) {
+  const { email, password } = input;
   const result = await query<{
     id: string;
     email: string;
@@ -223,7 +225,12 @@ export async function refresh(refreshToken: string) {
   });
 }
 
-export async function logout(userId: string, refreshToken: string) {
+export async function logout(userId: string, refreshToken?: string) {
+  if (!refreshToken) {
+    logger.info({ userId }, 'Logout called without refresh token');
+    return;
+  }
+
   const tokensResult = await query<{
     id: string;
     token_hash: string;
