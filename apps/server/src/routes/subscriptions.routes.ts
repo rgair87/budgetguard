@@ -7,7 +7,7 @@ export const subscriptionRoutes = Router();
 subscriptionRoutes.use(authenticate);
 
 subscriptionRoutes.get('/', subscriptionsController.listSubscriptions);
+subscriptionRoutes.post('/detect', subscriptionsController.detect);
 subscriptionRoutes.get('/:id', subscriptionsController.getSubscription);
 subscriptionRoutes.patch('/:id/classify', subscriptionsController.classifySubscription);
 subscriptionRoutes.get('/:id/cancel-guide', subscriptionsController.getCancelGuide);
-subscriptionsController.detect && subscriptionRoutes.post('/detect', subscriptionsController.detect);

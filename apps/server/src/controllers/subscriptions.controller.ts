@@ -57,11 +57,7 @@ export async function classifySubscription(
       return;
     }
 
-    const result = await subscriptionService.classify(userId, id, {
-      action,
-      keep_until,
-      keep_reason,
-    });
+    const result = await subscriptionService.classify(userId, id, action, keep_until, keep_reason);
 
     res.status(200).json({ data: result });
   } catch (error) {
