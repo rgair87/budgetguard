@@ -23,7 +23,12 @@
       "Bash(pnpm --filter @budgetguard/server add -D pino-pretty)",
       "Bash(pnpm db:seed)",
       "Bash(pnpm dev:server)",
-      "Bash(curl -s http://localhost:3001/api/health)"
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "Bash(winget install GitHub.cli --accept-source-agreements --accept-package-agreements)",
+      "Bash(export PATH=\"/c/Program Files/GitHub CLI:$PATH\")",
+      "Bash(gh auth status)",
+      "Bash(gh auth login --with-token)",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"demo@budgetguard.com\"\",\"\"password\"\":\"\"Demo1234\"\"}')"
     ]
   }
 }

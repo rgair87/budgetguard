@@ -17,11 +17,15 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await api.post<{ tokens: any; user: any }>('/auth/login', {
+      const response = await api.post<{ user: any; accessToken: string; refreshToken: string }>('/auth/login', {
         email,
         password,
       });
-      login(response.tokens, response.user);
+      const data = response.data!;
+      login(
+        { accessToken: data.accessToken, refreshToken: data.refreshToken, expiresIn: 3600 },
+        data.user,
+      );
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Login failed');

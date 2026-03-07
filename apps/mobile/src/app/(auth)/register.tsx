@@ -4,8 +4,10 @@ import {
   StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../../lib/auth-context';
 
 export default function RegisterScreen() {
+  const { register } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -19,7 +21,7 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      // TODO: Call auth API and store tokens in SecureStore
+      await register(email, password, firstName, lastName);
       router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert('Registration Failed', err.message || 'Please try again');

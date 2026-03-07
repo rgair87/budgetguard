@@ -32,8 +32,29 @@ export function BudgetsPage() {
   const { data: budgets, isLoading, error } = useQuery({
     queryKey: ['budgets'],
     queryFn: async () => {
-      const res = await api.get<Budget[]>('/budgets');
-      return res.data!;
+      const res = await api.get<any[]>('/budgets');
+      const raw = res.data ?? [];
+      // Map snake_case DB fields to camelCase Budget interface
+      return raw.map((b: any): Budget => ({
+        id: b.id,
+        userId: b.user_id ?? b.userId,
+        name: b.name ?? b.category,
+        category: b.category,
+        amountLimit: parseFloat(b.amount_limit ?? b.amountLimit ?? b.amount ?? 0),
+        amountSpent: parseFloat(b.amount_spent ?? b.amountSpent ?? b.spent ?? 0),
+        period: b.period ?? b.frequency ?? 'monthly',
+        periodStart: b.period_start ?? b.periodStart ?? '',
+        periodEnd: b.period_end ?? b.periodEnd ?? '',
+        isAiGenerated: b.is_ai_generated ?? b.isAiGenerated ?? !!b.generation_id,
+        aiReasoning: b.ai_reasoning ?? b.aiReasoning,
+        aiConfidence: b.ai_confidence ?? b.aiConfidence,
+        userAdjusted: b.user_adjusted ?? b.userAdjusted ?? false,
+        alertAtPercent: b.alert_at_percent ?? b.alertAtPercent ?? 80,
+        alertSent: b.alert_sent ?? b.alertSent ?? false,
+        isActive: b.is_active ?? b.isActive ?? true,
+        createdAt: b.created_at ?? b.createdAt ?? '',
+        updatedAt: b.updated_at ?? b.updatedAt ?? '',
+      }));
     },
   });
 
@@ -52,7 +73,12 @@ export function BudgetsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (input: CreateBudgetInput) => {
-      await api.post('/budgets', input);
+      await api.post('/budgets', {
+        name: input.name,
+        category: input.category,
+        amount_limit: input.amountLimit,
+        period: input.period,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] });
@@ -64,12 +90,29 @@ export function BudgetsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateBudgetInput }) => {
-      await api.patch(`/budgets/${id}`, input);
+      const body: Record<string, unknown> = {};
+      if (input.amountLimit !== undefined) body.amount = input.amountLimit;
+      if (input.name !== undefined) body.name = input.name;
+      if (input.isActive !== undefined) body.is_active = input.isActive;
+      await api.patch(`/budgets/${id}`, body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] });
       setEditingId(null);
       setEditAmount('');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/budgets/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      showToast('Budget deleted successfully.');
+    },
+    onError: (err: Error) => {
+      showToast(`Delete failed: ${err.message}`);
     },
   });
 
@@ -91,7 +134,7 @@ export function BudgetsPage() {
       category: newCategory,
       amountLimit: parseFloat(newAmount),
       period: 'monthly',
-    });
+    } as CreateBudgetInput);
   }
 
   function startEdit(budget: Budget) {
@@ -327,11 +370,24 @@ export function BudgetsPage() {
                         Cancel
                       </button>
                     </div>
-                    {budget.isAiGenerated && budget.aiReasoning && (
-                      <p className="mt-2 text-xs text-gray-400">
-                        AI reasoning: {budget.aiReasoning}
-                      </p>
-                    )}
+                    <div className="mt-3 flex items-center justify-between">
+                      {budget.isAiGenerated && budget.aiReasoning && (
+                        <p className="text-xs text-gray-400">
+                          AI reasoning: {budget.aiReasoning}
+                        </p>
+                      )}
+                      <button
+                        className="ml-auto rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        onClick={() => {
+                          if (window.confirm(`Delete budget "${budget.name}"? This cannot be undone.`)) {
+                            deleteMutation.mutate(budget.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        {deleteMutation.isPending ? 'Deleting...' : 'Delete Budget'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

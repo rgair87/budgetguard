@@ -107,8 +107,29 @@ export function NotificationsPage() {
   const { data: notifications, isLoading, error } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const res = await api.get<Notification[]>('/notifications');
-      return res.data!;
+      const res = await api.get<any>('/notifications');
+      const raw = res.data?.notifications ?? res.data ?? [];
+      // Map snake_case DB fields to camelCase Notification interface
+      return (raw as any[]).map((n: any): Notification => ({
+        id: n.id,
+        userId: n.user_id ?? n.userId,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        channelsSent: n.channels_sent ?? n.channelsSent ?? n.channels ?? [],
+        pushSentAt: n.push_sent_at ?? n.pushSentAt,
+        emailSentAt: n.email_sent_at ?? n.emailSentAt,
+        readAt: n.read_at ?? n.readAt,
+        dismissedAt: n.dismissed_at ?? n.dismissedAt,
+        actionUrl: n.action_url ?? n.actionUrl,
+        relatedEntityType: n.related_entity_type ?? n.relatedEntityType,
+        relatedEntityId: n.related_entity_id ?? n.relatedEntityId,
+        alertRepeatCount: n.alert_repeat_count ?? n.alertRepeatCount ?? 0,
+        nextAlertAt: n.next_alert_at ?? n.nextAlertAt,
+        alertResolved: n.alert_resolved ?? n.alertResolved ?? false,
+        metadata: n.metadata,
+        createdAt: n.created_at ?? n.createdAt ?? '',
+      }));
     },
   });
 
@@ -124,6 +145,15 @@ export function NotificationsPage() {
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
       await api.post('/notifications/read-all');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.patch(`/notifications/${id}/dismiss`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -187,18 +217,13 @@ export function NotificationsPage() {
             const config = typeConfig[notif.type] ?? typeConfig.smart_suggestion;
 
             return (
-              <button
+              <div
                 key={notif.id}
-                className={`w-full text-left card flex items-start gap-4 transition-colors ${
+                className={`card flex items-start gap-4 transition-colors ${
                   isUnread
                     ? 'border-l-4 border-l-primary-500 bg-primary-50/30'
                     : 'border-l-4 border-l-transparent'
                 }`}
-                onClick={() => {
-                  if (isUnread) {
-                    markReadMutation.mutate(notif.id);
-                  }
-                }}
               >
                 {/* Icon */}
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${config.color}`}>
@@ -206,7 +231,14 @@ export function NotificationsPage() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => {
+                    if (isUnread) {
+                      markReadMutation.mutate(notif.id);
+                    }
+                  }}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <h3 className={`text-sm truncate ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
                       {notif.title}
@@ -220,11 +252,26 @@ export function NotificationsPage() {
                   </p>
                 </div>
 
-                {/* Unread indicator */}
-                {isUnread && (
-                  <div className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary-500" />
-                )}
-              </button>
+                {/* Actions */}
+                <div className="flex shrink-0 items-center gap-2">
+                  {isUnread && (
+                    <div className="h-2.5 w-2.5 rounded-full bg-primary-500" />
+                  )}
+                  <button
+                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    title="Dismiss notification"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      dismissMutation.mutate(notif.id);
+                    }}
+                    disabled={dismissMutation.isPending}
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             );
           })}
         </div>

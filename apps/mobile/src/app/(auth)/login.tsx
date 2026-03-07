@@ -4,8 +4,10 @@ import {
   StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../../lib/auth-context';
 
 export default function LoginScreen() {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +19,7 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      // TODO: Call auth API and store tokens in SecureStore
+      await login(email, password);
       router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert('Login Failed', err.message || 'Please try again');

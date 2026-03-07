@@ -19,13 +19,17 @@ export function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await api.post<{ tokens: any; user: any }>('/auth/register', {
+      const response = await api.post<{ user: any; accessToken: string; refreshToken: string }>('/auth/register', {
         email,
         password,
         firstName,
         lastName,
       });
-      login(response.tokens, response.user);
+      const data = response.data!;
+      login(
+        { accessToken: data.accessToken, refreshToken: data.refreshToken, expiresIn: 3600 },
+        data.user,
+      );
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Registration failed');

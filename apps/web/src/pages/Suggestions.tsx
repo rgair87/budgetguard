@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import type { SpendingSuggestion, SuggestionType } from '@budgetguard/shared';
+import type { SuggestionType } from '@budgetguard/shared';
 
 const fmtCurrency = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -21,43 +22,56 @@ const typeBadge: Record<SuggestionType, { bg: string; text: string; label: strin
   trim: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Trim' },
 };
 
+interface SuggestionFromApi {
+  type: SuggestionType;
+  category: string;
+  title: string;
+  description: string;
+  estimatedSavings: number;
+  priority: number;
+}
+
+interface SuggestionsResponse {
+  suggestions: SuggestionFromApi[];
+  savingsRate: number;
+  income: number;
+  spending: number;
+}
+
+interface LocalSuggestion extends SuggestionFromApi {
+  localId: string;
+  localStatus: 'pending' | 'accepted' | 'dismissed';
+}
+
 export function SuggestionsPage() {
   const queryClient = useQueryClient();
+  const [actionedIds, setActionedIds] = useState<Record<string, 'accepted' | 'dismissed'>>({});
 
-  const { data: suggestions, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['suggestions'],
     queryFn: async () => {
-      const res = await api.get<SpendingSuggestion[]>('/budgets/suggestions');
+      const res = await api.post<SuggestionsResponse>('/budgets/suggestions');
       return res.data!;
     },
   });
 
   const analyzeMutation = useMutation({
     mutationFn: async () => {
-      await api.post('/budgets/suggestions/analyze');
+      await api.post<SuggestionsResponse>('/budgets/suggestions');
     },
     onSuccess: () => {
+      setActionedIds({});
       queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     },
   });
 
-  const acceptMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.post(`/budgets/suggestions/${id}/accept`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-    },
-  });
+  function handleAccept(localId: string) {
+    setActionedIds((prev) => ({ ...prev, [localId]: 'accepted' }));
+  }
 
-  const dismissMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.post(`/budgets/suggestions/${id}/dismiss`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-    },
-  });
+  function handleDismiss(localId: string) {
+    setActionedIds((prev) => ({ ...prev, [localId]: 'dismissed' }));
+  }
 
   if (isLoading) return <Spinner />;
 
@@ -70,11 +84,19 @@ export function SuggestionsPage() {
     );
   }
 
-  const allSuggestions = suggestions ?? [];
-  const pendingSuggestions = allSuggestions.filter((s) => s.status === 'pending');
+  const rawSuggestions = data?.suggestions ?? [];
+  const allSuggestions: LocalSuggestion[] = rawSuggestions.map((s, idx) => ({
+    ...s,
+    localId: `${s.category}-${s.type}-${idx}`,
+    localStatus: actionedIds[`${s.category}-${s.type}-${idx}`] ?? 'pending',
+  }));
 
-  const totalMonthlySavings = pendingSuggestions.reduce((sum, s) => sum + s.savingsAmount, 0);
-  const totalAnnualSavings = pendingSuggestions.reduce((sum, s) => sum + s.projectedAnnualSavings, 0);
+  const pendingSuggestions = allSuggestions.filter((s) => s.localStatus === 'pending');
+
+  const totalMonthlySavings = pendingSuggestions.reduce((sum, s) => sum + s.estimatedSavings, 0);
+  const totalAnnualSavings = totalMonthlySavings * 12;
+  const total3MonthSavings = totalMonthlySavings * 3;
+  const total6MonthSavings = totalMonthlySavings * 6;
 
   return (
     <div className="space-y-6">
@@ -102,6 +124,28 @@ export function SuggestionsPage() {
         </button>
       </div>
 
+      {/* Income / Spending Overview */}
+      {data && (data.income > 0 || data.spending > 0) && (
+        <div className="card">
+          <div className="flex flex-wrap items-center gap-6 text-sm">
+            <div>
+              <p className="text-xs font-medium uppercase text-gray-400">Monthly Income</p>
+              <p className="text-lg font-semibold text-gray-900">{fmtCurrency.format(data.income)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase text-gray-400">Monthly Spending</p>
+              <p className="text-lg font-semibold text-gray-900">{fmtCurrency.format(data.spending)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase text-gray-400">Savings Rate</p>
+              <p className={`text-lg font-semibold ${data.savingsRate >= 0.1 ? 'text-green-600' : 'text-red-600'}`}>
+                {(data.savingsRate * 100).toFixed(1)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Savings Summary */}
       {pendingSuggestions.length > 0 && (
         <div className="card bg-gradient-to-r from-green-600 to-emerald-600 text-white">
@@ -112,8 +156,16 @@ export function SuggestionsPage() {
               <p className="text-sm text-green-200">per month</p>
             </div>
             <div>
-              <p className="text-3xl font-bold">{fmtCurrency.format(totalAnnualSavings)}</p>
-              <p className="text-sm text-green-200">per year</p>
+              <p className="text-xl font-bold">{fmtCurrency.format(total3MonthSavings)}</p>
+              <p className="text-sm text-green-200">3 months</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold">{fmtCurrency.format(total6MonthSavings)}</p>
+              <p className="text-sm text-green-200">6 months</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold">{fmtCurrency.format(totalAnnualSavings)}</p>
+              <p className="text-sm text-green-200">12 months</p>
             </div>
           </div>
           <p className="mt-3 text-sm text-green-200">
@@ -139,13 +191,13 @@ export function SuggestionsPage() {
         <div className="space-y-4">
           {allSuggestions.map((suggestion) => {
             const badge = typeBadge[suggestion.type] ?? typeBadge.trim;
-            const isAccepted = suggestion.status === 'accepted';
-            const isDismissed = suggestion.status === 'dismissed';
+            const isAccepted = suggestion.localStatus === 'accepted';
+            const isDismissed = suggestion.localStatus === 'dismissed';
             const isActioned = isAccepted || isDismissed;
 
             return (
               <div
-                key={suggestion.id}
+                key={suggestion.localId}
                 className={`card transition-opacity ${isActioned ? 'opacity-60' : ''}`}
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -158,6 +210,9 @@ export function SuggestionsPage() {
                       <h3 className="text-base font-semibold text-gray-900">
                         {suggestion.title}
                       </h3>
+                      <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                        {suggestion.category}
+                      </span>
                       {isAccepted && (
                         <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
                           Accepted
@@ -171,35 +226,24 @@ export function SuggestionsPage() {
                     </div>
                     <p className="mt-2 text-sm text-gray-500">{suggestion.description}</p>
 
-                    {/* Amounts comparison */}
+                    {/* Savings info */}
                     <div className="mt-4 flex flex-wrap items-center gap-6">
-                      <div>
-                        <p className="text-xs font-medium uppercase text-gray-400">Current</p>
-                        <p className="text-lg font-semibold text-red-600">
-                          {fmtCurrency.format(suggestion.currentAmount)}
-                        </p>
-                      </div>
-                      <div className="text-gray-300">
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium uppercase text-gray-400">Suggested</p>
-                        <p className="text-lg font-semibold text-green-600">
-                          {fmtCurrency.format(suggestion.suggestedAmount)}
-                        </p>
-                      </div>
                       <div className="rounded-lg bg-green-50 px-3 py-2">
-                        <p className="text-xs font-medium text-green-600">Monthly Savings</p>
+                        <p className="text-xs font-medium text-green-600">Estimated Monthly Savings</p>
                         <p className="text-lg font-bold text-green-700">
-                          {fmtCurrency.format(suggestion.savingsAmount)}
+                          {fmtCurrency.format(suggestion.estimatedSavings)}
                         </p>
                       </div>
                       <div className="rounded-lg bg-emerald-50 px-3 py-2">
                         <p className="text-xs font-medium text-emerald-600">Annual Projection</p>
                         <p className="text-lg font-bold text-emerald-700">
-                          {fmtCurrency.format(suggestion.projectedAnnualSavings)}
+                          {fmtCurrency.format(suggestion.estimatedSavings * 12)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 px-3 py-2">
+                        <p className="text-xs font-medium text-gray-500">Priority</p>
+                        <p className="text-lg font-bold text-gray-700">
+                          #{suggestion.priority}
                         </p>
                       </div>
                     </div>
@@ -209,16 +253,14 @@ export function SuggestionsPage() {
                   {!isActioned && (
                     <div className="flex shrink-0 gap-2 lg:ml-4">
                       <button
-                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                        onClick={() => acceptMutation.mutate(suggestion.id)}
-                        disabled={acceptMutation.isPending}
+                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                        onClick={() => handleAccept(suggestion.localId)}
                       >
-                        {acceptMutation.isPending ? 'Accepting...' : 'Accept'}
+                        Accept
                       </button>
                       <button
-                        className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                        onClick={() => dismissMutation.mutate(suggestion.id)}
-                        disabled={dismissMutation.isPending}
+                        className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                        onClick={() => handleDismiss(suggestion.localId)}
                       >
                         Dismiss
                       </button>

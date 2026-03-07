@@ -14,32 +14,34 @@ export async function getActive(userId: string) {
   const now = new Date();
   const result = await query(
     `SELECT
-       b.id, b.user_id, b.category, b.amount, b.frequency,
-       b.period_start, b.period_end, b.user_adjusted,
-       b.generation_id, b.created_at, b.updated_at,
+       b.id, b.user_id, b.name, b.category, b.amount_limit, b.amount_spent,
+       b.period, b.period_start, b.period_end, b.is_ai_generated,
+       b.user_adjusted, b.is_active,
+       b.created_at, b.updated_at,
        COALESCE(SUM(
          CASE WHEN t.amount > 0 AND t.date >= b.period_start AND t.date <= b.period_end
          THEN t.amount ELSE 0 END
-       ), 0) AS spent
+       ), 0) AS live_spent
      FROM budgets b
      LEFT JOIN transactions t
        ON t.user_id = b.user_id
        AND t.category = b.category
      WHERE b.user_id = $1
+       AND b.is_active = true
        AND b.period_start <= $2
        AND b.period_end >= $2
      GROUP BY b.id
-     ORDER BY b.amount DESC`,
+     ORDER BY b.amount_limit DESC`,
     [userId, now.toISOString().split('T')[0]]
   );
 
   return result.rows.map((row) => ({
     ...row,
-    spent: parseFloat(row.spent),
-    remaining: parseFloat(row.amount) - parseFloat(row.spent),
+    amount_spent: parseFloat(row.live_spent),
+    remaining: parseFloat(row.amount_limit) - parseFloat(row.live_spent),
     percentUsed:
-      parseFloat(row.amount) > 0
-        ? Math.round((parseFloat(row.spent) / parseFloat(row.amount)) * 100)
+      parseFloat(row.amount_limit) > 0
+        ? Math.round((parseFloat(row.live_spent) / parseFloat(row.amount_limit)) * 100)
         : 0,
   }));
 }
@@ -47,9 +49,10 @@ export async function getActive(userId: string) {
 export async function getById(userId: string, id: string) {
   const budgetResult = await query(
     `SELECT
-       b.id, b.user_id, b.category, b.amount, b.frequency,
-       b.period_start, b.period_end, b.user_adjusted,
-       b.generation_id, b.created_at, b.updated_at
+       b.id, b.user_id, b.name, b.category, b.amount_limit, b.amount_spent,
+       b.period, b.period_start, b.period_end, b.is_ai_generated,
+       b.user_adjusted, b.is_active,
+       b.created_at, b.updated_at
      FROM budgets b
      WHERE b.id = $1 AND b.user_id = $2`,
     [id, userId]
@@ -61,7 +64,6 @@ export async function getById(userId: string, id: string) {
 
   const budget = budgetResult.rows[0];
 
-  // Calculate current spending for this budget period and category
   const spendingResult = await query<{ spent: string }>(
     `SELECT COALESCE(SUM(amount), 0) AS spent
      FROM transactions
@@ -77,11 +79,11 @@ export async function getById(userId: string, id: string) {
 
   return {
     ...budget,
-    spent,
-    remaining: parseFloat(budget.amount) - spent,
+    amount_spent: spent,
+    remaining: parseFloat(budget.amount_limit) - spent,
     percentUsed:
-      parseFloat(budget.amount) > 0
-        ? Math.round((spent / parseFloat(budget.amount)) * 100)
+      parseFloat(budget.amount_limit) > 0
+        ? Math.round((spent / parseFloat(budget.amount_limit)) * 100)
         : 0,
   };
 }
@@ -89,21 +91,23 @@ export async function getById(userId: string, id: string) {
 export async function create(
   userId: string,
   data: {
+    name: string;
     category: string;
-    amount: number;
-    frequency: 'weekly' | 'biweekly' | 'monthly';
+    amount_limit: number;
+    period?: 'weekly' | 'biweekly' | 'monthly';
   }
 ) {
-  const { periodStart, periodEnd } = calculatePeriodDates(data.frequency);
+  const period = data.period || 'monthly';
+  const { periodStart, periodEnd } = calculatePeriodDates(period);
 
   const result = await query(
-    `INSERT INTO budgets (user_id, category, amount, frequency, period_start, period_end)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO budgets (user_id, name, category, amount_limit, period, period_start, period_end)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [userId, data.category, data.amount, data.frequency, periodStart, periodEnd]
+    [userId, data.name, data.category, data.amount_limit, period, periodStart, periodEnd]
   );
 
-  logger.info({ userId, category: data.category, amount: data.amount }, 'Budget created');
+  logger.info({ userId, category: data.category, amount_limit: data.amount_limit }, 'Budget created');
 
   return result.rows[0];
 }
@@ -112,9 +116,11 @@ export async function update(
   userId: string,
   id: string,
   data: {
-    amount?: number;
+    name?: string;
+    amount_limit?: number;
     category?: string;
-    frequency?: 'weekly' | 'biweekly' | 'monthly';
+    period?: 'weekly' | 'biweekly' | 'monthly';
+    is_active?: boolean;
   }
 ) {
   const existing = await query(
@@ -130,9 +136,15 @@ export async function update(
   const params: any[] = [];
   let paramIndex = 1;
 
-  if (data.amount !== undefined) {
-    setClauses.push(`amount = $${paramIndex}`);
-    params.push(data.amount);
+  if (data.name !== undefined) {
+    setClauses.push(`name = $${paramIndex}`);
+    params.push(data.name);
+    paramIndex++;
+  }
+
+  if (data.amount_limit !== undefined) {
+    setClauses.push(`amount_limit = $${paramIndex}`);
+    params.push(data.amount_limit);
     paramIndex++;
   }
 
@@ -142,10 +154,16 @@ export async function update(
     paramIndex++;
   }
 
-  if (data.frequency !== undefined) {
-    const { periodStart, periodEnd } = calculatePeriodDates(data.frequency);
-    setClauses.push(`frequency = $${paramIndex}`);
-    params.push(data.frequency);
+  if (data.is_active !== undefined) {
+    setClauses.push(`is_active = $${paramIndex}`);
+    params.push(data.is_active);
+    paramIndex++;
+  }
+
+  if (data.period !== undefined) {
+    const { periodStart, periodEnd } = calculatePeriodDates(data.period);
+    setClauses.push(`period = $${paramIndex}`);
+    params.push(data.period);
     paramIndex++;
     setClauses.push(`period_start = $${paramIndex}`);
     params.push(periodStart);
@@ -354,15 +372,12 @@ Respond with ONLY a JSON object in this exact format:
       for (const budget of parsed.budgets) {
         await client.query(
           `INSERT INTO budgets (
-             user_id, category, amount, frequency,
-             period_start, period_end, generation_id
+             user_id, name, category, amount_limit, period,
+             period_start, period_end, is_ai_generated
            )
-           VALUES ($1, $2, $3, 'monthly', $4, $5, $6)
-           ON CONFLICT (user_id, category, period_start) DO UPDATE SET
-             amount = EXCLUDED.amount,
-             generation_id = EXCLUDED.generation_id,
-             updated_at = NOW()`,
-          [userId, budget.category, budget.amount, periodStart, periodEnd, generationId]
+           VALUES ($1, $2, $3, $4, 'monthly', $5, $6, true)
+           ON CONFLICT DO NOTHING`,
+          [userId, budget.category, budget.category, budget.amount, periodStart, periodEnd]
         );
       }
 

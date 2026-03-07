@@ -96,7 +96,7 @@ export async function deleteBudget(
     const userId = req.userId!;
     const { id } = req.params;
 
-    await budgetService.delete(userId, id);
+    await budgetService.deleteBudget(userId, id);
 
     res.status(204).send();
   } catch (error) {

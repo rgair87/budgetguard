@@ -3,6 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { Subscription, SubscriptionStatus, ClassifySubscriptionInput } from '@budgetguard/shared';
 
+interface CancelGuide {
+  subscriptionId: string;
+  merchantName: string;
+  cancelUrl?: string;
+  cancelInstructions?: string;
+  steps: string[];
+}
+
 const fmtCurrency = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
@@ -52,20 +60,51 @@ export function SubscriptionsPage() {
   const { data: subscriptions, isLoading, error } = useQuery({
     queryKey: ['subscriptions'],
     queryFn: async () => {
-      const res = await api.get<Subscription[]>('/subscriptions');
-      return res.data!;
+      const res = await api.get<any[]>('/subscriptions');
+      const raw = res.data ?? [];
+      // Map snake_case DB fields to camelCase Subscription interface
+      return raw.map((s: any): Subscription => ({
+        id: s.id,
+        userId: s.user_id ?? s.userId,
+        merchantName: s.merchant_name ?? s.merchantName ?? '',
+        normalizedName: s.normalized_merchant_name ?? s.normalizedName ?? '',
+        description: s.description,
+        estimatedAmount: parseFloat(s.estimated_amount ?? s.estimatedAmount ?? 0),
+        currencyCode: s.currency_code ?? s.currencyCode ?? 'USD',
+        frequency: s.frequency,
+        confidenceScore: parseFloat(s.confidence ?? s.confidenceScore ?? s.confidence_score ?? 0),
+        status: s.status,
+        category: s.category,
+        cancelUrl: s.cancel_url ?? s.cancelUrl,
+        cancelInstructions: s.cancel_instructions ?? s.cancelInstructions,
+        firstSeenDate: s.first_seen_date ?? s.firstSeenDate ?? s.created_at ?? '',
+        lastChargeDate: s.last_charge_date ?? s.lastChargeDate,
+        nextExpectedDate: s.next_expected_date ?? s.nextExpectedDate,
+        totalCharges: parseInt(s.total_charges ?? s.totalCharges ?? 0, 10),
+        totalSpent: parseFloat(s.total_spent ?? s.totalSpent ?? 0),
+        classifiedAt: s.classified_at ?? s.classifiedAt,
+        detectedAt: s.detected_at ?? s.detectedAt ?? s.created_at ?? '',
+      }));
     },
   });
 
+  const [cancelGuide, setCancelGuide] = useState<CancelGuide | null>(null);
+  const [cancelGuideLoading, setCancelGuideLoading] = useState(false);
+
   const classifyMutation = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: ClassifySubscriptionInput }) => {
-      await api.post(`/subscriptions/${id}/classify`, input);
+      await api.patch(`/subscriptions/${id}/classify`, {
+        action: input.action,
+        ...(input.keepUntil ? { keep_until: input.keepUntil } : {}),
+        ...(input.keepReason ? { keep_reason: input.keepReason } : {}),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
       setClassifyId(null);
       setKeepUntil('');
       setKeepReason('');
+      setCancelGuide(null);
     },
   });
 
@@ -108,7 +147,19 @@ export function SubscriptionsPage() {
     classifyMutation.mutate({ id: classifyId, input });
   }
 
-  function handleCancel(id: string) {
+  async function handleCancel(id: string) {
+    setCancelGuideLoading(true);
+    setCancelGuide(null);
+    try {
+      const res = await api.get<CancelGuide>(`/subscriptions/${id}/cancel-guide`);
+      if (res.data) {
+        setCancelGuide(res.data);
+      }
+    } catch {
+      // Cancel guide not available, proceed with classify directly
+    } finally {
+      setCancelGuideLoading(false);
+    }
     classifyMutation.mutate({
       id,
       input: { action: 'cancel' },
@@ -278,6 +329,48 @@ export function SubscriptionsPage() {
                         </button>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Cancel Guide */}
+                {cancelGuide && cancelGuide.subscriptionId === sub.id && (
+                  <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-orange-800">
+                        How to cancel {cancelGuide.merchantName}
+                      </h4>
+                      <button
+                        className="text-xs text-orange-600 hover:text-orange-800"
+                        onClick={() => setCancelGuide(null)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    {cancelGuide.cancelUrl && (
+                      <p className="mt-2 text-sm text-orange-700">
+                        Cancel online:{' '}
+                        <a
+                          href={cancelGuide.cancelUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium underline"
+                        >
+                          {cancelGuide.cancelUrl}
+                        </a>
+                      </p>
+                    )}
+                    {cancelGuide.cancelInstructions && (
+                      <p className="mt-2 text-sm text-orange-700">
+                        {cancelGuide.cancelInstructions}
+                      </p>
+                    )}
+                    {cancelGuide.steps.length > 0 && (
+                      <ol className="mt-3 list-inside list-decimal space-y-1 text-sm text-orange-700">
+                        {cancelGuide.steps.map((step, i) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ol>
+                    )}
                   </div>
                 )}
               </div>
