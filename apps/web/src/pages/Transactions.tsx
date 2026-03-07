@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { SPENDING_CATEGORIES, CATEGORY_LABELS } from '@budgetguard/shared';
 import type { Transaction, PaginatedResponse } from '@budgetguard/shared';
+import { TableSkeleton } from '../components/Skeletons';
 
 const fmtCurrency = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -14,14 +15,6 @@ const fmtDate = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
   year: 'numeric',
 });
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center py-24">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-    </div>
-  );
-}
 
 const PAGE_SIZE = 20;
 
@@ -41,11 +34,14 @@ export function TransactionsPage() {
   if (endDate) queryParams.endDate = endDate;
   if (category) queryParams.category = category;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['transactions', page, startDate, endDate, category],
     queryFn: async () => {
       const res = await api.get<PaginatedResponse<Transaction>>('/transactions', queryParams);
-      return res.data!;
+      return res.data ?? {
+        data: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 1 },
+      };
     },
   });
 
@@ -158,13 +154,22 @@ export function TransactionsPage() {
         </div>
       </div>
 
-      {/* Loading / Error */}
-      {isLoading && <Spinner />}
+      {/* Loading */}
+      {isLoading && <TableSkeleton />}
 
+      {/* Error */}
       {error && (
-        <div className="rounded-lg bg-red-50 p-6 text-red-700">
-          <h3 className="font-semibold">Failed to load transactions</h3>
-          <p className="mt-1 text-sm">{(error as Error).message}</p>
+        <div className="card flex flex-col items-center py-16 text-center">
+          <svg className="h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <h3 className="mt-4 text-lg font-semibold text-gray-900">Something went wrong</h3>
+          <p className="mt-1 text-sm text-gray-500">{(error as Error).message}</p>
+          <button className="btn-secondary mt-6" onClick={() => refetch()}>
+            Retry
+          </button>
         </div>
       )}
 
@@ -178,8 +183,22 @@ export function TransactionsPage() {
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                 />
               </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No transactions found</h3>
-              <p className="mt-2 text-sm text-gray-500">Try adjusting your filters.</p>
+              {hasFilters ? (
+                <>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No transactions match your filters</h3>
+                  <p className="mt-2 text-sm text-gray-500">Try adjusting or clearing your filters.</p>
+                  <button className="btn-secondary mt-6" onClick={clearFilters}>
+                    Clear Filters
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No transactions yet</h3>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Link a bank account to see your transactions here.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="card overflow-hidden p-0">

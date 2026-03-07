@@ -12,10 +12,10 @@ export function setBoss(pgBoss: PgBoss) {
 export async function getAll(userId: string) {
   const result = await query(
     `SELECT
-       s.id, s.user_id, s.merchant_name, s.normalized_merchant_name,
-       s.estimated_amount, s.frequency, s.confidence,
+       s.id, s.user_id, s.merchant_name, s.normalized_name,
+       s.estimated_amount, s.frequency, s.confidence_score,
        s.status, s.classified_at, s.last_charge_date,
-       s.next_expected_date, s.logo_url, s.category,
+       s.next_expected_date, s.category,
        s.cancel_url, s.cancel_instructions,
        s.created_at, s.updated_at,
        CASE WHEN sl.id IS NOT NULL THEN true ELSE false END AS is_safe
@@ -32,10 +32,10 @@ export async function getAll(userId: string) {
 export async function getById(userId: string, id: string) {
   const subResult = await query(
     `SELECT
-       s.id, s.user_id, s.merchant_name, s.normalized_merchant_name,
-       s.estimated_amount, s.frequency, s.confidence,
+       s.id, s.user_id, s.merchant_name, s.normalized_name,
+       s.estimated_amount, s.frequency, s.confidence_score,
        s.status, s.classified_at, s.last_charge_date,
-       s.next_expected_date, s.logo_url, s.category,
+       s.next_expected_date, s.category,
        s.cancel_url, s.cancel_instructions,
        s.created_at, s.updated_at,
        CASE WHEN sl.id IS NOT NULL THEN true ELSE false END AS is_safe,
@@ -55,10 +55,10 @@ export async function getById(userId: string, id: string) {
     `SELECT id, amount, date, name, merchant_name
      FROM transactions
      WHERE user_id = $1
-       AND LOWER(TRIM(merchant_name)) = $2
+       AND LOWER(TRIM(merchant_name)) = $2::text
      ORDER BY date DESC
      LIMIT 24`,
-    [userId, subResult.rows[0].normalized_merchant_name]
+    [userId, subResult.rows[0].normalized_name]
   );
 
   return {
@@ -186,16 +186,16 @@ export async function detectSubscriptions(userId: string) {
     merchant_name: string;
     amounts: number[];
     dates: string[];
-    logo_url: string | null;
     category: string | null;
+    first_seen_date: string;
   }>(
     `SELECT
        LOWER(TRIM(merchant_name)) AS normalized_merchant,
        MAX(merchant_name) AS merchant_name,
        ARRAY_AGG(amount ORDER BY date ASC) AS amounts,
        ARRAY_AGG(date::text ORDER BY date ASC) AS dates,
-       MAX(logo_url) AS logo_url,
-       MAX(category) AS category
+       MAX(personal_finance_category_primary) AS category,
+       MIN(date)::text AS first_seen_date
      FROM transactions
      WHERE user_id = $1
        AND date >= $2
@@ -270,19 +270,18 @@ export async function detectSubscriptions(userId: string) {
 
       const upsertResult = await query<{ id: string; was_new: boolean }>(
         `INSERT INTO subscriptions (
-           user_id, merchant_name, normalized_merchant_name,
-           estimated_amount, frequency, confidence,
-           last_charge_date, next_expected_date,
-           logo_url, category, status
+           user_id, merchant_name, normalized_name,
+           estimated_amount, frequency, confidence_score,
+           first_seen_date, last_charge_date, next_expected_date,
+           category, status
          )
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'detected')
-         ON CONFLICT (user_id, normalized_merchant_name) DO UPDATE SET
+         ON CONFLICT (user_id, normalized_name) DO UPDATE SET
            estimated_amount = EXCLUDED.estimated_amount,
            frequency = EXCLUDED.frequency,
-           confidence = EXCLUDED.confidence,
+           confidence_score = GREATEST(subscriptions.confidence_score, EXCLUDED.confidence_score),
            last_charge_date = EXCLUDED.last_charge_date,
            next_expected_date = EXCLUDED.next_expected_date,
-           logo_url = COALESCE(EXCLUDED.logo_url, subscriptions.logo_url),
            category = COALESCE(EXCLUDED.category, subscriptions.category),
            updated_at = NOW()
          RETURNING id,
@@ -294,9 +293,9 @@ export async function detectSubscriptions(userId: string) {
           Math.round(amountMean * 100) / 100,
           frequency,
           Math.round(confidence * 100) / 100,
+          group.first_seen_date,
           lastDate.toISOString().split('T')[0],
           nextExpected.toISOString().split('T')[0],
-          group.logo_url,
           group.category,
         ]
       );

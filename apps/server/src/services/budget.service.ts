@@ -25,7 +25,7 @@ export async function getActive(userId: string) {
      FROM budgets b
      LEFT JOIN transactions t
        ON t.user_id = b.user_id
-       AND t.category = b.category
+       AND t.personal_finance_category_primary = b.category
      WHERE b.user_id = $1
        AND b.is_active = true
        AND b.period_start <= $2
@@ -68,7 +68,7 @@ export async function getById(userId: string, id: string) {
     `SELECT COALESCE(SUM(amount), 0) AS spent
      FROM transactions
      WHERE user_id = $1
-       AND category = $2
+       AND personal_finance_category_primary = $2
        AND date >= $3
        AND date <= $4
        AND amount > 0`,
@@ -226,7 +226,7 @@ export async function triggerGeneration(userId: string) {
 
 export async function getGenerationHistory(userId: string) {
   const result = await query(
-    `SELECT id, user_id, status, error_message, created_at, completed_at
+    `SELECT id, user_id, status, error_message, created_at
      FROM budget_generations
      WHERE user_id = $1
      ORDER BY created_at DESC
@@ -262,7 +262,7 @@ export async function generateBudget(userId: string, generationId: string) {
       max_amount: string;
     }>(
       `SELECT
-         category,
+         personal_finance_category_primary AS category,
          SUM(amount) AS total,
          SUM(amount) / 3.0 AS avg_monthly,
          COUNT(*)::int AS transaction_count,
@@ -272,8 +272,8 @@ export async function generateBudget(userId: string, generationId: string) {
        WHERE user_id = $1
          AND date >= $2
          AND amount > 0
-         AND category IS NOT NULL
-       GROUP BY category
+         AND personal_finance_category_primary IS NOT NULL
+       GROUP BY personal_finance_category_primary
        ORDER BY total DESC`,
       [userId, threeMonthsAgo.toISOString().split('T')[0]]
     );
@@ -307,7 +307,7 @@ export async function generateBudget(userId: string, generationId: string) {
     if (spendingSummary.length === 0) {
       await query(
         `UPDATE budget_generations
-         SET status = 'failed', error_message = 'Not enough transaction data to generate budgets', completed_at = NOW()
+         SET status = 'failed', error_message = 'Not enough transaction data to generate budgets'
          WHERE id = $1`,
         [generationId]
       );
@@ -385,15 +385,16 @@ Respond with ONLY a JSON object in this exact format:
       await client.query(
         `UPDATE budget_generations
          SET status = 'completed',
-             result_summary = $1,
-             completed_at = NOW()
-         WHERE id = $2`,
+             raw_response = $1,
+             budgets_created = $2
+         WHERE id = $3`,
         [
           JSON.stringify({
             budgetCount: parsed.budgets.length,
             savingsTarget: parsed.savingsTarget,
             summary: parsed.summary,
           }),
+          parsed.budgets.length,
           generationId,
         ]
       );
@@ -421,8 +422,7 @@ Respond with ONLY a JSON object in this exact format:
     await query(
       `UPDATE budget_generations
        SET status = 'failed',
-           error_message = $1,
-           completed_at = NOW()
+           error_message = $1
        WHERE id = $2`,
       [error instanceof Error ? error.message : 'Unknown error', generationId]
     );
@@ -460,7 +460,12 @@ export async function getSmartSuggestions(userId: string) {
   const savings = income - spending;
   const savingsRate = income > 0 ? savings / income : 0;
 
-  // 2. If not overspending and savings >= 10% of income, return empty
+  // 2. If no transaction data at all, return empty (new user)
+  if (income === 0 && spending === 0) {
+    return { suggestions: [], savingsRate: 0, income: 0, spending: 0 };
+  }
+
+  // 3. If not overspending and savings >= 10% of income, return empty
   if (spending <= income && savingsRate >= 0.1) {
     return { suggestions: [], savingsRate, income, spending };
   }
@@ -468,7 +473,7 @@ export async function getSmartSuggestions(userId: string) {
   // Get spending breakdown for Claude analysis
   const categoryResult = await query(
     `SELECT
-       category,
+       personal_finance_category_primary AS category,
        SUM(amount) AS total,
        COUNT(*)::int AS transaction_count
      FROM transactions
@@ -476,7 +481,7 @@ export async function getSmartSuggestions(userId: string) {
        AND date >= $2
        AND date <= $3
        AND amount > 0
-     GROUP BY category
+     GROUP BY personal_finance_category_primary
      ORDER BY total DESC`,
     [userId, monthStart.toISOString().split('T')[0], monthEnd.toISOString().split('T')[0]]
   );
@@ -550,21 +555,30 @@ Rank by estimated savings (highest priority = highest savings). Be specific and 
   };
 
   // 4. Store suggestions
+  const categorySpending = new Map(
+    categoryResult.rows.map((r) => [r.category, parseFloat(r.total)])
+  );
+
   for (const suggestion of parsed.suggestions) {
+    const currentAmount = categorySpending.get(suggestion.category) ?? 0;
+    const suggestedAmount = Math.max(0, currentAmount - suggestion.estimatedSavings);
+
     await query(
       `INSERT INTO spending_suggestions (
          user_id, type, category, title, description,
-         estimated_savings, priority
+         current_amount, suggested_amount, savings_amount, projected_annual_savings
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         userId,
         suggestion.type,
         suggestion.category,
         suggestion.title,
         suggestion.description,
+        currentAmount,
+        suggestedAmount,
         suggestion.estimatedSavings,
-        suggestion.priority,
+        suggestion.estimatedSavings * 12,
       ]
     );
   }

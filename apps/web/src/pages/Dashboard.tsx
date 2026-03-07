@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import type { DashboardData, Budget, Subscription } from '@budgetguard/shared';
+import type { DashboardData, Budget, Subscription, Account } from '@budgetguard/shared';
+import { DashboardSkeleton } from '../components/Skeletons';
+import { OnboardingWelcome } from '../components/OnboardingWelcome';
 
 const fmt = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -17,22 +20,37 @@ const fmtFull = new Intl.NumberFormat('en-US', {
   currency: 'USD',
 });
 
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center py-24">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-    </div>
-  );
-}
-
 export function DashboardPage() {
   const { user } = useAuth();
 
-  const { data: dashboard, isLoading, error } = useQuery({
+  const [dismissedOnboarding, setDismissedOnboarding] = useState(
+    () => localStorage.getItem('bg_onboarding_dismissed') === 'true',
+  );
+
+  const { data: accounts } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: async () => {
+      const res = await api.get<Account[]>('/accounts');
+      return res.data ?? [];
+    },
+  });
+
+  const { data: dashboard, isLoading, error, refetch } = useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => {
       const res = await api.get<DashboardData>('/user/dashboard');
-      return res.data!;
+      return res.data ?? {
+        totalBalance: 0,
+        monthlyIncome: 0,
+        monthlySpending: 0,
+        activeSubscriptions: 0,
+        subscriptionsCost: 0,
+        unclassifiedSubscriptions: 0,
+        activeBudgets: 0,
+        budgetHealth: 'good' as const,
+        unreadNotifications: 0,
+        savingsSuggestions: 0,
+      };
     },
   });
 
@@ -40,7 +58,7 @@ export function DashboardPage() {
     queryKey: ['budgets', 'active'],
     queryFn: async () => {
       const res = await api.get<Budget[]>('/budgets', { isActive: true });
-      return res.data!;
+      return res.data ?? [];
     },
   });
 
@@ -48,22 +66,43 @@ export function DashboardPage() {
     queryKey: ['subscriptions', 'recent'],
     queryFn: async () => {
       const res = await api.get<Subscription[]>('/subscriptions', { status: 'detected' });
-      return res.data!;
+      return res.data ?? [];
     },
   });
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) return <DashboardSkeleton />;
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-6 text-red-700">
-        <h3 className="font-semibold">Failed to load dashboard</h3>
-        <p className="mt-1 text-sm">{(error as Error).message}</p>
+      <div className="card flex flex-col items-center py-16 text-center">
+        <svg className="h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <h3 className="mt-4 text-lg font-semibold text-gray-900">Something went wrong</h3>
+        <p className="mt-1 text-sm text-gray-500">{(error as Error).message}</p>
+        <button className="btn-secondary mt-6" onClick={() => refetch()}>
+          Retry
+        </button>
       </div>
     );
   }
 
   if (!dashboard) return null;
+
+  // Show onboarding if the user has no accounts and hasn't dismissed it
+  if ((accounts ?? []).length === 0 && !dismissedOnboarding) {
+    return (
+      <OnboardingWelcome
+        firstName={user?.firstName}
+        onDismiss={() => {
+          localStorage.setItem('bg_onboarding_dismissed', 'true');
+          setDismissedOnboarding(true);
+        }}
+      />
+    );
+  }
 
   const chartData = [
     { name: 'Income', value: dashboard.monthlyIncome },
@@ -113,19 +152,19 @@ export function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card">
+        <div className="card animate-fade-in-up" style={{ animationDelay: '100ms', opacity: 0 }}>
           <p className="text-sm font-medium text-gray-500">Monthly Income</p>
           <p className="mt-1 text-2xl font-semibold text-green-600">
             {fmt.format(dashboard.monthlyIncome)}
           </p>
         </div>
-        <div className="card">
+        <div className="card animate-fade-in-up" style={{ animationDelay: '200ms', opacity: 0 }}>
           <p className="text-sm font-medium text-gray-500">Monthly Spending</p>
           <p className="mt-1 text-2xl font-semibold text-red-600">
             {fmt.format(dashboard.monthlySpending)}
           </p>
         </div>
-        <div className="card">
+        <div className="card animate-fade-in-up" style={{ animationDelay: '300ms', opacity: 0 }}>
           <p className="text-sm font-medium text-gray-500">Active Subscriptions</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
             {dashboard.activeSubscriptions}
@@ -134,7 +173,7 @@ export function DashboardPage() {
             {fmtFull.format(dashboard.subscriptionsCost)}/mo
           </p>
         </div>
-        <Link to="/notifications" className="card hover:ring-2 hover:ring-primary-300 transition-shadow">
+        <Link to="/notifications" className="card animate-fade-in-up hover:ring-2 hover:ring-primary-300 transition-shadow" style={{ animationDelay: '400ms', opacity: 0 }}>
           <p className="text-sm font-medium text-gray-500">Notifications</p>
           <div className="mt-1 flex items-center gap-2">
             <p className="text-2xl font-semibold text-gray-900">

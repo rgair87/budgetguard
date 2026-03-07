@@ -1,14 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { ListSkeleton } from '../components/Skeletons';
 import type { Notification, NotificationType } from '@budgetguard/shared';
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center py-24">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-    </div>
-  );
-}
 
 function formatTimeAgo(dateStr: string): string {
   const now = Date.now();
@@ -104,7 +97,7 @@ const typeConfig: Record<NotificationType, { icon: JSX.Element; color: string }>
 export function NotificationsPage() {
   const queryClient = useQueryClient();
 
-  const { data: notifications, isLoading, error } = useQuery({
+  const { data: notifications, isLoading, error, refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
       const res = await api.get<any>('/notifications');
@@ -160,13 +153,18 @@ export function NotificationsPage() {
     },
   });
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) return <ListSkeleton />;
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-6 text-red-700">
-        <h3 className="font-semibold">Failed to load notifications</h3>
-        <p className="mt-1 text-sm">{(error as Error).message}</p>
+      <div className="card py-12 text-center">
+        <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <h3 className="mt-3 text-sm font-medium text-gray-900">Something went wrong</h3>
+        <p className="mt-1 text-sm text-gray-500">{(error as Error).message}</p>
+        <button className="btn-secondary mt-4" onClick={() => refetch()}>Try again</button>
       </div>
     );
   }
@@ -219,7 +217,7 @@ export function NotificationsPage() {
             return (
               <div
                 key={notif.id}
-                className={`card flex items-start gap-4 transition-colors ${
+                className={`card animate-fade-in flex items-start gap-4 transition-colors ${
                   isUnread
                     ? 'border-l-4 border-l-primary-500 bg-primary-50/30'
                     : 'border-l-4 border-l-transparent'

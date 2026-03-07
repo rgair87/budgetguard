@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { CardGridSkeleton } from '../components/Skeletons';
 import { SPENDING_CATEGORIES, CATEGORY_LABELS } from '@budgetguard/shared';
 import type { Budget, CreateBudgetInput, UpdateBudgetInput } from '@budgetguard/shared';
 
@@ -8,14 +9,6 @@ const fmtCurrency = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
 });
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center py-24">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-    </div>
-  );
-}
 
 export function BudgetsPage() {
   const queryClient = useQueryClient();
@@ -29,7 +22,7 @@ export function BudgetsPage() {
   const [newCategory, setNewCategory] = useState('');
   const [newAmount, setNewAmount] = useState('');
 
-  const { data: budgets, isLoading, error } = useQuery({
+  const { data: budgets, isLoading, error, refetch } = useQuery({
     queryKey: ['budgets'],
     queryFn: async () => {
       const res = await api.get<any[]>('/budgets');
@@ -150,13 +143,18 @@ export function BudgetsPage() {
     });
   }
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) return <CardGridSkeleton />;
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-6 text-red-700">
-        <h3 className="font-semibold">Failed to load budgets</h3>
-        <p className="mt-1 text-sm">{(error as Error).message}</p>
+      <div className="card py-12 text-center">
+        <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <h3 className="mt-3 text-sm font-medium text-gray-900">Something went wrong</h3>
+        <p className="mt-1 text-sm text-gray-500">{(error as Error).message}</p>
+        <button className="btn-secondary mt-4" onClick={() => refetch()}>Try again</button>
       </div>
     );
   }
@@ -167,7 +165,7 @@ export function BudgetsPage() {
     <div className="space-y-6">
       {/* Toast */}
       {toast && (
-        <div className="fixed right-6 top-20 z-50 rounded-lg bg-gray-900 px-4 py-3 text-sm text-white shadow-lg">
+        <div className="fixed right-6 top-20 z-50 animate-slide-in-right rounded-lg border-l-4 border-l-green-500 bg-white px-4 py-3 text-sm text-gray-900 shadow-card-lg">
           {toast}
         </div>
       )}
@@ -206,8 +204,8 @@ export function BudgetsPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md animate-scale-in rounded-xl bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">Create New Budget</h2>
             <div className="space-y-4">
               <div>
@@ -300,7 +298,7 @@ export function BudgetsPage() {
             return (
               <div
                 key={budget.id}
-                className="card cursor-pointer transition-shadow hover:shadow-md"
+                className="card-interactive cursor-pointer"
                 onClick={() => {
                   if (!isEditing) startEdit(budget);
                 }}
@@ -326,7 +324,7 @@ export function BudgetsPage() {
                 {/* Progress Bar */}
                 <div className="mb-2 h-3 w-full rounded-full bg-gray-200">
                   <div
-                    className={`h-3 rounded-full transition-all ${barColor}`}
+                    className={`h-3 rounded-full transition-all duration-500 ${barColor}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>

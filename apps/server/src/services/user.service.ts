@@ -21,7 +21,7 @@ export async function getDashboardSummary(userId: string) {
   ] = await Promise.all([
     // Total balance from accounts
     query<{ total_balance: string }>(
-      `SELECT COALESCE(SUM(balance_current), 0) AS total_balance
+      `SELECT COALESCE(SUM(current_balance), 0) AS total_balance
        FROM accounts
        WHERE user_id = $1`,
       [userId]
@@ -89,7 +89,7 @@ export async function getDashboardSummary(userId: string) {
          SELECT COALESCE(SUM(t.amount), 0) AS spent
          FROM transactions t
          WHERE t.user_id = b.user_id
-           AND t.category = b.category
+           AND t.personal_finance_category_primary = b.category
            AND t.amount > 0
            AND t.date >= b.period_start
            AND t.date <= b.period_end
@@ -101,14 +101,14 @@ export async function getDashboardSummary(userId: string) {
       [userId, now.toISOString().split('T')[0]]
     ),
 
-    // Savings suggestions count
+    // Savings suggestions count (table may not exist for new installs)
     query<{ count: string }>(
       `SELECT COUNT(*) AS count
        FROM spending_suggestions
        WHERE user_id = $1
          AND status IS DISTINCT FROM 'dismissed'`,
       [userId]
-    ),
+    ).catch(() => ({ rows: [{ count: '0' }] })),
   ]);
 
   const totalBalance = parseFloat(balanceResult.rows[0].total_balance);

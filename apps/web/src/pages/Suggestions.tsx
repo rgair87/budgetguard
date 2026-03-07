@@ -1,20 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { ListSkeleton } from '../components/Skeletons';
 import type { SuggestionType } from '@budgetguard/shared';
 
 const fmtCurrency = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
 });
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center py-24">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-    </div>
-  );
-}
 
 const typeBadge: Record<SuggestionType, { bg: string; text: string; label: string }> = {
   cut: { bg: 'bg-red-100', text: 'text-red-700', label: 'Cut' },
@@ -47,11 +40,11 @@ export function SuggestionsPage() {
   const queryClient = useQueryClient();
   const [actionedIds, setActionedIds] = useState<Record<string, 'accepted' | 'dismissed'>>({});
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['suggestions'],
     queryFn: async () => {
       const res = await api.post<SuggestionsResponse>('/budgets/suggestions');
-      return res.data!;
+      return res.data ?? { suggestions: [], savingsRate: 0, income: 0, spending: 0 };
     },
   });
 
@@ -73,13 +66,18 @@ export function SuggestionsPage() {
     setActionedIds((prev) => ({ ...prev, [localId]: 'dismissed' }));
   }
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) return <ListSkeleton />;
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-6 text-red-700">
-        <h3 className="font-semibold">Failed to load suggestions</h3>
-        <p className="mt-1 text-sm">{(error as Error).message}</p>
+      <div className="card py-12 text-center">
+        <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <h3 className="mt-3 text-sm font-medium text-gray-900">Something went wrong</h3>
+        <p className="mt-1 text-sm text-gray-500">{(error as Error).message}</p>
+        <button className="btn-secondary mt-4" onClick={() => refetch()}>Try again</button>
       </div>
     );
   }
@@ -189,7 +187,7 @@ export function SuggestionsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {allSuggestions.map((suggestion) => {
+          {allSuggestions.map((suggestion, index) => {
             const badge = typeBadge[suggestion.type] ?? typeBadge.trim;
             const isAccepted = suggestion.localStatus === 'accepted';
             const isDismissed = suggestion.localStatus === 'dismissed';
@@ -198,7 +196,8 @@ export function SuggestionsPage() {
             return (
               <div
                 key={suggestion.localId}
-                className={`card transition-opacity ${isActioned ? 'opacity-60' : ''}`}
+                className={`card animate-fade-in-up transition-all duration-300 ${isActioned ? 'opacity-60 scale-[0.99]' : ''}`}
+                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   {/* Left: Info */}

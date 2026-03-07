@@ -58,8 +58,8 @@ export async function exchangePublicToken(
     // Store the Plaid item
     const itemResult = await client.query<{ id: string }>(
       `INSERT INTO plaid_items (
-         user_id, plaid_item_id, plaid_access_token,
-         institution_id, institution_name, cursor
+         user_id, plaid_item_id, access_token_encrypted,
+         institution_id, institution_name, transaction_cursor
        )
        VALUES ($1, $2, $3, $4, $5, NULL)
        RETURNING id`,
@@ -163,10 +163,10 @@ export async function syncTransactions(plaidItemId: string) {
   const itemResult = await query<{
     id: string;
     user_id: string;
-    plaid_access_token: Buffer;
-    cursor: string | null;
+    access_token_encrypted: Buffer;
+    transaction_cursor: string | null;
   }>(
-    'SELECT id, user_id, plaid_access_token, cursor FROM plaid_items WHERE id = $1',
+    'SELECT id, user_id, access_token_encrypted, transaction_cursor FROM plaid_items WHERE id = $1',
     [plaidItemId]
   );
 
@@ -177,9 +177,9 @@ export async function syncTransactions(plaidItemId: string) {
   const item = itemResult.rows[0];
 
   // Decrypt the access token
-  const accessToken = await decrypt(item.plaid_access_token);
+  const accessToken = await decrypt(item.access_token_encrypted);
 
-  let cursor = item.cursor;
+  let cursor = item.transaction_cursor;
   let hasMore = true;
   let addedCount = 0;
   let modifiedCount = 0;
@@ -208,29 +208,27 @@ export async function syncTransactions(plaidItemId: string) {
       await query(
         `INSERT INTO transactions (
            user_id, account_id, plaid_transaction_id,
-           amount, iso_currency_code, date,
+           amount, date,
            name, merchant_name,
-           category, pending, logo_url
+           personal_finance_category_primary, pending
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (plaid_transaction_id) DO UPDATE SET
            amount = EXCLUDED.amount,
            pending = EXCLUDED.pending,
            name = EXCLUDED.name,
            merchant_name = EXCLUDED.merchant_name,
-           category = EXCLUDED.category`,
+           personal_finance_category_primary = EXCLUDED.personal_finance_category_primary`,
         [
           item.user_id,
           accountId,
           txn.transaction_id,
           txn.amount,
-          txn.iso_currency_code || 'USD',
           txn.date,
           txn.name,
           txn.merchant_name || null,
           txn.personal_finance_category?.primary || null,
           txn.pending,
-          txn.logo_url || null,
         ]
       );
 
@@ -242,7 +240,7 @@ export async function syncTransactions(plaidItemId: string) {
       await query(
         `UPDATE transactions SET
            amount = $1, pending = $2, name = $3,
-           merchant_name = $4, category = $5
+           merchant_name = $4, personal_finance_category_primary = $5
          WHERE plaid_transaction_id = $6 AND user_id = $7`,
         [
           txn.amount,
@@ -274,7 +272,7 @@ export async function syncTransactions(plaidItemId: string) {
 
   // Update cursor on the plaid item
   await query(
-    'UPDATE plaid_items SET cursor = $1, last_synced_at = NOW() WHERE id = $2',
+    'UPDATE plaid_items SET transaction_cursor = $1, last_synced_at = NOW() WHERE id = $2',
     [cursor, plaidItemId]
   );
 
@@ -295,9 +293,9 @@ export async function getAccounts(userId: string) {
     mask: string | null;
     type: string;
     subtype: string | null;
-    balance_available: number | null;
-    balance_current: number | null;
-    balance_iso_currency_code: string | null;
+    available_balance: number | null;
+    current_balance: number | null;
+    currency_code: string | null;
     created_at: Date;
     updated_at: Date;
   }>(
@@ -358,13 +356,13 @@ export async function unlinkAccount(userId: string, accountId: string) {
 
     // If no accounts remain, remove the plaid item and revoke access
     if (parseInt(remaining.rows[0].count, 10) === 0) {
-      const itemResult = await client.query<{ plaid_access_token: Buffer }>(
-        'SELECT plaid_access_token FROM plaid_items WHERE id = $1',
+      const itemResult = await client.query<{ access_token_encrypted: Buffer }>(
+        'SELECT access_token_encrypted FROM plaid_items WHERE id = $1',
         [account.plaid_item_id]
       );
 
       if (itemResult.rows.length > 0) {
-        const accessToken = await decrypt(itemResult.rows[0].plaid_access_token);
+        const accessToken = await decrypt(itemResult.rows[0].access_token_encrypted);
         try {
           await plaidClient.itemRemove({ access_token: accessToken });
         } catch (err) {
@@ -398,8 +396,8 @@ export async function refreshBalance(userId: string, accountId: string) {
   const account = accountResult.rows[0];
 
   // Get the access token for this item
-  const itemResult = await query<{ plaid_access_token: Buffer }>(
-    'SELECT plaid_access_token FROM plaid_items WHERE id = $1',
+  const itemResult = await query<{ access_token_encrypted: Buffer }>(
+    'SELECT access_token_encrypted FROM plaid_items WHERE id = $1',
     [account.plaid_item_id]
   );
 
@@ -407,7 +405,7 @@ export async function refreshBalance(userId: string, accountId: string) {
     throw new NotFoundError('Plaid item not found');
   }
 
-  const accessToken = await decrypt(itemResult.rows[0].plaid_access_token);
+  const accessToken = await decrypt(itemResult.rows[0].access_token_encrypted);
 
   // Fetch balances from Plaid
   const balanceResponse = await plaidClient.accountsBalanceGet({
@@ -422,9 +420,9 @@ export async function refreshBalance(userId: string, accountId: string) {
   if (plaidAccount) {
     await query(
       `UPDATE accounts SET
-         balance_available = $1,
-         balance_current = $2,
-         balance_iso_currency_code = $3,
+         available_balance = $1,
+         current_balance = $2,
+         currency_code = $3,
          updated_at = NOW()
        WHERE id = $4`,
       [

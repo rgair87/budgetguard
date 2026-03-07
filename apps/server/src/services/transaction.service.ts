@@ -36,7 +36,7 @@ export async function getTransactions(userId: string, filters: TransactionFilter
   }
 
   if (category) {
-    conditions.push(`t.category = $${paramIndex}`);
+    conditions.push(`t.personal_finance_category_primary = $${paramIndex}`);
     params.push(category);
     paramIndex++;
   }
@@ -87,9 +87,11 @@ export async function getTransactions(userId: string, filters: TransactionFilter
   const result = await query(
     `SELECT
        t.id, t.account_id, t.plaid_transaction_id,
-       t.amount, t.iso_currency_code, t.date,
-       t.name, t.merchant_name, t.category,
-       t.pending, t.is_recurring, t.logo_url,
+       t.amount, t.date,
+       t.name, t.merchant_name,
+       t.personal_finance_category_primary AS category,
+       t.personal_finance_category_detailed,
+       t.pending, t.is_recurring,
        t.created_at,
        a.name AS account_name, a.mask AS account_mask
      FROM transactions t
@@ -115,7 +117,7 @@ export async function getSummary(userId: string, startDate: string, endDate: str
   // Total spending by category
   const categoryResult = await query(
     `SELECT
-       category,
+       personal_finance_category_primary AS category,
        COUNT(*)::int AS transaction_count,
        SUM(amount) AS total,
        AVG(amount) AS average
@@ -124,7 +126,7 @@ export async function getSummary(userId: string, startDate: string, endDate: str
        AND date >= $2
        AND date <= $3
        AND amount > 0
-     GROUP BY category
+     GROUP BY personal_finance_category_primary
      ORDER BY total DESC`,
     [userId, startDate, endDate]
   );
@@ -220,9 +222,11 @@ export async function search(
   const result = await query(
     `SELECT
        t.id, t.account_id, t.plaid_transaction_id,
-       t.amount, t.iso_currency_code, t.date,
-       t.name, t.merchant_name, t.category,
-       t.pending, t.is_recurring, t.logo_url,
+       t.amount, t.date,
+       t.name, t.merchant_name,
+       t.personal_finance_category_primary AS category,
+       t.personal_finance_category_detailed,
+       t.pending, t.is_recurring,
        t.created_at,
        a.name AS account_name, a.mask AS account_mask
      FROM transactions t

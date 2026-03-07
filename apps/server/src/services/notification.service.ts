@@ -37,7 +37,7 @@ export async function getAll(
        id, user_id, type, title, body,
        read_at, dismissed_at,
        related_entity_type, related_entity_id,
-       action_url, channels,
+       action_url, channels_sent,
        created_at
      FROM notifications
      WHERE user_id = $1 AND dismissed_at IS NULL
@@ -159,7 +159,7 @@ export async function send(params: {
     `INSERT INTO notifications (
        user_id, type, title, body,
        related_entity_type, related_entity_id,
-       action_url, channels
+       action_url, channels_sent
      )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id`,

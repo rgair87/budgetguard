@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { ListSkeleton } from '../components/Skeletons';
 import type { Subscription, SubscriptionStatus, ClassifySubscriptionInput } from '@budgetguard/shared';
 
 interface CancelGuide {
@@ -15,14 +16,6 @@ const fmtCurrency = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
 });
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center py-24">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-    </div>
-  );
-}
 
 type FilterTab = 'all' | 'detected' | 'safe' | 'cancelled';
 
@@ -50,6 +43,23 @@ function matchesFilter(sub: Subscription, tab: FilterTab): boolean {
   return true;
 }
 
+function statusBorderClass(status: SubscriptionStatus): string {
+  switch (status) {
+    case 'detected':
+    case 'confirmed':
+      return 'border-l-[3px] border-l-blue-400';
+    case 'safe':
+      return 'border-l-[3px] border-l-emerald-400';
+    case 'cancel_requested':
+    case 'cancelled':
+      return 'border-l-[3px] border-l-gray-300';
+    case 'dismissed':
+      return 'border-l-[3px] border-l-gray-200';
+    default:
+      return '';
+  }
+}
+
 export function SubscriptionsPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
@@ -57,7 +67,7 @@ export function SubscriptionsPage() {
   const [keepUntil, setKeepUntil] = useState('');
   const [keepReason, setKeepReason] = useState('');
 
-  const { data: subscriptions, isLoading, error } = useQuery({
+  const { data: subscriptions, isLoading, error, refetch } = useQuery({
     queryKey: ['subscriptions'],
     queryFn: async () => {
       const res = await api.get<any[]>('/subscriptions');
@@ -108,13 +118,18 @@ export function SubscriptionsPage() {
     },
   });
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) return <ListSkeleton />;
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-6 text-red-700">
-        <h3 className="font-semibold">Failed to load subscriptions</h3>
-        <p className="mt-1 text-sm">{(error as Error).message}</p>
+      <div className="card py-12 text-center">
+        <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <h3 className="mt-3 text-sm font-medium text-gray-900">Something went wrong</h3>
+        <p className="mt-1 text-sm text-gray-500">{(error as Error).message}</p>
+        <button className="btn-secondary mt-4" onClick={() => refetch()}>Try again</button>
       </div>
     );
   }
@@ -212,16 +227,25 @@ export function SubscriptionsPage() {
       {/* Subscriptions List */}
       {filtered.length === 0 ? (
         <div className="card py-12 text-center">
-          <p className="text-sm text-gray-400">No subscriptions in this category.</p>
+          <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <h3 className="mt-3 text-sm font-medium text-gray-900">No subscriptions found</h3>
+          <p className="mt-1 text-sm text-gray-500">No subscriptions in this category.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map((sub) => {
+          {filtered.map((sub, index) => {
             const badge = statusBadge[sub.status] ?? statusBadge.detected;
             const isClassifying = classifyId === sub.id;
 
             return (
-              <div key={sub.id} className="card">
+              <div
+                key={sub.id}
+                className={`card animate-fade-in-up ${statusBorderClass(sub.status)}`}
+                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
+              >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">

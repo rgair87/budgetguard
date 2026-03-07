@@ -118,7 +118,7 @@ CREATE TABLE subscriptions (
 CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX idx_subscriptions_status ON subscriptions(status);
 CREATE INDEX idx_subscriptions_user_status ON subscriptions(user_id, status);
-CREATE INDEX idx_subscriptions_normalized ON subscriptions(user_id, normalized_name);
+CREATE UNIQUE INDEX idx_subscriptions_normalized ON subscriptions(user_id, normalized_name);
 
 -- ============================================================
 -- TRANSACTIONS

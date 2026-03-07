@@ -45,8 +45,7 @@ export async function handleSendAlerts(_job: PgBoss.Job<AlertJobData>) {
         await query(
           `UPDATE notifications SET
             alert_repeat_count = alert_repeat_count + 1,
-            next_alert_at = NOW() + INTERVAL '12 hours',
-            updated_at = NOW()
+            next_alert_at = NOW() + INTERVAL '12 hours'
           WHERE id = $1`,
           [row.notification_id]
         );
