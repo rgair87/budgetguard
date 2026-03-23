@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -123,8 +124,11 @@ function ImportData() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <h2 className="font-medium text-gray-900 mb-1">Import Data</h2>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
+      <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+        <Upload className="w-4 h-4 text-indigo-600" />
+        Import Data
+      </h2>
       <p className="text-xs text-gray-500 mb-4">
         Download a template, fill it in with your info, and upload it back. Or upload your own CSV with similar columns.
       </p>
@@ -153,7 +157,7 @@ function ImportData() {
                 <button
                   onClick={() => fileRefs[key].current?.click()}
                   disabled={uploading === key}
-                  className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-md active:bg-indigo-700 disabled:opacity-50"
+                  className="text-xs bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-3 py-1.5 rounded-xl active:from-indigo-700 active:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
                 >
                   {uploading === key ? '...' : 'Upload'}
                 </button>
@@ -243,8 +247,11 @@ function PrivacySection() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <h2 className="font-medium text-gray-900 mb-1">Privacy & Data</h2>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
+      <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+        <Shield className="w-4 h-4 text-indigo-600" />
+        Privacy & Data
+      </h2>
       <p className="text-xs text-gray-500 mb-4">
         Export or delete all your data. These actions comply with GDPR data portability and right-to-erasure requirements.
       </p>
@@ -252,21 +259,24 @@ function PrivacySection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between py-2">
           <div>
-            <p className="text-sm font-medium text-gray-900">Export My Data</p>
+            <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5 text-gray-400" />
+              Export My Data
+            </p>
             <p className="text-xs text-gray-400">Download all your data as a JSON file</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
             >
               {exporting ? 'Exporting...' : 'Export'}
             </button>
             <button
               onClick={handleExportCsv}
               disabled={exportingCsv}
-              className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
             >
               {exportingCsv ? 'Exporting...' : 'Export as Spreadsheet'}
             </button>
@@ -276,12 +286,15 @@ function PrivacySection() {
         <div className="border-t border-gray-100 pt-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-red-600">Delete My Account</p>
+              <p className="text-sm font-medium text-red-600 flex items-center gap-1.5">
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete My Account
+              </p>
               <p className="text-xs text-gray-400">Permanently delete your account and all data</p>
             </div>
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="text-sm bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700"
+              className="text-sm bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-xl hover:from-red-600 hover:to-red-700 shadow-sm transition-all"
             >
               Delete
             </button>
@@ -292,8 +305,11 @@ function PrivacySection() {
       {/* Delete confirmation modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-red-600 mb-2">Delete Account</h3>
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-red-600 mb-2 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              Delete Account
+            </h3>
             <p className="text-sm text-gray-600 mb-1">
               This action is <strong>permanent and irreversible</strong>. All your data will be deleted immediately:
             </p>
@@ -310,7 +326,7 @@ function PrivacySection() {
               onChange={e => setDeletePassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleDeleteAccount()}
               placeholder="Your password"
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 mb-3"
+              className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 mb-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
               autoFocus
             />
             {deleteError && (
@@ -326,7 +342,7 @@ function PrivacySection() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleting || !deletePassword}
-                className="text-sm bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 disabled:opacity-50"
+                className="text-sm bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-xl hover:from-red-600 hover:to-red-700 disabled:opacity-50 shadow-sm transition-all"
               >
                 {deleting ? 'Deleting...' : 'Permanently Delete'}
               </button>
@@ -445,8 +461,11 @@ export default function Settings() {
       <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
 
       {/* Account info + Tier */}
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
-        <h2 className="font-medium text-gray-900 mb-3">Account</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
+        <h2 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+          <User className="w-4 h-4 text-indigo-600" />
+          Account
+        </h2>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">Email</span>
@@ -475,8 +494,11 @@ export default function Settings() {
 
         {/* Tier comparison */}
         {tierInfo?.tier !== 'pro' && (
-          <div className="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-100">
-            <p className="text-sm font-semibold text-indigo-900 mb-2">Pro features</p>
+          <div className="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+            <p className="text-sm font-semibold text-indigo-900 mb-2 flex items-center gap-1.5">
+              <Crown className="w-4 h-4 text-indigo-600" />
+              Pro features
+            </p>
             <ul className="text-xs text-indigo-700 space-y-1">
               <li>50 AI chat messages/day (vs 15 free)</li>
               <li>Bank sync via Plaid</li>
@@ -488,7 +510,7 @@ export default function Settings() {
             </ul>
             <button
               onClick={handleUpgrade}
-              className="mt-3 w-full bg-indigo-600 text-white text-sm py-2 rounded-md font-medium hover:bg-indigo-700"
+              className="mt-3 w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm py-2.5 rounded-xl font-medium hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-500/25 transition-all"
             >
               Upgrade to Pro
             </button>
@@ -497,9 +519,12 @@ export default function Settings() {
       </div>
 
       {/* Paycheck info */}
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium text-gray-900">Paycheck</h2>
+          <h2 className="font-medium text-gray-900 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-indigo-600" />
+            Paycheck
+          </h2>
           {!editingPaycheck && (
             <button onClick={startEditPaycheck} className="text-sm text-indigo-600 hover:text-indigo-700">
               Edit
@@ -514,7 +539,7 @@ export default function Settings() {
               <select
                 value={payFreq}
                 onChange={e => setPayFreq(e.target.value)}
-                className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
+                className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
               >
                 <option value="">Select...</option>
                 <option value="weekly">Weekly</option>
@@ -526,13 +551,13 @@ export default function Settings() {
             <div>
               <label className="block text-xs text-gray-500 mb-1">Take-home pay (per paycheck)</label>
               <div className="relative">
-                <span className="absolute left-3 top-2 text-sm text-gray-400">$</span>
+                <span className="absolute left-3 top-2.5 text-sm text-gray-400">$</span>
                 <input
                   type="number"
                   step="0.01"
                   value={payAmount}
                   onChange={e => setPayAmount(e.target.value)}
-                  className="w-full text-sm border border-gray-300 rounded-md pl-7 pr-3 py-2"
+                  className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 pl-7 pr-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
                   placeholder="0.00"
                 />
               </div>
@@ -543,7 +568,7 @@ export default function Settings() {
                 type="date"
                 value={payNextDate}
                 onChange={e => setPayNextDate(e.target.value)}
-                className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
+                className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
               />
             </div>
             <div className="flex gap-2 justify-end pt-1">
@@ -556,7 +581,7 @@ export default function Settings() {
               <button
                 onClick={savePaycheck}
                 disabled={savingPaycheck || !payFreq || !payAmount || !payNextDate}
-                className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-lg shadow-indigo-500/25 transition-all"
               >
                 {savingPaycheck ? 'Saving...' : 'Save'}
               </button>
@@ -585,10 +610,13 @@ export default function Settings() {
       </div>
 
       {/* Accounts & Debts */}
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="font-medium text-gray-900">Your Accounts & Debts</h2>
+            <h2 className="font-medium text-gray-900 flex items-center gap-2">
+              <Landmark className="w-4 h-4 text-indigo-600" />
+              Your Accounts & Debts
+            </h2>
             <p className="text-xs text-gray-500 mt-0.5">Add all your accounts — checking, savings, credit cards, loans, mortgage</p>
           </div>
           <div className="flex gap-2">
@@ -603,14 +631,14 @@ export default function Settings() {
 
         {/* Add account form */}
         {showAddAccount && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
+          <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <input
                 type="text"
                 placeholder="Name (e.g. Chase Visa, Car Loan)"
                 value={newAccount.name}
                 onChange={e => setNewAccount({ ...newAccount, name: e.target.value })}
-                className="col-span-2 text-sm border border-gray-300 rounded-md px-3 py-2"
+                className="col-span-2 text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
               />
               <select
                 value={newAccount.type}
@@ -619,7 +647,7 @@ export default function Settings() {
                   const rate = DEFAULT_RATES[t];
                   setNewAccount({ ...newAccount, type: t, interest_rate: rate ? String(rate) : '' });
                 }}
-                className="text-sm border border-gray-300 rounded-md px-3 py-2"
+                className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
               >
                 <optgroup label="Cash">
                   <option value="checking">Checking</option>
@@ -642,13 +670,13 @@ export default function Settings() {
                 placeholder={isDebtType(newAccount.type) ? 'Amount owed' : 'Current balance'}
                 value={newAccount.balance}
                 onChange={e => setNewAccount({ ...newAccount, balance: e.target.value })}
-                className="text-sm border border-gray-300 rounded-md px-3 py-2"
+                className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
               />
               {!isDebtType(newAccount.type) ? (
                 <select
                   value={newAccount.purpose}
                   onChange={e => setNewAccount({ ...newAccount, purpose: e.target.value })}
-                  className="text-sm border border-gray-300 rounded-md px-3 py-2"
+                  className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
                 >
                   {Object.entries(PURPOSE_LABELS).map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
@@ -661,7 +689,7 @@ export default function Settings() {
                   placeholder={`Rate % (avg ~${DEFAULT_RATES[newAccount.type] || 22}%)`}
                   value={newAccount.interest_rate}
                   onChange={e => setNewAccount({ ...newAccount, interest_rate: e.target.value })}
-                  className="text-sm border border-gray-300 rounded-md px-3 py-2"
+                  className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
                 />
               )}
             </div>
@@ -675,7 +703,7 @@ export default function Settings() {
                   placeholder="Monthly minimum payment"
                   value={newAccount.minimum_payment}
                   onChange={e => setNewAccount({ ...newAccount, minimum_payment: e.target.value })}
-                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
+                  className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
                 />
                 <p className="text-xs text-gray-400">
                   Don't know your rate? We'll estimate ~{DEFAULT_RATES[newAccount.type] || 22}%. {RATE_HELP[newAccount.type] || ''}
@@ -692,7 +720,7 @@ export default function Settings() {
                   placeholder="How much of each paycheck goes here? (optional)"
                   value={newAccount.income_allocation}
                   onChange={e => setNewAccount({ ...newAccount, income_allocation: e.target.value })}
-                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
+                  className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
                 />
                 <p className="text-xs text-gray-400 mt-1">e.g. $935 if you send $935 from each paycheck to this account</p>
               </div>
@@ -702,7 +730,7 @@ export default function Settings() {
               <button onClick={() => setShowAddAccount(false)} className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1">
                 Cancel
               </button>
-              <button onClick={addAccount} className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded-md hover:bg-indigo-700">
+              <button onClick={addAccount} className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-500/25 transition-all">
                 Add
               </button>
             </div>
@@ -716,10 +744,13 @@ export default function Settings() {
         {/* Cash accounts */}
         {cashAccounts.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Cash Accounts</h3>
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <PiggyBank className="w-3.5 h-3.5" />
+              Cash Accounts
+            </h3>
             <div className="space-y-3">
               {cashAccounts.map(acct => (
-                <div key={acct.id} className="border border-gray-100 rounded-lg p-3">
+                <div key={acct.id} className="border border-gray-100 rounded-xl p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{acct.name}</p>
@@ -728,7 +759,7 @@ export default function Settings() {
                         <select
                           value={acct.purpose || 'general'}
                           onChange={e => updateAccountField(acct.id, 'purpose', e.target.value)}
-                          className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600"
+                          className="text-xs border border-gray-200 rounded-lg px-1.5 py-0.5 text-gray-600 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                         >
                           {Object.entries(PURPOSE_LABELS).map(([val, label]) => (
                             <option key={val} value={val}>{label}</option>
@@ -746,7 +777,7 @@ export default function Settings() {
                             value={editBalance}
                             onChange={e => setEditBalance(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && saveBalance(acct.id)}
-                            className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
+                            className="w-28 text-sm border border-gray-200 rounded-xl bg-gray-50 px-2 py-1 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                             autoFocus
                           />
                           <button onClick={() => saveBalance(acct.id)} className="text-xs text-indigo-600">Save</button>
@@ -774,7 +805,7 @@ export default function Settings() {
                       placeholder="—"
                       value={acct.income_allocation || ''}
                       onChange={e => updateAccountField(acct.id, 'income_allocation', e.target.value || null)}
-                      className="w-24 border border-gray-200 rounded px-2 py-1 text-gray-700"
+                      className="w-24 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -786,11 +817,17 @@ export default function Settings() {
         {/* Debt accounts */}
         {debtAccounts.length > 0 && (
           <div>
-            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Debts</h3>
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5" />
+              Debts
+            </h3>
             {/* APR warning banner */}
             {debtAccounts.some(a => !a.interest_rate) && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                <p className="text-xs font-semibold text-amber-800">Some accounts are using estimated APRs</p>
+              <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-3 mb-3">
+                <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Some accounts are using estimated APRs
+                </p>
                 <p className="text-xs text-amber-700 mt-0.5">
                   Accounts marked "est." use national averages, which may be off by 5-10%. Enter your real APR for accurate debt payoff calculations.
                   Check your latest statement or log into your lender's website.
@@ -799,7 +836,7 @@ export default function Settings() {
             )}
             <div className="space-y-3">
               {debtAccounts.map(acct => (
-                <div key={acct.id} className="border border-red-100 rounded-lg p-3 bg-red-50/30">
+                <div key={acct.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{acct.name}</p>
@@ -815,7 +852,7 @@ export default function Settings() {
                             value={editBalance}
                             onChange={e => setEditBalance(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && saveBalance(acct.id)}
-                            className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
+                            className="w-28 text-sm border border-gray-200 rounded-xl bg-gray-50 px-2 py-1 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                             autoFocus
                           />
                           <button onClick={() => saveBalance(acct.id)} className="text-xs text-indigo-600">Save</button>
@@ -844,7 +881,7 @@ export default function Settings() {
                         placeholder={`~${DEFAULT_RATES[acct.type] || 22}`}
                         value={acct.interest_rate || ''}
                         onChange={e => updateAccountField(acct.id, 'interest_rate', e.target.value || null)}
-                        className="w-16 border border-gray-200 rounded px-2 py-1 text-gray-700"
+                        className="w-16 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                       />
                       <span className="text-gray-400">%</span>
                       {!acct.interest_rate && (
@@ -860,7 +897,7 @@ export default function Settings() {
                         placeholder="—"
                         value={acct.minimum_payment || ''}
                         onChange={e => updateAccountField(acct.id, 'minimum_payment', e.target.value || null)}
-                        className="w-20 border border-gray-200 rounded px-2 py-1 text-gray-700"
+                        className="w-20 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                       />
                       {!acct.minimum_payment && (
                         <span className="text-amber-500" title="Estimated as 2% of balance">est.</span>
@@ -877,6 +914,19 @@ export default function Settings() {
       {/* Import Data */}
       <ImportData />
 
+      {/* Family */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
+        <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+          <Users className="w-4 h-4 text-indigo-600" />
+          Family Plan
+        </h2>
+        <p className="text-xs text-gray-500 mb-3">Manage your family and invite members to share finances together.</p>
+        <a href="/family" className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-500/25 transition-all">
+          Manage Family
+          <ChevronRight className="w-4 h-4" />
+        </a>
+      </div>
+
       {/* Privacy & Data */}
       <PrivacySection />
 
@@ -884,8 +934,9 @@ export default function Settings() {
       <div className="space-y-2">
         <button
           onClick={logout}
-          className="w-full bg-white border border-gray-200 rounded-lg py-2 text-sm text-red-600 hover:bg-red-50"
+          className="w-full bg-white border border-slate-200/60 rounded-2xl shadow-sm py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all flex items-center justify-center gap-2"
         >
+          <LogOut className="w-4 h-4" />
           Log out
         </button>
       </div>

@@ -236,7 +236,8 @@
       "Bash(MSYS_NO_PATHCONV=1 railway variables set RESEND_API_KEY=re_Dz4PvX3B_KZppv8yj7UiKbhmc4qvaLGS3 APP_URL=https://reliable-harmony-production-3de0.up.railway.app)",
       "WebSearch",
       "WebFetch(domain:myrunway.app)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

@@ -59,9 +59,8 @@ const NAV_GROUPS: Record<string, NavEntry> = {
     items: [
       { to: '/calendar', label: 'Calendar', icon: Calendar },
       { to: '/debt', label: 'Debt', icon: CreditCard },
-      { to: '/goals', label: 'Goals', icon: Target },
       { to: '/subscriptions', label: 'Recurring', icon: Repeat },
-      { to: '/family', label: 'Family', icon: Users },
+      { to: '/goals', label: 'Goals', icon: Target },
     ],
   },
   insights: {
@@ -86,7 +85,7 @@ function isGroup(entry: NavEntry): entry is NavGroup {
 
 function getActiveGroup(pathname: string): string {
   if (pathname === '/') return 'home';
-  if (['/calendar', '/debt', '/subscriptions', '/goals', '/family'].some(p => pathname.startsWith(p))) return 'plan';
+  if (['/calendar', '/debt', '/subscriptions', '/goals'].some(p => pathname.startsWith(p))) return 'plan';
   if (['/advisor', '/chat', '/cut-this', '/transactions', '/csv-upload', '/predictions', '/trends', '/negotiate', '/simulator'].some(p => pathname.startsWith(p))) return 'insights';
   if (pathname.startsWith('/settings') || pathname.startsWith('/onboarding')) return 'settings';
   return 'home';

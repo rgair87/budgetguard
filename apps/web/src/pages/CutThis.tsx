@@ -1,4 +1,22 @@
 import { useEffect, useState } from 'react';
+import {
+  Scissors,
+  RefreshCw,
+  TrendingDown,
+  CreditCard,
+  Repeat,
+  Zap,
+  ShoppingCart,
+  Utensils,
+  Car,
+  Wifi,
+  Home,
+  Smartphone,
+  CheckCircle2,
+  Clock,
+  X,
+  ThumbsUp,
+} from 'lucide-react';
 import api from '../api/client';
 
 interface Recommendation {
@@ -16,6 +34,24 @@ const DIFFICULTY_BADGES: Record<string, { bg: string; text: string }> = {
   medium: { bg: 'bg-amber-100', text: 'text-amber-700' },
   hard: { bg: 'bg-red-100', text: 'text-red-700' },
 };
+
+/** Map common emoji patterns to Lucide icons */
+function recIcon(emoji: string) {
+  const iconMap: Record<string, React.ReactNode> = {
+    '\u2702': <Scissors className="w-5 h-5" />,
+    '\uD83D\uDCB3': <CreditCard className="w-5 h-5" />,
+    '\uD83D\uDD01': <Repeat className="w-5 h-5" />,
+    '\u26A1': <Zap className="w-5 h-5" />,
+    '\uD83D\uDED2': <ShoppingCart className="w-5 h-5" />,
+    '\uD83C\uDF54': <Utensils className="w-5 h-5" />,
+    '\uD83D\uDE97': <Car className="w-5 h-5" />,
+    '\uD83C\uDF10': <Wifi className="w-5 h-5" />,
+    '\uD83C\uDFE0': <Home className="w-5 h-5" />,
+    '\uD83D\uDCF1': <Smartphone className="w-5 h-5" />,
+    '\uD83D\uDCB0': <TrendingDown className="w-5 h-5" />,
+  };
+  return iconMap[emoji] || <Scissors className="w-5 h-5" />;
+}
 
 export default function CutThis() {
   const [recs, setRecs] = useState<Recommendation[]>([]);
@@ -56,24 +92,34 @@ export default function CutThis() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Cut This</h1>
-          <p className="text-sm text-gray-500">
-            AI-powered scan of your spending history. 3 specific recommendations.
-          </p>
-        </div>
-        <div className="text-right">
-          {cached && cachedAt && (
-            <p className="text-xs text-gray-400 mb-1">Scanned {formatCacheAge(cachedAt)}</p>
-          )}
-          <button
-            onClick={() => loadRecommendations(true)}
-            disabled={loading}
-            className="text-sm text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
-          >
-            {cached ? 'Rescan now' : 'Refresh'}
-          </button>
+      {/* Gradient hero section */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-600 via-pink-600 to-orange-500 p-6 text-white shadow-lg shadow-rose-500/25">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+              <Scissors className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Cut This</h1>
+              <p className="text-sm text-rose-100">
+                AI-powered scan of your spending. 3 specific recommendations.
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            {cached && cachedAt && (
+              <p className="text-xs text-rose-200 mb-1">Scanned {formatCacheAge(cachedAt)}</p>
+            )}
+            <button
+              onClick={() => loadRecommendations(true)}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 backdrop-blur-sm px-4 py-2 text-sm font-medium text-white hover:bg-white/30 transition disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {cached ? 'Rescan now' : 'Refresh'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -84,27 +130,35 @@ export default function CutThis() {
         </div>
       )}
 
-      {error && <div className="bg-red-50 text-red-600 text-sm p-4 rounded-lg">{error}</div>}
+      {error && <div className="bg-red-50 text-red-600 text-sm p-4 rounded-2xl border border-red-200/60">{error}</div>}
 
       {!loading && !error && (
         <>
           {totalSavings > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-green-800 font-medium">
+            <div className="bg-emerald-50 border border-emerald-200/60 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+                <TrendingDown className="h-5 w-5 text-emerald-600" />
+              </div>
+              <p className="text-emerald-800 font-semibold">
                 Potential savings: ${totalSavings.toFixed(0)}/month (${(totalSavings * 12).toFixed(0)}/year)
               </p>
             </div>
           )}
 
+          <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">Recommendations</p>
+
           <div className="space-y-4">
             {recs.map((rec, i) => (
               !dismissed.has(i) && (
-                <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+                <div key={i} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                          {recIcon(rec.emoji)}
+                        </div>
                         <h3 className="font-semibold text-gray-900 text-lg">
-                          {rec.emoji} {rec.title}
+                          {rec.title}
                         </h3>
                         {rec.difficulty && DIFFICULTY_BADGES[rec.difficulty] && (
                           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${DIFFICULTY_BADGES[rec.difficulty].bg} ${DIFFICULTY_BADGES[rec.difficulty].text}`}>
@@ -112,21 +166,24 @@ export default function CutThis() {
                           </span>
                         )}
                         {rec.timeToComplete && (
-                          <span className="text-[10px] text-gray-400 font-medium">{rec.timeToComplete}</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+                            <Clock className="h-3 w-3" />
+                            {rec.timeToComplete}
+                          </span>
                         )}
                       </div>
                       <p className="text-gray-600 mt-2 text-sm leading-relaxed">{rec.detail}</p>
 
                       {/* Action steps */}
                       {rec.actionSteps && (
-                        <div className="mt-3 bg-indigo-50 rounded-lg p-3">
+                        <div className="mt-3 bg-indigo-50 rounded-xl p-3">
                           <p className="text-xs font-semibold text-indigo-800 mb-1">How to do it:</p>
                           <p className="text-xs text-indigo-700 leading-relaxed">{rec.actionSteps}</p>
                         </div>
                       )}
 
                       {rec.potentialSavings > 0 && (
-                        <p className="text-green-600 font-medium mt-2 text-sm">
+                        <p className="text-emerald-600 font-medium mt-2 text-sm">
                           Save ~${rec.potentialSavings.toFixed(0)}/month (${(rec.potentialSavings * 12).toFixed(0)}/year)
                         </p>
                       )}
@@ -135,14 +192,16 @@ export default function CutThis() {
                   <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
                     <button
                       onClick={() => setDismissed(new Set([...dismissed, i]))}
-                      className="text-sm text-gray-500 hover:text-gray-700"
+                      className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition"
                     >
+                      <X className="h-4 w-4" />
                       Dismiss
                     </button>
                     <button
                       onClick={() => setDismissed(new Set([...dismissed, i]))}
-                      className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                      className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-indigo-800 transition"
                     >
+                      <ThumbsUp className="h-4 w-4" />
                       I'll work on it
                     </button>
                   </div>
@@ -152,9 +211,16 @@ export default function CutThis() {
           </div>
 
           {dismissed.size === recs.length && recs.length > 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <p>All recommendations addressed!</p>
-              <button onClick={() => loadRecommendations(true)} className="text-indigo-600 hover:underline mt-2 text-sm">
+            <div className="text-center py-8">
+              <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-emerald-100 mb-3">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              </div>
+              <p className="text-gray-500">All recommendations addressed!</p>
+              <button
+                onClick={() => loadRecommendations(true)}
+                className="inline-flex items-center gap-1.5 mt-3 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-indigo-800 transition"
+              >
+                <RefreshCw className="h-4 w-4" />
                 Get fresh recommendations
               </button>
             </div>

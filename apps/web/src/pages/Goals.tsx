@@ -1,4 +1,22 @@
 import { useEffect, useState } from 'react';
+import {
+  Target,
+  Home,
+  Car,
+  Plane,
+  GraduationCap,
+  PiggyBank,
+  Shield,
+  Gift,
+  Heart,
+  Palmtree,
+  Smartphone,
+  Cross,
+  Plus,
+  DollarSign,
+  Trash2,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import api from '../api/client';
 
 interface Goal {
@@ -16,13 +34,41 @@ interface Goal {
   created_at: string;
 }
 
-const ICONS = ['🎯', '🏠', '🚗', '✈️', '🎓', '💰', '🛡️', '🎁', '💍', '🏖️', '📱', '🏥'];
+interface IconOption {
+  key: string;
+  label: string;
+  Icon: LucideIcon;
+}
+
+const ICON_OPTIONS: IconOption[] = [
+  { key: 'target', label: 'Target', Icon: Target },
+  { key: 'home', label: 'Home', Icon: Home },
+  { key: 'car', label: 'Car', Icon: Car },
+  { key: 'plane', label: 'Travel', Icon: Plane },
+  { key: 'graduation', label: 'Education', Icon: GraduationCap },
+  { key: 'piggybank', label: 'Savings', Icon: PiggyBank },
+  { key: 'shield', label: 'Insurance', Icon: Shield },
+  { key: 'gift', label: 'Gift', Icon: Gift },
+  { key: 'heart', label: 'Health', Icon: Heart },
+  { key: 'palmtree', label: 'Vacation', Icon: Palmtree },
+  { key: 'smartphone', label: 'Tech', Icon: Smartphone },
+  { key: 'medical', label: 'Medical', Icon: Cross },
+];
+
+const ICON_MAP: Record<string, LucideIcon> = Object.fromEntries(
+  ICON_OPTIONS.map(o => [o.key, o.Icon])
+);
+
+function GoalIcon({ iconKey, className }: { iconKey: string; className?: string }) {
+  const Comp = ICON_MAP[iconKey] || Target;
+  return <Comp className={className} />;
+}
 
 export default function Goals() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', target_amount: '', current_amount: '', deadline: '', icon: '🎯' });
+  const [form, setForm] = useState({ name: '', target_amount: '', current_amount: '', deadline: '', icon: 'target' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addAmount, setAddAmount] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -49,7 +95,7 @@ export default function Goals() {
         deadline: form.deadline || undefined,
         icon: form.icon,
       });
-      setForm({ name: '', target_amount: '', current_amount: '', deadline: '', icon: '🎯' });
+      setForm({ name: '', target_amount: '', current_amount: '', deadline: '', icon: 'target' });
       setShowAdd(false);
       loadGoals();
     } finally {
@@ -89,30 +135,37 @@ export default function Goals() {
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-md font-medium hover:bg-indigo-700"
+          className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-indigo-800 transition"
         >
-          + New Goal
+          <Plus className="h-4 w-4" />
+          New Goal
         </button>
       </div>
 
       {/* Add goal form */}
       {showAdd && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-4">
           <h3 className="font-medium text-gray-900">New savings goal</h3>
 
           {/* Icon picker */}
-          <div className="flex gap-2 flex-wrap">
-            {ICONS.map(icon => (
-              <button
-                key={icon}
-                onClick={() => setForm({ ...form, icon })}
-                className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center ${
-                  form.icon === icon ? 'bg-indigo-100 ring-2 ring-indigo-500' : 'bg-gray-50 hover:bg-gray-100'
-                }`}
-              >
-                {icon}
-              </button>
-            ))}
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">Choose an icon</p>
+            <div className="flex gap-2 flex-wrap">
+              {ICON_OPTIONS.map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setForm({ ...form, icon: opt.key })}
+                  title={opt.label}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+                    form.icon === opt.key
+                      ? 'bg-indigo-100 ring-2 ring-indigo-500 text-indigo-600'
+                      : 'bg-gray-50 hover:bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  <opt.Icon className="h-5 w-5" />
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -121,7 +174,7 @@ export default function Goals() {
               placeholder="Goal name (e.g. Emergency Fund)"
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
-              className="col-span-2 text-sm border border-gray-300 rounded-md px-3 py-2"
+              className="col-span-2 text-sm border border-gray-300 rounded-xl bg-gray-50 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition"
             />
             <div className="relative">
               <span className="absolute left-3 top-2 text-sm text-gray-400">$</span>
@@ -131,7 +184,7 @@ export default function Goals() {
                 placeholder="Target amount"
                 value={form.target_amount}
                 onChange={e => setForm({ ...form, target_amount: e.target.value })}
-                className="w-full text-sm border border-gray-300 rounded-md pl-7 pr-3 py-2"
+                className="w-full text-sm border border-gray-300 rounded-xl bg-gray-50 pl-7 pr-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition"
               />
             </div>
             <div className="relative">
@@ -142,7 +195,7 @@ export default function Goals() {
                 placeholder="Already saved (optional)"
                 value={form.current_amount}
                 onChange={e => setForm({ ...form, current_amount: e.target.value })}
-                className="w-full text-sm border border-gray-300 rounded-md pl-7 pr-3 py-2"
+                className="w-full text-sm border border-gray-300 rounded-xl bg-gray-50 pl-7 pr-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition"
               />
             </div>
           </div>
@@ -153,16 +206,16 @@ export default function Goals() {
               type="date"
               value={form.deadline}
               onChange={e => setForm({ ...form, deadline: e.target.value })}
-              className="text-sm border border-gray-300 rounded-md px-3 py-2"
+              className="text-sm border border-gray-300 rounded-xl bg-gray-50 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition"
             />
           </div>
 
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowAdd(false)} className="text-sm text-gray-500 px-3 py-1.5">Cancel</button>
+            <button onClick={() => setShowAdd(false)} className="text-sm text-gray-500 px-3 py-1.5 rounded-xl hover:bg-gray-100 transition">Cancel</button>
             <button
               onClick={handleCreate}
               disabled={saving || !form.name || !form.target_amount}
-              className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded-md font-medium disabled:opacity-50"
+              className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition"
             >
               {saving ? 'Creating...' : 'Create Goal'}
             </button>
@@ -173,13 +226,16 @@ export default function Goals() {
       {/* Goals list */}
       {goals.length === 0 && !showAdd && (
         <div className="text-center py-12">
-          <p className="text-4xl mb-3">🎯</p>
+          <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 mb-4 shadow-lg shadow-indigo-500/25">
+            <Target className="h-8 w-8 text-white" />
+          </div>
           <h2 className="text-lg font-semibold text-gray-900 mb-1">No goals yet</h2>
           <p className="text-sm text-gray-500 mb-4">Set a savings goal to start tracking your progress.</p>
           <button
             onClick={() => setShowAdd(true)}
-            className="text-sm text-indigo-600 font-medium hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-indigo-800 transition"
           >
+            <Plus className="h-4 w-4" />
             Create your first goal
           </button>
         </div>
@@ -187,10 +243,12 @@ export default function Goals() {
 
       <div className="space-y-4">
         {goals.map(goal => (
-          <div key={goal.id} className="bg-white rounded-xl border border-gray-200 p-5">
+          <div key={goal.id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <span className="text-3xl">{goal.icon}</span>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                  <GoalIcon iconKey={goal.icon} className="h-6 w-6" />
+                </div>
                 <div className="min-w-0">
                   <h3 className="font-semibold text-gray-900">{goal.name}</h3>
                   <p className="text-sm text-gray-500">
@@ -213,9 +271,10 @@ export default function Goals() {
                 )}
                 <button
                   onClick={() => handleDelete(goal.id)}
-                  className="text-xs text-gray-400 hover:text-red-500"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+                  title="Remove goal"
                 >
-                  Remove
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -236,7 +295,7 @@ export default function Goals() {
 
             {/* On-track indicator */}
             {goal.onTrack !== null && goal.dailyNeeded !== null && goal.percent < 100 && (
-              <div className={`mt-3 text-xs px-3 py-2 rounded-lg ${
+              <div className={`mt-3 text-xs px-3 py-2 rounded-xl ${
                 goal.onTrack ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
               }`}>
                 {goal.onTrack
@@ -258,14 +317,15 @@ export default function Goals() {
                     value={addAmount[goal.id] || ''}
                     onChange={e => setAddAmount(prev => ({ ...prev, [goal.id]: e.target.value }))}
                     onKeyDown={e => e.key === 'Enter' && handleAddMoney(goal.id)}
-                    className="w-full text-sm border border-gray-300 rounded-md pl-7 pr-3 py-2"
+                    className="w-full text-sm border border-gray-300 rounded-xl bg-gray-50 pl-7 pr-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition"
                   />
                 </div>
                 <button
                   onClick={() => handleAddMoney(goal.id)}
                   disabled={!addAmount[goal.id]}
-                  className="text-sm bg-emerald-600 text-white px-4 py-2 rounded-md font-medium hover:bg-emerald-700 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-4 py-2 rounded-xl font-medium shadow-lg shadow-emerald-500/25 hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50 transition"
                 >
+                  <DollarSign className="h-4 w-4" />
                   Add
                 </button>
               </div>

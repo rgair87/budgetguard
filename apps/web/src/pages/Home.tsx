@@ -274,9 +274,10 @@ export default function Home() {
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
   const [clearingDemo, setClearingDemo] = useState(false);
 
-  const isDemoData = accounts.some(a =>
-    /demo|sample/i.test(a.name)
-  );
+  // Detect demo data by checking for the exact set of demo account names
+  const DEMO_ACCOUNT_NAMES = ['Main Checking', 'Emergency Savings', 'Chase Visa', 'Car Loan'];
+  const isDemoData = accounts.length > 0 && accounts.length <= 5 &&
+    DEMO_ACCOUNT_NAMES.every(name => accounts.some(a => a.name === name));
 
   async function clearDemoData() {
     setClearingDemo(true);

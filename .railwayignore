@@ -1,0 +1,13 @@
+node_modules
+.git
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+dist
+.claude
+PLAN.md
+test_*.csv
+apps/mobile
