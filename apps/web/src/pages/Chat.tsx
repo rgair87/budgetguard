@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MessageCircle, Send, Sparkles } from 'lucide-react';
 import api from '../api/client';
 
 interface Message {
@@ -15,12 +16,10 @@ interface DailyUsage {
 }
 
 const SUGGESTED_PROMPTS = [
-  'Can I afford a $400 car repair this week?',
-  'What happens if I stop eating out this month?',
-  'When will I be debt free?',
-  'Am I on track for vacation?',
-  'How much can I safely spend this weekend?',
-  'What should I prioritize paying off?',
+  'What can I cut?',
+  'Am I on track this month?',
+  "When's my next payday?",
+  'How much can I spend today?',
 ];
 
 export default function Chat() {
@@ -80,39 +79,49 @@ export default function Chat() {
     setMessages([]);
   }
 
-  if (initialLoad) return <div className="text-gray-500 text-center py-12">Loading...</div>;
+  if (initialLoad) return <div className="text-slate-400 text-center py-12">Loading...</div>;
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Ask Runway</h1>
-          <p className="text-sm text-gray-500">Ask anything about your finances. I use your real data.</p>
+      {/* Gradient header bar */}
+      <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl shadow-sm px-5 py-4 mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-white">Ask Runway</h1>
+            <p className="text-xs text-white/70">Ask anything about your finances. I use your real data.</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {usage && (
-            <span className={`text-xs ${usage.remaining <= 3 ? 'text-amber-600' : 'text-gray-400'}`}>
+            <span className={`text-xs px-2 py-1 rounded-lg ${usage.remaining <= 3 ? 'bg-amber-400/20 text-amber-100' : 'bg-white/15 text-white/80'}`}>
               {usage.remaining}/{usage.limit} left today
             </span>
           )}
           {messages.length > 0 && (
-            <button onClick={clearHistory} className="text-sm text-gray-400 hover:text-gray-600">Clear chat</button>
+            <button onClick={clearHistory} className="text-xs text-white/60 hover:text-white/90 transition-colors">Clear chat</button>
           )}
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+      <div className="flex-1 overflow-y-auto space-y-4 pb-4 px-1">
         {messages.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 mb-6">Try one of these questions:</p>
-            <div className="flex flex-wrap justify-center gap-2">
+          <div className="text-center py-16">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-7 h-7 text-indigo-500" />
+            </div>
+            <p className="text-slate-500 mb-1 text-sm font-medium">How can I help today?</p>
+            <p className="text-slate-400 text-xs mb-6">Try one of these to get started</p>
+            <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
               {SUGGESTED_PROMPTS.map(prompt => (
                 <button
                   key={prompt}
                   onClick={() => send(prompt)}
                   disabled={atLimit}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                  className="px-4 py-2.5 bg-white border border-slate-200/60 rounded-2xl text-sm text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:shadow-sm transition-all disabled:opacity-50 shadow-sm"
                 >
                   {prompt}
                 </button>
@@ -123,20 +132,24 @@ export default function Chat() {
 
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[75%] rounded-xl px-4 py-3 ${
+            <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${
               msg.role === 'user'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white border border-gray-200 text-gray-900'
+                ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-sm'
+                : 'bg-white border border-slate-200/60 text-slate-900 shadow-sm'
             }`}>
-              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
             </div>
           </div>
         ))}
 
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
-              <p className="text-sm text-gray-400">Thinking...</p>
+            <div className="bg-white border border-slate-200/60 rounded-2xl px-5 py-3.5 shadow-sm">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
             </div>
           </div>
         )}
@@ -145,26 +158,26 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 pt-4">
+      <div className="pt-4">
         {atLimit ? (
-          <div className="text-center py-2">
+          <div className="text-center py-3 bg-amber-50 rounded-2xl border border-amber-200/60">
             <p className="text-sm text-amber-600">You've used all {usage?.limit} messages for today. Resets at midnight.</p>
           </div>
         ) : (
-          <form onSubmit={e => { e.preventDefault(); send(); }} className="flex gap-2">
+          <form onSubmit={e => { e.preventDefault(); send(); }} className="flex gap-2 items-center">
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Ask about your finances..."
               disabled={loading}
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
+              className="flex-1 border border-slate-200/60 bg-white rounded-2xl px-5 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-300 disabled:opacity-50 transition-all placeholder:text-slate-400"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white p-3 rounded-2xl shadow-sm hover:from-indigo-700 hover:to-violet-700 disabled:opacity-40 transition-all flex items-center justify-center"
             >
-              Send
+              <Send className="w-4 h-4" />
             </button>
           </form>
         )}

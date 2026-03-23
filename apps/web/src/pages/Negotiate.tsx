@@ -1,4 +1,17 @@
 import { useEffect, useState } from 'react';
+import {
+  Phone,
+  PhoneCall,
+  DollarSign,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Check,
+  X,
+  TrendingDown,
+  Award,
+} from 'lucide-react';
 import api from '../api/client';
 
 interface NegotiationSuggestion {
@@ -16,12 +29,6 @@ interface NegotiationSuggestion {
   successRate: string;
 }
 
-const DIFFICULTY_STYLES: Record<string, { bg: string; text: string }> = {
-  easy: { bg: 'bg-green-100', text: 'text-green-700' },
-  medium: { bg: 'bg-amber-100', text: 'text-amber-700' },
-  hard: { bg: 'bg-red-100', text: 'text-red-700' },
-};
-
 const TYPE_LABELS: Record<string, string> = {
   call_to_negotiate: 'Call to negotiate',
   switch_provider: 'Switch provider',
@@ -29,12 +36,18 @@ const TYPE_LABELS: Record<string, string> = {
   rate_reduction: 'Request rate cut',
 };
 
+function parseSuccessRate(rate: string): number {
+  const match = rate.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
 export default function Negotiate() {
   const [suggestions, setSuggestions] = useState<NegotiationSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/negotiate')
@@ -43,116 +56,209 @@ export default function Negotiate() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalSavings = suggestions
-    .filter(s => !completedIds.has(s.id))
-    .reduce((sum, s) => sum + s.estimatedSavings.high, 0);
+  const activeSuggestions = suggestions.filter(s => !completedIds.has(s.id));
+  const totalMonthlySavings = activeSuggestions.reduce((sum, s) => sum + s.estimatedSavings.high, 0);
+  const totalAnnualSavings = activeSuggestions.reduce((sum, s) => sum + s.annualSavings.high, 0);
 
-  if (loading) return <div className="text-gray-500 text-center py-12">Scanning your bills...</div>;
-  if (error) return <div className="bg-red-50 text-red-600 text-sm p-4 rounded-lg">{error}</div>;
+  const handleCopyScript = (id: string, script: string) => {
+    navigator.clipboard.writeText(script);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+        <Phone className="w-10 h-10 text-indigo-300 mb-4" />
+        <p className="text-slate-400 font-medium">Scanning your bills for savings...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-5 rounded-2xl flex items-center gap-3">
+        <X className="w-5 h-5 shrink-0" />
+        <span>{error}</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">Negotiate Your Bills</h1>
-        <p className="text-sm text-gray-500">Scripts and phone numbers to lower your bills today.</p>
+    <div className="space-y-6 animate-fade-in">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 p-6 text-white shadow-sm">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-sm">
+              <Phone className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Lower Your Bills</h1>
+              <p className="text-sm text-blue-100">Scripts and numbers to save money today</p>
+            </div>
+          </div>
+          {totalMonthlySavings > 0 && (
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-4xl font-extrabold tracking-tight">
+                ${totalMonthlySavings.toFixed(0)}
+              </span>
+              <span className="text-blue-200 text-sm font-medium">/mo potential savings</span>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Empty State */}
       {suggestions.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-4xl mb-3">🤝</p>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">No negotiable bills found</h2>
-          <p className="text-sm text-gray-500">We couldn't find recurring bills that match our negotiation database. Add more transaction history for better results.</p>
-        </div>
-      )}
-
-      {totalSavings > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <p className="text-emerald-800 font-semibold">
-            Up to ${totalSavings.toFixed(0)}/month in potential savings (${(totalSavings * 12).toFixed(0)}/year)
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <PhoneCall className="w-7 h-7 text-slate-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">No negotiable bills found</h2>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto">
+            We couldn't match recurring bills to our negotiation database. Add more transaction history for better results.
           </p>
-          <p className="text-xs text-emerald-600 mt-0.5">Click each bill to see the negotiation script.</p>
         </div>
       )}
 
-      <div className="space-y-3">
+      {/* All Reviewed State */}
+      {completedIds.size === suggestions.length && suggestions.length > 0 && (
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+            <Award className="w-7 h-7 text-emerald-500" />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">All suggestions reviewed!</h2>
+          <p className="text-sm text-slate-500">Nice work. Check back after your next billing cycle.</p>
+        </div>
+      )}
+
+      {/* Bill Cards */}
+      <div className="space-y-4">
         {suggestions.map(s => {
-          const isExpanded = expandedId === s.id;
           const isDone = completedIds.has(s.id);
           if (isDone) return null;
-          const diff = DIFFICULTY_STYLES[s.difficulty];
+
+          const isExpanded = expandedId === s.id;
+          const successNum = parseSuccessRate(s.successRate);
 
           return (
-            <div key={s.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {/* Header — always visible */}
+            <div
+              key={s.id}
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md"
+            >
+              {/* Card Header */}
               <button
                 onClick={() => setExpandedId(isExpanded ? null : s.id)}
-                className="w-full text-left p-5"
+                className="w-full text-left p-5 transition-colors hover:bg-slate-50/50"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-gray-900">{s.billName}</h3>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${diff.bg} ${diff.text}`}>
-                        {s.difficulty}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {/* Bill name + amount */}
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-semibold text-slate-900 text-base">{s.billName}</h3>
+                      <span className="text-sm text-slate-400 font-medium">
+                        ${s.currentAmount.toFixed(0)}/mo
                       </span>
-                      <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                    </div>
+
+                    {/* Tags row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Savings badge */}
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
+                        <TrendingDown className="w-3.5 h-3.5" />
+                        Save ${s.estimatedSavings.low}–${s.estimatedSavings.high}/mo
+                      </span>
+
+                      {/* Success rate */}
+                      <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-indigo-500 transition-all"
+                            style={{ width: `${Math.min(successNum, 100)}%` }}
+                          />
+                        </div>
+                        {s.successRate}
+                      </span>
+
+                      {/* Type label */}
+                      <span className="text-[11px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md">
                         {TYPE_LABELS[s.type]}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      Currently ${s.currentAmount.toFixed(0)}/mo &middot; Save ${s.estimatedSavings.low}-${s.estimatedSavings.high}/mo
-                    </p>
+
+                    {/* Best time tag */}
+                    {s.bestTimeToCall && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                        <Clock className="w-3.5 h-3.5" />
+                        Best time: {s.bestTimeToCall}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-lg font-bold text-emerald-600">
-                      ${s.annualSavings.high.toFixed(0)}
-                    </p>
-                    <p className="text-[10px] text-gray-400">/year potential</p>
+
+                  {/* Expand chevron */}
+                  <div className="pt-1 shrink-0 text-slate-300 transition-transform duration-200">
+                    {isExpanded ? (
+                      <ChevronDown className="w-5 h-5" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5" />
+                    )}
                   </div>
                 </div>
               </button>
 
-              {/* Expanded — script + tips */}
+              {/* Expanded Content */}
               {isExpanded && (
-                <div className="border-t border-gray-100 p-5 space-y-4">
-                  {/* Phone + timing */}
-                  {(s.phoneNumber || s.bestTimeToCall) && (
-                    <div className="flex flex-wrap gap-4">
-                      {s.phoneNumber && (
-                        <div>
-                          <p className="text-xs font-medium text-gray-500">Call</p>
-                          <a href={`tel:${s.phoneNumber}`} className="text-sm font-semibold text-indigo-600">
-                            {s.phoneNumber}
-                          </a>
-                        </div>
-                      )}
-                      {s.bestTimeToCall && (
-                        <div>
-                          <p className="text-xs font-medium text-gray-500">Best time</p>
-                          <p className="text-sm text-gray-900">{s.bestTimeToCall}</p>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-xs font-medium text-gray-500">Success rate</p>
-                        <p className="text-sm text-gray-900">{s.successRate}</p>
-                      </div>
-                    </div>
+                <div className="border-t border-slate-100 p-5 space-y-5 animate-fade-in">
+                  {/* Phone number button */}
+                  {s.phoneNumber && (
+                    <a
+                      href={`tel:${s.phoneNumber}`}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                      Call {s.phoneNumber}
+                    </a>
                   )}
 
-                  {/* Script */}
-                  <div className="bg-indigo-50 rounded-lg p-4">
-                    <p className="text-xs font-semibold text-indigo-800 mb-2">What to say:</p>
-                    <p className="text-sm text-indigo-900 leading-relaxed italic">"{s.script}"</p>
+                  {/* Script section */}
+                  <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">
+                        Negotiation Script
+                      </p>
+                      <button
+                        onClick={() => handleCopyScript(s.id, s.script)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-500 hover:text-indigo-700 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-100"
+                      >
+                        {copiedId === s.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-sm text-indigo-900 leading-relaxed">
+                      "{s.script}"
+                    </p>
                   </div>
 
                   {/* Tips */}
                   {s.tips.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-700 mb-2">Tips:</p>
+                      <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Tips</p>
                       <ul className="space-y-1.5">
                         {s.tips.map((tip, i) => (
-                          <li key={i} className="text-sm text-gray-600 flex gap-2">
-                            <span className="text-indigo-400 shrink-0">&#8226;</span>
+                          <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
                             {tip}
                           </li>
                         ))}
@@ -160,18 +266,20 @@ export default function Negotiate() {
                     </div>
                   )}
 
-                  {/* Actions */}
-                  <div className="flex gap-3 pt-2 border-t border-gray-100">
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                     <button
                       onClick={() => setCompletedIds(prev => new Set([...prev, s.id]))}
-                      className="text-sm text-emerald-600 font-medium hover:text-emerald-700"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 transition-colors"
                     >
-                      Done — I called
+                      <Check className="w-4 h-4" />
+                      I called — it worked!
                     </button>
                     <button
                       onClick={() => setCompletedIds(prev => new Set([...prev, s.id]))}
-                      className="text-sm text-gray-500 hover:text-gray-700"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 text-slate-500 text-sm font-medium hover:bg-slate-100 transition-colors"
                     >
+                      <X className="w-4 h-4" />
                       Not interested
                     </button>
                   </div>
@@ -182,10 +290,19 @@ export default function Negotiate() {
         })}
       </div>
 
-      {completedIds.size === suggestions.length && suggestions.length > 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <p className="text-2xl mb-2">🎉</p>
-          <p>All suggestions reviewed!</p>
+      {/* Summary Footer */}
+      {activeSuggestions.length > 0 && (
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2 text-slate-500">
+            <DollarSign className="w-4 h-4" />
+            <span>
+              <span className="font-semibold text-slate-700">{activeSuggestions.length}</span>{' '}
+              negotiable bill{activeSuggestions.length !== 1 ? 's' : ''} found
+            </span>
+          </div>
+          <div className="text-slate-700 font-semibold">
+            Up to <span className="text-emerald-600">${totalAnnualSavings.toFixed(0)}</span>/year in savings
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -54,6 +54,19 @@ const DEFAULT_RATES: Record<string, number> = {
   student_loan: 6.0,
   personal_loan: 12.0,
 };
+
+function AccountTypeIcon({ type, className = 'w-4 h-4' }: { type: string; className?: string }) {
+  switch (type) {
+    case 'checking': return <Landmark className={`${className} text-indigo-500`} />;
+    case 'savings': return <PiggyBank className={`${className} text-emerald-500`} />;
+    case 'credit': return <CreditCard className={`${className} text-red-500`} />;
+    case 'auto_loan': return <Car className={`${className} text-orange-500`} />;
+    case 'student_loan': return <GraduationCap className={`${className} text-violet-500`} />;
+    case 'mortgage': return <Home className={`${className} text-blue-500`} />;
+    case 'personal_loan': return <Banknote className={`${className} text-slate-500`} />;
+    default: return <Landmark className={`${className} text-slate-400`} />;
+  }
+}
 
 const RATE_HELP: Record<string, string> = {
   credit: 'Check your statement or app — usually 18-30%',
@@ -247,6 +260,7 @@ function PrivacySection() {
   }
 
   return (
+    <>
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
       <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
         <Shield className="w-4 h-4 text-indigo-600" />
@@ -256,51 +270,51 @@ function PrivacySection() {
         Export or delete all your data. These actions comply with GDPR data portability and right-to-erasure requirements.
       </p>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between py-2">
-          <div>
-            <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
-              <Download className="w-3.5 h-3.5 text-gray-400" />
-              Export My Data
-            </p>
-            <p className="text-xs text-gray-400">Download all your data as a JSON file</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
-            >
-              {exporting ? 'Exporting...' : 'Export'}
-            </button>
-            <button
-              onClick={handleExportCsv}
-              disabled={exportingCsv}
-              className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
-            >
-              {exportingCsv ? 'Exporting...' : 'Export as Spreadsheet'}
-            </button>
-          </div>
+      <div className="flex items-center justify-between py-2">
+        <div>
+          <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+            <Download className="w-3.5 h-3.5 text-gray-400" />
+            Export My Data
+          </p>
+          <p className="text-xs text-gray-400">Download all your data as a JSON file</p>
         </div>
-
-        <div className="border-t border-gray-100 pt-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600 flex items-center gap-1.5">
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete My Account
-              </p>
-              <p className="text-xs text-gray-400">Permanently delete your account and all data</p>
-            </div>
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="text-sm bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-xl hover:from-red-600 hover:to-red-700 shadow-sm transition-all"
-            >
-              Delete
-            </button>
-          </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
+          >
+            {exporting ? 'Exporting...' : 'Export'}
+          </button>
+          <button
+            onClick={handleExportCsv}
+            disabled={exportingCsv}
+            className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
+          >
+            {exportingCsv ? 'Exporting...' : 'Export as Spreadsheet'}
+          </button>
         </div>
       </div>
+    </div>
+
+    {/* Delete account - red-tinted card */}
+    <div className="bg-red-50/50 rounded-2xl shadow-sm border border-red-200/60 p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-red-600 flex items-center gap-1.5">
+            <Trash2 className="w-4 h-4" />
+            Delete My Account
+          </p>
+          <p className="text-xs text-red-400 mt-0.5">Permanently delete your account and all data. This cannot be undone.</p>
+        </div>
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="text-sm bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-xl hover:from-red-600 hover:to-red-700 shadow-sm transition-all"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
 
       {/* Delete confirmation modal */}
       {showDeleteModal && (
@@ -350,7 +364,7 @@ function PrivacySection() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -458,7 +472,15 @@ export default function Settings() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
+      <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl shadow-sm px-5 py-4 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+          <SettingsIcon className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-lg font-semibold text-white">Settings</h1>
+          <p className="text-xs text-white/60">Manage your account, paycheck, and preferences</p>
+        </div>
+      </div>
 
       {/* Account info + Tier */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
@@ -494,26 +516,30 @@ export default function Settings() {
 
         {/* Tier comparison */}
         {tierInfo?.tier !== 'pro' && (
-          <div className="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
-            <p className="text-sm font-semibold text-indigo-900 mb-2 flex items-center gap-1.5">
-              <Crown className="w-4 h-4 text-indigo-600" />
-              Pro features
-            </p>
-            <ul className="text-xs text-indigo-700 space-y-1">
-              <li>50 AI chat messages/day (vs 15 free)</li>
-              <li>Bank sync via Plaid</li>
-              <li>Weekly advisor refresh (vs biweekly)</li>
-              <li>6-month calendar projections (vs 2)</li>
-              <li>Transaction export (CSV)</li>
-              <li>Unlimited CSV imports &amp; savings goals</li>
-              <li>Subscription management (dismiss/reclassify)</li>
-            </ul>
-            <button
-              onClick={handleUpgrade}
-              className="mt-3 w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm py-2.5 rounded-xl font-medium hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-500/25 transition-all"
-            >
-              Upgrade to Pro
-            </button>
+          <div className="mt-4 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+            <div className="relative">
+              <p className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-300" />
+                Unlock Pro Features
+              </p>
+              <ul className="text-xs text-white/80 space-y-1.5 mb-4">
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> 50 AI chat messages/day (vs 15 free)</li>
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Bank sync via Plaid</li>
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Weekly advisor refresh (vs biweekly)</li>
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> 6-month calendar projections (vs 2)</li>
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Transaction export (CSV)</li>
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Unlimited CSV imports &amp; savings goals</li>
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Subscription management</li>
+              </ul>
+              <button
+                onClick={handleUpgrade}
+                className="w-full bg-white text-indigo-700 text-sm py-2.5 rounded-xl font-semibold hover:bg-indigo-50 shadow-sm transition-all"
+              >
+                Upgrade to Pro
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -750,12 +776,16 @@ export default function Settings() {
             </h3>
             <div className="space-y-3">
               {cashAccounts.map(acct => (
-                <div key={acct.id} className="border border-gray-100 rounded-xl p-3">
+                <div key={acct.id} className="border border-slate-100 rounded-xl p-3 hover:border-slate-200 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{acct.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">{ACCOUNT_TYPES[acct.type] || acct.type}</span>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                        <AccountTypeIcon type={acct.type} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{acct.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-gray-500">{ACCOUNT_TYPES[acct.type] || acct.type}</span>
                         <select
                           value={acct.purpose || 'general'}
                           onChange={e => updateAccountField(acct.id, 'purpose', e.target.value)}
@@ -766,6 +796,7 @@ export default function Settings() {
                           ))}
                         </select>
                       </div>
+                    </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {editingBalance === acct.id ? (
@@ -797,7 +828,7 @@ export default function Settings() {
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-2 text-xs">
+                  <div className="mt-2 ml-12 flex items-center gap-2 text-xs">
                     <span className="text-gray-500">Per paycheck:</span>
                     <input
                       type="number"
@@ -836,11 +867,16 @@ export default function Settings() {
             )}
             <div className="space-y-3">
               {debtAccounts.map(acct => (
-                <div key={acct.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30">
+                <div key={acct.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30 hover:border-red-200 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{acct.name}</p>
-                      <span className="text-xs text-gray-500">{ACCOUNT_TYPES[acct.type] || acct.type}</span>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                        <AccountTypeIcon type={acct.type} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{acct.name}</p>
+                        <span className="text-xs text-gray-500">{ACCOUNT_TYPES[acct.type] || acct.type}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {editingBalance === acct.id ? (
@@ -872,7 +908,7 @@ export default function Settings() {
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-4 text-xs">
+                  <div className="mt-2 ml-12 flex items-center gap-4 text-xs">
                     <div className="flex items-center gap-1">
                       <span className="text-gray-500">APR:</span>
                       <input
@@ -916,15 +952,21 @@ export default function Settings() {
 
       {/* Family */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-        <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-          <Users className="w-4 h-4 text-indigo-600" />
-          Family Plan
-        </h2>
-        <p className="text-xs text-gray-500 mb-3">Manage your family and invite members to share finances together.</p>
-        <a href="/family" className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-500/25 transition-all">
-          Manage Family
-          <ChevronRight className="w-4 h-4" />
-        </a>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+                <Users className="w-4 h-4 text-violet-600" />
+              </div>
+              Family Plan
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Manage your family and invite members to share finances together.</p>
+          </div>
+          <a href="/family" className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:from-indigo-700 hover:to-violet-700 shadow-sm transition-all">
+            Manage Family
+            <ChevronRight className="w-4 h-4" />
+          </a>
+        </div>
       </div>
 
       {/* Privacy & Data */}

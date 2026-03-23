@@ -307,34 +307,32 @@ export default function DebtPayoff() {
 
         <div className="divide-y divide-gray-100">
           {plan.debts.map(debt => {
-            const maxRate = Math.max(...debts.map(d => d.interestRate));
-            const barWidth = maxRate > 0 ? Math.max(8, (debt.interestRate / maxRate) * 100) : 0;
+            const monthlyInterest = debt.balance * (debt.interestRate / 100 / 12);
+            const aprSeverity = debt.interestRate >= 20 ? 'text-red-600 bg-red-50 ring-red-200' :
+              debt.interestRate >= 15 ? 'text-orange-600 bg-orange-50 ring-orange-200' :
+              debt.interestRate >= 10 ? 'text-amber-600 bg-amber-50 ring-amber-200' :
+              'text-emerald-600 bg-emerald-50 ring-emerald-200';
             return (
               <div key={debt.id} className="px-5 py-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0">
                     <p className="font-medium text-gray-900 text-sm">{debt.name}</p>
-                    <p className="text-xs text-gray-500">{debtTypeLabel((debt as any).type)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{debtTypeLabel((debt as any).type)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900 text-sm">
-                      ${debt.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      ${debt.minimumPayment.toFixed(0)}/mo min
-                    </p>
-                  </div>
+                  <p className="font-bold text-gray-900 text-lg shrink-0">
+                    ${debt.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
                 </div>
-                {/* Interest bar */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${rateColor(debt.interestRate)}`}
-                      style={{ width: `${barWidth}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-gray-600 w-16 text-right">
+                {/* Stats row instead of confusing bar */}
+                <div className="flex items-center gap-3 mt-3">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ring-1 ${aprSeverity}`}>
                     {debt.interestRate}% APR
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    ${debt.minimumPayment.toFixed(0)}/mo minimum
+                  </span>
+                  <span className="text-xs text-red-500 font-medium ml-auto">
+                    ${monthlyInterest.toFixed(0)}/mo in interest
                   </span>
                 </div>
               </div>
