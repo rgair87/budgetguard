@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "runway-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs", "apps/server/src/index.ts"],
+      "port": 3001
+    },
+    {
+      "name": "runway-web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/.pnpm/vite@6.4.1_@types+node@25.5_0ba2e93c9bcb73481206f5f596f9a4ed/node_modules/vite/bin/vite.js", "apps/web"],
+      "port": 5173
+    },
+    {
+      "name": "aivo-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "process.chdir('C:/Users/ronal/aivo'); require('C:/Users/ronal/aivo/node_modules/next/dist/bin/next');", "dev", "--port", "3000"],
+      "port": 3000
+    }
+  ]
+}

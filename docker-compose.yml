@@ -1,0 +1,5 @@
+# Runway uses SQLite (no database container needed)
+# This file is kept for potential future services (Redis, etc.)
+#
+# The SQLite database is stored at apps/server/runway.db
+# To initialize: pnpm db:init && pnpm db:seed

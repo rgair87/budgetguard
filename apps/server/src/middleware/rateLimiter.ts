@@ -1,25 +1,28 @@
 import rateLimit from 'express-rate-limit';
 
-export const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  message: { error: { code: 'RATE_LIMITED', message: 'Too many requests, try again later' } },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-export const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
+/** 100 requests per 15 minutes — applied globally */
+export const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { error: { code: 'RATE_LIMITED', message: 'Too many requests, try again later' } },
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
 });
 
-export const webhookLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
-  message: { error: { code: 'RATE_LIMITED', message: 'Too many requests' } },
+/** 10 requests per 15 minutes — login / register / forgot-password */
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+});
+
+/** 20 requests per 15 minutes — AI-powered endpoints (chat, advisor) */
+export const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
 });

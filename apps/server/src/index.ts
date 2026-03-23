@@ -1,70 +1,92 @@
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import pinoHttp from 'pino-http';
-import { env } from './config/env.js';
-import { logger } from './utils/logger.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { apiLimiter } from './middleware/rateLimiter.js';
-import { authRoutes } from './routes/auth.routes.js';
-import { accountRoutes } from './routes/accounts.routes.js';
-import { transactionRoutes } from './routes/transactions.routes.js';
-import { subscriptionRoutes } from './routes/subscriptions.routes.js';
-import { budgetRoutes } from './routes/budgets.routes.js';
-import { notificationRoutes } from './routes/notifications.routes.js';
-import { plaidRoutes } from './routes/plaid.routes.js';
-import { userRoutes } from './routes/user.routes.js';
-import { initJobRunner } from './jobs/jobRunner.js';
+import { env } from './config/env';
+import logger from './config/logger';
+import { errorHandler } from './middleware/errorHandler';
+import { generalLimiter, authLimiter, aiLimiter } from './middleware/rateLimiter';
+import authRoutes from './routes/auth.routes';
+import plaidRoutes from './routes/plaid.routes';
+import accountsRoutes from './routes/accounts.routes';
+import transactionsRoutes from './routes/transactions.routes';
+import eventsRoutes from './routes/events.routes';
+import runwayRoutes from './routes/runway.routes';
+import chatRoutes from './routes/chat.routes';
+import cutthisRoutes from './routes/cutthis.routes';
+import debtRoutes from './routes/debt.routes';
+import csvRoutes from './routes/csv.routes';
+import settingsRoutes from './routes/settings.routes';
+import advisorRoutes from './routes/advisor.routes';
+import alertsRoutes from './routes/alerts.routes';
+import goalsRoutes from './routes/goals.routes';
+import notificationsRoutes from './routes/notifications.routes';
+import predictionsRoutes from './routes/predictions.routes';
+import trendsRoutes from './routes/trends.routes';
+import negotiateRoutes from './routes/negotiate.routes';
+import familyRoutes from './routes/family.routes';
 
 const app = express();
 
-// Security
-app.use(helmet());
+// Trust proxy when behind reverse proxy (Railway, Heroku, etc.)
+if (env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 app.use(cors({
-  origin: [env.WEB_URL],
+  origin: env.CORS_ORIGINS.split(','),
   credentials: true,
 }));
+app.use(express.json({ limit: '5mb' }));
 
-// Logging
-app.use(pinoHttp({ logger }));
-
-// Body parsing
-app.use(express.json({ limit: '10kb' }));
+// Request logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    logger.info({ method: req.method, url: req.url, status: res.statusCode, ms: Date.now() - start }, 'request');
+  });
+  next();
+});
 
 // Rate limiting
-app.use('/api/', apiLimiter);
+app.use(generalLimiter);
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/plaid', plaidRoutes);
-app.use('/api/accounts', accountRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/budgets', budgetRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/user', userRoutes);
+app.use('/api/accounts', accountsRoutes);
+app.use('/api/transactions', transactionsRoutes);
+app.use('/api/events', eventsRoutes);
+app.use('/api/runway', runwayRoutes);
+app.use('/api/chat', aiLimiter, chatRoutes);
+app.use('/api/cut-this', cutthisRoutes);
+app.use('/api/debt', debtRoutes);
+app.use('/api/csv', csvRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/advisor', aiLimiter, advisorRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/predictions', predictionsRoutes);
+app.use('/api/trends', trendsRoutes);
+app.use('/api/negotiate', negotiateRoutes);
+app.use('/api/family', familyRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok' });
 });
 
-// Error handler (must be last)
-app.use(errorHandler);
-
-// Start server
-async function start() {
-  try {
-    // Initialize background job runner
-    await initJobRunner();
-
-    app.listen(env.PORT, () => {
-      logger.info(`Server running on port ${env.PORT}`);
-    });
-  } catch (error) {
-    logger.error(error, 'Failed to start server');
-    process.exit(1);
-  }
+// In production, serve the web app
+if (process.env.NODE_ENV === 'production') {
+  const webDist = path.resolve(__dirname, '../../web/dist');
+  app.use(express.static(webDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(webDist, 'index.html'));
+  });
 }
 
-start();
+app.use(errorHandler);
+
+app.listen(env.PORT, () => {
+  logger.info(`Runway API running on http://localhost:${env.PORT}`);
+});

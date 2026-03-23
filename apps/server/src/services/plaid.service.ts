@@ -1,439 +1,94 @@
-import { CountryCode, Products, type TransactionsSyncResponse } from 'plaid';
-import { plaidClient } from '../config/plaid.js';
-import { query, transaction } from '../config/database.js';
-import { encrypt, decrypt } from '../utils/encryption.js';
-import { env } from '../config/env.js';
-import { NotFoundError } from '../utils/errors.js';
-import { logger } from '../utils/logger.js';
-import type PgBoss from 'pg-boss';
+import crypto from 'crypto';
+import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } from 'plaid';
+import { env } from '../config/env';
+import db from '../config/db';
 
-let boss: PgBoss | null = null;
+const config = new Configuration({
+  basePath: PlaidEnvironments[env.PLAID_ENV],
+  baseOptions: {
+    headers: {
+      'PLAID-CLIENT-ID': env.PLAID_CLIENT_ID,
+      'PLAID-SECRET': env.PLAID_SECRET,
+    },
+  },
+});
 
-export function setBoss(pgBoss: PgBoss) {
-  boss = pgBoss;
-}
+const client = new PlaidApi(config);
 
-export async function createLinkToken(userId: string) {
-  const response = await plaidClient.linkTokenCreate({
+export async function createLinkToken(userId: string): Promise<string> {
+  const response = await client.linkTokenCreate({
     user: { client_user_id: userId },
-    client_name: 'BudgetGuard',
+    client_name: 'Runway',
     products: [Products.Transactions],
     country_codes: [CountryCode.Us],
     language: 'en',
-    webhook: env.PLAID_WEBHOOK_URL,
   });
-
-  logger.info({ userId }, 'Plaid link token created');
-
-  return {
-    linkToken: response.data.link_token,
-    expiration: response.data.expiration,
-  };
+  return response.data.link_token;
 }
 
-export async function exchangePublicToken(
-  userId: string,
-  publicToken: string,
-  metadata: {
-    institution?: { institution_id: string; name: string };
-    accounts?: Array<{
-      id: string;
-      name: string;
-      mask: string | null;
-      type: string;
-      subtype: string | null;
-    }>;
+export async function exchangePublicToken(userId: string, publicToken: string): Promise<void> {
+  const response = await client.itemPublicTokenExchange({ public_token: publicToken });
+  const accessToken = response.data.access_token;
+
+  db.prepare('UPDATE users SET plaid_access_token = ? WHERE id = ?').run(accessToken, userId);
+
+  await syncAccounts(userId, accessToken);
+}
+
+export async function syncAccounts(userId: string, accessToken?: string): Promise<void> {
+  if (!accessToken) {
+    const row = db.prepare('SELECT plaid_access_token FROM users WHERE id = ?').get(userId) as any;
+    accessToken = row?.plaid_access_token;
+    if (!accessToken) throw new Error('No Plaid access token');
   }
-) {
-  const exchangeResponse = await plaidClient.itemPublicTokenExchange({
-    public_token: publicToken,
-  });
 
-  const { access_token: accessToken, item_id: itemId } = exchangeResponse.data;
+  // Fetch accounts
+  const accountsRes = await client.accountsGet({ access_token: accessToken });
 
-  // Encrypt access token before storing
-  const encryptedAccessToken = await encrypt(accessToken);
+  const upsertAcct = db.prepare(
+    `INSERT INTO accounts (id, user_id, plaid_account_id, name, type, current_balance, available_balance, last_synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT (user_id, plaid_account_id)
+       DO UPDATE SET current_balance = excluded.current_balance, available_balance = excluded.available_balance, last_synced_at = datetime('now')`
+  );
 
-  return transaction(async (client) => {
-    // Store the Plaid item
-    const itemResult = await client.query<{ id: string }>(
-      `INSERT INTO plaid_items (
-         user_id, plaid_item_id, access_token_encrypted,
-         institution_id, institution_name, transaction_cursor
-       )
-       VALUES ($1, $2, $3, $4, $5, NULL)
-       RETURNING id`,
-      [
-        userId,
-        itemId,
-        encryptedAccessToken,
-        metadata.institution?.institution_id || null,
-        metadata.institution?.name || null,
-      ]
+  for (const acct of accountsRes.data.accounts) {
+    const type = acct.type === 'depository'
+      ? (acct.subtype === 'savings' ? 'savings' : 'checking')
+      : 'credit';
+    upsertAcct.run(
+      crypto.randomUUID(), userId, acct.account_id, acct.name, type,
+      acct.balances.current ?? 0, acct.balances.available
     );
-
-    const plaidItemId = itemResult.rows[0].id;
-
-    // Store accounts from metadata
-    if (metadata.accounts && metadata.accounts.length > 0) {
-      for (const account of metadata.accounts) {
-        await client.query(
-          `INSERT INTO accounts (
-             user_id, plaid_item_id, plaid_account_id,
-             name, mask, type, subtype
-           )
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (plaid_account_id) DO UPDATE SET
-             name = EXCLUDED.name,
-             mask = EXCLUDED.mask,
-             type = EXCLUDED.type,
-             subtype = EXCLUDED.subtype`,
-          [
-            userId,
-            plaidItemId,
-            account.id,
-            account.name,
-            account.mask,
-            account.type,
-            account.subtype || null,
-          ]
-        );
-      }
-    }
-
-    // Enqueue initial transaction sync job
-    if (boss) {
-      await boss.send('sync-transactions', {
-        plaidItemId,
-        userId,
-      });
-    }
-
-    logger.info(
-      { userId, plaidItemId, institutionName: metadata.institution?.name },
-      'Plaid item connected and accounts stored'
-    );
-
-    return { plaidItemId };
-  });
-}
-
-export async function handleWebhook(body: {
-  webhook_type: string;
-  webhook_code: string;
-  item_id: string;
-  [key: string]: unknown;
-}) {
-  const { webhook_type: webhookType, webhook_code: webhookCode, item_id: plaidItemId } = body;
-
-  logger.info({ webhookType, webhookCode, plaidItemId }, 'Plaid webhook received');
-
-  if (webhookType === 'TRANSACTIONS') {
-    // Look up the internal plaid_item record
-    const itemResult = await query<{ id: string; user_id: string }>(
-      'SELECT id, user_id FROM plaid_items WHERE plaid_item_id = $1',
-      [plaidItemId]
-    );
-
-    if (itemResult.rows.length === 0) {
-      logger.warn({ plaidItemId }, 'Webhook received for unknown Plaid item');
-      return;
-    }
-
-    const item = itemResult.rows[0];
-
-    if (
-      webhookCode === 'SYNC_UPDATES_AVAILABLE' ||
-      webhookCode === 'INITIAL_UPDATE' ||
-      webhookCode === 'HISTORICAL_UPDATE' ||
-      webhookCode === 'DEFAULT_UPDATE'
-    ) {
-      if (boss) {
-        await boss.send('sync-transactions', {
-          plaidItemId: item.id,
-          userId: item.user_id,
-        });
-      }
-    }
-  }
-}
-
-export async function syncTransactions(plaidItemId: string) {
-  // Fetch the plaid item
-  const itemResult = await query<{
-    id: string;
-    user_id: string;
-    access_token_encrypted: Buffer;
-    transaction_cursor: string | null;
-  }>(
-    'SELECT id, user_id, access_token_encrypted, transaction_cursor FROM plaid_items WHERE id = $1',
-    [plaidItemId]
-  );
-
-  if (itemResult.rows.length === 0) {
-    throw new NotFoundError('Plaid item not found');
   }
 
-  const item = itemResult.rows[0];
+  // Fetch transactions (last 30 days)
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+  const endDate = now.toISOString().split('T')[0];
 
-  // Decrypt the access token
-  const accessToken = await decrypt(item.access_token_encrypted);
-
-  let cursor = item.transaction_cursor;
-  let hasMore = true;
-  let addedCount = 0;
-  let modifiedCount = 0;
-  let removedCount = 0;
-
-  while (hasMore) {
-    const response = await plaidClient.transactionsSync({
-      access_token: accessToken,
-      cursor: cursor || undefined,
-    });
-
-    const data: TransactionsSyncResponse = response.data;
-
-    // Process added transactions
-    for (const txn of data.added) {
-      // Look up internal account ID
-      const accountResult = await query<{ id: string }>(
-        'SELECT id FROM accounts WHERE plaid_account_id = $1',
-        [txn.account_id]
-      );
-
-      if (accountResult.rows.length === 0) continue;
-
-      const accountId = accountResult.rows[0].id;
-
-      await query(
-        `INSERT INTO transactions (
-           user_id, account_id, plaid_transaction_id,
-           amount, date,
-           name, merchant_name,
-           personal_finance_category_primary, pending
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (plaid_transaction_id) DO UPDATE SET
-           amount = EXCLUDED.amount,
-           pending = EXCLUDED.pending,
-           name = EXCLUDED.name,
-           merchant_name = EXCLUDED.merchant_name,
-           personal_finance_category_primary = EXCLUDED.personal_finance_category_primary`,
-        [
-          item.user_id,
-          accountId,
-          txn.transaction_id,
-          txn.amount,
-          txn.date,
-          txn.name,
-          txn.merchant_name || null,
-          txn.personal_finance_category?.primary || null,
-          txn.pending,
-        ]
-      );
-
-      addedCount++;
-    }
-
-    // Process modified transactions
-    for (const txn of data.modified) {
-      await query(
-        `UPDATE transactions SET
-           amount = $1, pending = $2, name = $3,
-           merchant_name = $4, personal_finance_category_primary = $5
-         WHERE plaid_transaction_id = $6 AND user_id = $7`,
-        [
-          txn.amount,
-          txn.pending,
-          txn.name,
-          txn.merchant_name || null,
-          txn.personal_finance_category?.primary || null,
-          txn.transaction_id,
-          item.user_id,
-        ]
-      );
-
-      modifiedCount++;
-    }
-
-    // Process removed transactions
-    for (const removed of data.removed) {
-      await query(
-        'DELETE FROM transactions WHERE plaid_transaction_id = $1 AND user_id = $2',
-        [removed.transaction_id, item.user_id]
-      );
-
-      removedCount++;
-    }
-
-    cursor = data.next_cursor;
-    hasMore = data.has_more;
-  }
-
-  // Update cursor on the plaid item
-  await query(
-    'UPDATE plaid_items SET transaction_cursor = $1, last_synced_at = NOW() WHERE id = $2',
-    [cursor, plaidItemId]
-  );
-
-  logger.info(
-    { plaidItemId, addedCount, modifiedCount, removedCount },
-    'Transaction sync completed'
-  );
-
-  return { addedCount, modifiedCount, removedCount };
-}
-
-export async function getAccounts(userId: string) {
-  const result = await query<{
-    id: string;
-    plaid_item_id: string;
-    plaid_account_id: string;
-    name: string;
-    mask: string | null;
-    type: string;
-    subtype: string | null;
-    available_balance: number | null;
-    current_balance: number | null;
-    currency_code: string | null;
-    created_at: Date;
-    updated_at: Date;
-  }>(
-    `SELECT a.*, pi.institution_name
-     FROM accounts a
-     JOIN plaid_items pi ON a.plaid_item_id = pi.id
-     WHERE a.user_id = $1
-     ORDER BY a.created_at DESC`,
-    [userId]
-  );
-
-  return result.rows;
-}
-
-export async function getAccount(userId: string, accountId: string) {
-  const result = await query(
-    `SELECT a.*, pi.institution_name
-     FROM accounts a
-     JOIN plaid_items pi ON a.plaid_item_id = pi.id
-     WHERE a.id = $1 AND a.user_id = $2`,
-    [accountId, userId]
-  );
-
-  return result.rows[0] || null;
-}
-
-export async function unlinkAccount(userId: string, accountId: string) {
-  // Get the account and its plaid item
-  const accountResult = await query<{ id: string; plaid_item_id: string }>(
-    'SELECT id, plaid_item_id FROM accounts WHERE id = $1 AND user_id = $2',
-    [accountId, userId]
-  );
-
-  if (accountResult.rows.length === 0) {
-    throw new NotFoundError('Account not found');
-  }
-
-  const account = accountResult.rows[0];
-
-  await transaction(async (client) => {
-    // Delete transactions for this account
-    await client.query(
-      'DELETE FROM transactions WHERE account_id = $1 AND user_id = $2',
-      [accountId, userId]
-    );
-
-    // Delete the account
-    await client.query(
-      'DELETE FROM accounts WHERE id = $1 AND user_id = $2',
-      [accountId, userId]
-    );
-
-    // Check if there are remaining accounts for this plaid item
-    const remaining = await client.query(
-      'SELECT COUNT(*) as count FROM accounts WHERE plaid_item_id = $1',
-      [account.plaid_item_id]
-    );
-
-    // If no accounts remain, remove the plaid item and revoke access
-    if (parseInt(remaining.rows[0].count, 10) === 0) {
-      const itemResult = await client.query<{ access_token_encrypted: Buffer }>(
-        'SELECT access_token_encrypted FROM plaid_items WHERE id = $1',
-        [account.plaid_item_id]
-      );
-
-      if (itemResult.rows.length > 0) {
-        const accessToken = await decrypt(itemResult.rows[0].access_token_encrypted);
-        try {
-          await plaidClient.itemRemove({ access_token: accessToken });
-        } catch (err) {
-          logger.warn({ err, plaidItemId: account.plaid_item_id }, 'Failed to revoke Plaid access token');
-        }
-      }
-
-      await client.query('DELETE FROM plaid_items WHERE id = $1', [account.plaid_item_id]);
-    }
-  });
-
-  logger.info({ userId, accountId }, 'Account unlinked');
-}
-
-export async function refreshBalance(userId: string, accountId: string) {
-  const accountResult = await query<{
-    id: string;
-    plaid_account_id: string;
-    plaid_item_id: string;
-  }>(
-    `SELECT a.id, a.plaid_account_id, a.plaid_item_id
-     FROM accounts a
-     WHERE a.id = $1 AND a.user_id = $2`,
-    [accountId, userId]
-  );
-
-  if (accountResult.rows.length === 0) {
-    throw new NotFoundError('Account not found');
-  }
-
-  const account = accountResult.rows[0];
-
-  // Get the access token for this item
-  const itemResult = await query<{ access_token_encrypted: Buffer }>(
-    'SELECT access_token_encrypted FROM plaid_items WHERE id = $1',
-    [account.plaid_item_id]
-  );
-
-  if (itemResult.rows.length === 0) {
-    throw new NotFoundError('Plaid item not found');
-  }
-
-  const accessToken = await decrypt(itemResult.rows[0].access_token_encrypted);
-
-  // Fetch balances from Plaid
-  const balanceResponse = await plaidClient.accountsBalanceGet({
+  const txnRes = await client.transactionsGet({
     access_token: accessToken,
-    options: {
-      account_ids: [account.plaid_account_id],
-    },
+    start_date: startDate,
+    end_date: endDate,
   });
 
-  const plaidAccount = balanceResponse.data.accounts[0];
+  const insertTxn = db.prepare(
+    `INSERT OR IGNORE INTO transactions (id, user_id, account_id, amount, date, merchant_name, category, is_recurring)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+  );
 
-  if (plaidAccount) {
-    await query(
-      `UPDATE accounts SET
-         available_balance = $1,
-         current_balance = $2,
-         currency_code = $3,
-         updated_at = NOW()
-       WHERE id = $4`,
-      [
-        plaidAccount.balances.available,
-        plaidAccount.balances.current,
-        plaidAccount.balances.iso_currency_code || 'USD',
-        accountId,
-      ]
+  for (const txn of txnRes.data.transactions) {
+    const acctRow = db.prepare(
+      'SELECT id FROM accounts WHERE user_id = ? AND plaid_account_id = ?'
+    ).get(userId, txn.account_id) as any;
+    if (!acctRow) continue;
+
+    insertTxn.run(
+      crypto.randomUUID(), userId, acctRow.id,
+      -txn.amount, txn.date, txn.merchant_name || txn.name,
+      txn.personal_finance_category?.primary || null
     );
   }
-
-  // Return the updated account
-  return getAccount(userId, accountId);
 }

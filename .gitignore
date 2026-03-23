@@ -1,23 +1,8 @@
 node_modules/
 dist/
-.turbo/
-*.log
 .env
-.env.local
-.env.*.local
+*.local
 .DS_Store
+nul
+*.log
 coverage/
-
-# Private keys
-*.pem
-apps/server/keys/
-
-# Expo
-.expo/
-apps/mobile/ios/
-apps/mobile/android/
-
-# Build outputs
-apps/web/dist/
-apps/server/dist/
-packages/*/dist/

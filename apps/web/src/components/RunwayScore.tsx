@@ -1,0 +1,246 @@
+import { Link } from 'react-router-dom';
+import {
+  Wallet,
+  CreditCard,
+  AlertTriangle,
+  Scissors,
+  ArrowRight,
+  TrendingUp,
+  Clock,
+  Shield,
+} from 'lucide-react';
+import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType } from '@runway/shared';
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
+function fmt(n: number): string {
+  return Math.round(n).toLocaleString('en-US');
+}
+
+// Calculate how many days you gain by cutting $X/day from spending
+// Accounts for income — the real drain is (burn - income), not just burn
+function daysGained(balance: number, burnRate: number, dailyIncome: number, cutPerDay: number): number {
+  if (burnRate <= 0 || cutPerDay <= 0) return 0;
+  const netBurn = burnRate - dailyIncome;
+  if (netBurn <= 0) return 999; // already sustainable
+  const currentDays = balance / netBurn;
+  const newNetBurn = Math.max(0.1, netBurn - cutPerDay);
+  const newDays = balance / newNetBurn;
+  return Math.round(Math.max(0, Math.min(newDays - currentDays, 365)));
+}
+
+interface Props {
+  score: RunwayScoreType;
+  plan?: PaycheckPlanType | null;
+}
+
+export default function RunwayScore({ score, plan }: Props) {
+  const isGood = score.runwayDays >= 365 && score.status === 'green';
+  const isTight = score.status === 'yellow';
+  const isDanger = score.status === 'red';
+  const needsHelp = isTight || isDanger;
+
+  // Gradient backgrounds per status
+  const gradientBg = isDanger
+    ? 'bg-gradient-to-br from-rose-500 to-red-600'
+    : isTight
+      ? 'bg-gradient-to-br from-amber-500 to-orange-500'
+      : 'bg-gradient-to-br from-emerald-500 to-teal-600';
+
+  const badgeBg = isDanger
+    ? 'bg-white/20 text-white'
+    : isTight
+      ? 'bg-white/20 text-white'
+      : 'bg-white/20 text-white';
+
+  const borderColor = isDanger ? 'border-rose-200' : 'border-amber-200';
+
+  const statusIcon = isDanger
+    ? <AlertTriangle className="w-5 h-5 text-white/70" />
+    : isTight
+      ? <Clock className="w-5 h-5 text-white/70" />
+      : <Shield className="w-5 h-5 text-white/70" />;
+
+  // Calculate concrete day gains for coaching
+  const burn = score.dailyBurnRate;
+  const bal = score.spendableBalance;
+  const dailyIncome = (plan?.monthlyIncome || 0) / 30;
+
+  // Real merchants the user can cut
+  const merchants = score.cuttableMerchants || [];
+
+  return (
+    <div className="space-y-4">
+      {/* ── Hero Runway Card ── */}
+      <div className={`relative overflow-hidden rounded-2xl shadow-lg ${gradientBg}`}>
+        {/* Glass / pattern overlay */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.12) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 40%)',
+          }}
+        />
+        <div className="pointer-events-none absolute inset-0 backdrop-blur-[1px] bg-white/[0.04]" />
+
+        <div className="relative z-10 p-6">
+          <div className="flex items-center gap-2 mb-3">
+            {statusIcon}
+            <p className="text-sm font-medium text-white/80 uppercase tracking-wider">Your Runway</p>
+          </div>
+
+          {isGood ? (
+            <>
+              <p className="text-5xl font-extrabold text-white tracking-tight">You're set</p>
+              <p className="text-sm text-white/75 mt-2 max-w-sm leading-relaxed">
+                Your income covers your spending, bills, and upcoming events. Keep it up.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-6xl font-extrabold text-white tracking-tight leading-none">
+                {score.runwayDays >= 365 ? '365+' : score.runwayDays}
+              </p>
+              <p className="text-lg font-medium text-white/80 mt-1">
+                {score.runwayDays >= 365
+                  ? 'days'
+                  : `day${score.runwayDays !== 1 ? 's' : ''} of runway`}
+              </p>
+              <p className="text-sm text-white/65 mt-2 max-w-sm leading-relaxed">
+                {score.runwayDays >= 365 ? (
+                  "You have savings, but you're spending more than you earn."
+                ) : score.runoutDate ? (
+                  <>Covered through <span className="font-semibold text-white/90">{formatDate(score.runoutDate)}</span></>
+                ) : (
+                  'of breathing room'
+                )}
+              </p>
+            </>
+          )}
+
+          <div className="flex flex-wrap gap-2 mt-4">
+            <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm ${badgeBg}`}>
+              {isDanger
+                ? (score.amount < 0 ? "Let's make a plan" : 'Time to take action')
+                : isTight
+                  ? (score.runwayDays >= 365 ? 'Spending more than you earn' : "Getting tight, let's find room")
+                  : 'On track'}
+            </span>
+            {score.daysToPayday !== null && (
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm bg-white/15 text-white">
+                <Clock className="w-3.5 h-3.5" />
+                Payday in {score.daysToPayday} day{score.daysToPayday !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Key Numbers Grid ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-emerald-50 rounded-lg">
+              <Wallet className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Available Cash</p>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            ${score.spendableBalance.toLocaleString()}
+          </p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-gray-50 rounded-lg">
+              <CreditCard className="w-4 h-4 text-gray-500" />
+            </div>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Debt</p>
+          </div>
+          <p className={`text-2xl font-bold ${score.totalDebt > 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
+            {score.totalDebt > 0 ? `$${score.totalDebt.toLocaleString()}` : '$0'}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Urgent Events ── */}
+      {score.hasUrgentWarning && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <p className="text-sm text-amber-800 font-semibold">Upcoming expenses we're watching</p>
+          </div>
+          {score.urgentEvents.map((evt) => (
+            <div key={evt.name} className="flex items-center justify-between py-1.5">
+              <p className="text-sm text-amber-700">{evt.name}</p>
+              <p className="text-sm font-semibold text-amber-800">${evt.amount.toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Concrete Action Plan ── */}
+      {needsHelp && burn > 0 && (
+        <div className={`bg-white border ${borderColor} rounded-2xl p-5 shadow-sm`}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-1.5 bg-indigo-50 rounded-lg">
+              <TrendingUp className="w-4 h-4 text-indigo-600" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">How to add more days</p>
+          </div>
+
+          <div className="space-y-2 mb-4">
+            {/* Real merchant-level cuts from their actual spending */}
+            {merchants.map((m) => {
+              const cutPerDay = m.monthlyAmount / 30;
+              const gained = daysGained(bal, burn, dailyIncome, cutPerDay);
+              if (gained < 1) return null;
+              return (
+                <div
+                  key={m.name}
+                  className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-2xl border border-gray-100 transition-all hover:bg-gray-100 hover:shadow-sm cursor-default"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                      <Scissors className="w-4 h-4 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-800 font-medium">
+                        Cut <span className="font-semibold">{m.name}</span>
+                      </p>
+                      <p className="text-xs text-gray-500">${fmt(m.monthlyAmount)}/mo in {m.category}</p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-bold rounded-full shadow-sm">
+                    +{gained} days
+                  </span>
+                </div>
+              );
+            })}
+            {merchants.length === 0 && (
+              <p className="text-sm text-gray-500 py-3 text-center">No non-essential spending found to cut.</p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 pt-3 border-t border-gray-100">
+            <Link
+              to="/cut-this"
+              className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 active:text-indigo-800 font-semibold transition-colors"
+            >
+              <Scissors className="w-3.5 h-3.5" />
+              Scan with Cut This
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            {score.urgentEvents.length > 0 && (
+              <p className="text-xs text-gray-500">
+                Can any upcoming expense wait or be split?
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

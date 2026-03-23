@@ -1,12 +1,27 @@
-import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import * as accountsController from '../controllers/accounts.controller.js';
+import { Router, Response } from 'express';
+import { AuthRequest, authenticate } from '../middleware/auth';
+import db from '../config/db';
 
-export const accountRoutes = Router();
+const router = Router();
 
-accountRoutes.use(authenticate);
+router.get('/', authenticate, (req: AuthRequest, res: Response) => {
+  const rows = db.prepare(
+    'SELECT id, name, type, current_balance, available_balance, plaid_account_id, last_synced_at FROM accounts WHERE user_id = ? ORDER BY type, name'
+  ).all(req.userId) as any[];
 
-accountRoutes.get('/', accountsController.listAccounts);
-accountRoutes.get('/:id', accountsController.getAccount);
-accountRoutes.delete('/:id', accountsController.unlinkAccount);
-accountRoutes.post('/:id/refresh', accountsController.refreshBalance);
+  // Get the most recent transaction date for the user
+  const latestTxn = db.prepare(
+    'SELECT MAX(date) as latest_date FROM transactions WHERE user_id = ?'
+  ).get(req.userId) as any;
+
+  const hasLinkedBank = rows.some(r => r.plaid_account_id != null);
+  const latestTransactionDate = latestTxn?.latest_date || null;
+
+  res.json({
+    accounts: rows,
+    hasLinkedBank,
+    latestTransactionDate,
+  });
+});
+
+export default router;

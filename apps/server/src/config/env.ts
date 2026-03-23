@@ -1,40 +1,23 @@
-import { z } from 'zod';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Load .env from monorepo root (4 levels up from src/config/env.ts)
-dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
+dotenv.config({ override: true });
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().default(3001),
-  DATABASE_URL: z.string().url(),
-  DB_ENCRYPTION_KEY: z.string().min(16),
-  JWT_PRIVATE_KEY_PATH: z.string().default('./keys/private.pem'),
-  JWT_PUBLIC_KEY_PATH: z.string().default('./keys/public.pem'),
-  JWT_ACCESS_EXPIRY: z.string().default('15m'),
-  JWT_REFRESH_EXPIRY: z.string().default('30d'),
-  PLAID_CLIENT_ID: z.string(),
-  PLAID_SECRET: z.string(),
-  PLAID_ENV: z.enum(['sandbox', 'development', 'production']).default('sandbox'),
-  PLAID_WEBHOOK_URL: z.string().url().optional(),
-  ANTHROPIC_API_KEY: z.string(),
-  RESEND_API_KEY: z.string().optional(),
-  FROM_EMAIL: z.string().email().default('noreply@budgetguard.com'),
-  WEB_URL: z.string().url().default('http://localhost:5173'),
-  MOBILE_SCHEME: z.string().default('budgetguard'),
-});
-
-function validateEnv() {
-  const result = envSchema.safeParse(process.env);
-  if (!result.success) {
-    console.error('Invalid environment variables:');
-    console.error(result.error.format());
-    process.exit(1);
-  }
-  return result.data;
+function required(key: string): string {
+  const val = process.env[key];
+  if (!val) throw new Error(`Missing required env var: ${key}`);
+  return val;
 }
 
-export const env = validateEnv();
+export const env = {
+  NODE_ENV: (process.env.NODE_ENV || 'development') as 'development' | 'production' | 'test',
+  ANTHROPIC_API_KEY: required('ANTHROPIC_API_KEY'),
+  PLAID_CLIENT_ID: required('PLAID_CLIENT_ID'),
+  PLAID_SECRET: required('PLAID_SECRET'),
+  PLAID_ENV: (process.env.PLAID_ENV || 'sandbox') as 'sandbox' | 'production',
+  JWT_SECRET: required('JWT_SECRET'),
+  PORT: parseInt(process.env.PORT || '3001', 10),
+  CORS_ORIGINS: process.env.CORS_ORIGINS || 'http://localhost:5173',
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  APP_URL: process.env.APP_URL || 'http://localhost:5173',
+};

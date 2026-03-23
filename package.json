@@ -1,25 +1,24 @@
 {
-  "name": "budgetguard",
+  "name": "runway",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-powered personal finance management app",
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "clean": "turbo clean",
-    "dev:server": "turbo dev --filter=@budgetguard/server",
-    "dev:web": "turbo dev --filter=@budgetguard/web",
-    "dev:mobile": "turbo dev --filter=@budgetguard/mobile",
-    "db:migrate": "pnpm --filter @budgetguard/server db:migrate",
-    "db:seed": "pnpm --filter @budgetguard/server db:seed"
+    "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:web\"",
+    "dev:server": "pnpm --filter @runway/server dev",
+    "dev:web": "pnpm --filter @runway/web dev",
+    "build": "pnpm --filter @runway/shared build && pnpm --filter @runway/server build && pnpm --filter @runway/web build",
+    "db:init": "pnpm --filter @runway/server db:init",
+    "db:seed": "pnpm --filter @runway/server db:seed"
   },
   "devDependencies": {
-    "turbo": "^2.5.0",
+    "concurrently": "^9.1.0",
     "typescript": "^5.8.0"
   },
   "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "better-sqlite3"]
   }
 }

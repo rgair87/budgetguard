@@ -1,405 +1,326 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
-import { ListSkeleton } from '../components/Skeletons';
-import type { Subscription, SubscriptionStatus, ClassifySubscriptionInput } from '@budgetguard/shared';
+import { useEffect, useState, useRef } from 'react';
+import api from '../api/client';
 
-interface CancelGuide {
-  subscriptionId: string;
-  merchantName: string;
-  cancelUrl?: string;
-  cancelInstructions?: string;
-  steps: string[];
+interface Subscription {
+  name: string;
+  monthlyAmount: number;
+  frequency: string;
+  firstPaymentDate: string;
+  lastPaymentDate: string;
+  totalPayments: number;
+  totalSpent: number;
+  monthsActive: number;
+  isActive: boolean;
+  category: string;
 }
 
-const fmtCurrency = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-});
-
-type FilterTab = 'all' | 'detected' | 'safe' | 'cancelled';
-
-const filterTabs: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'detected', label: 'Detected' },
-  { key: 'safe', label: 'Safe' },
-  { key: 'cancelled', label: 'Cancelled' },
-];
-
-const statusBadge: Record<SubscriptionStatus, { bg: string; text: string; label: string }> = {
-  detected: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Detected' },
-  confirmed: { bg: 'bg-green-100', text: 'text-green-700', label: 'Confirmed' },
-  safe: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Safe List' },
-  cancel_requested: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Cancel Requested' },
-  cancelled: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Cancelled' },
-  dismissed: { bg: 'bg-gray-100', text: 'text-gray-400', label: 'Dismissed' },
+const CATEGORY_LABELS: Record<string, string> = {
+  subscription: 'Subscriptions',
+  bill: 'Bills & Services',
+  debt: 'Debt Payments',
 };
 
-function matchesFilter(sub: Subscription, tab: FilterTab): boolean {
-  if (tab === 'all') return true;
-  if (tab === 'detected') return sub.status === 'detected' || sub.status === 'confirmed';
-  if (tab === 'safe') return sub.status === 'safe';
-  if (tab === 'cancelled') return sub.status === 'cancelled' || sub.status === 'cancel_requested';
-  return true;
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; badge: string }> = {
+  subscription: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700' },
+  bill: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700' },
+  debt: { bg: 'bg-rose-50', border: 'border-rose-200', badge: 'bg-rose-100 text-rose-700' },
+};
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
-function statusBorderClass(status: SubscriptionStatus): string {
-  switch (status) {
-    case 'detected':
-    case 'confirmed':
-      return 'border-l-[3px] border-l-blue-400';
-    case 'safe':
-      return 'border-l-[3px] border-l-emerald-400';
-    case 'cancel_requested':
-    case 'cancelled':
-      return 'border-l-[3px] border-l-gray-300';
-    case 'dismissed':
-      return 'border-l-[3px] border-l-gray-200';
-    default:
-      return '';
-  }
+function formatMoney(amount: number): string {
+  return '$' + amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-export function SubscriptionsPage() {
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [classifyId, setClassifyId] = useState<string | null>(null);
-  const [keepUntil, setKeepUntil] = useState('');
-  const [keepReason, setKeepReason] = useState('');
+function ActionMenu({ sub, onDismiss, onReclassify }: {
+  sub: Subscription;
+  onDismiss: (name: string) => void;
+  onReclassify: (name: string, category: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const { data: subscriptions, isLoading, error, refetch } = useQuery({
-    queryKey: ['subscriptions'],
-    queryFn: async () => {
-      const res = await api.get<any[]>('/subscriptions');
-      const raw = res.data ?? [];
-      // Map snake_case DB fields to camelCase Subscription interface
-      return raw.map((s: any): Subscription => ({
-        id: s.id,
-        userId: s.user_id ?? s.userId,
-        merchantName: s.merchant_name ?? s.merchantName ?? '',
-        normalizedName: s.normalized_merchant_name ?? s.normalizedName ?? '',
-        description: s.description,
-        estimatedAmount: parseFloat(s.estimated_amount ?? s.estimatedAmount ?? 0),
-        currencyCode: s.currency_code ?? s.currencyCode ?? 'USD',
-        frequency: s.frequency,
-        confidenceScore: parseFloat(s.confidence ?? s.confidenceScore ?? s.confidence_score ?? 0),
-        status: s.status,
-        category: s.category,
-        cancelUrl: s.cancel_url ?? s.cancelUrl,
-        cancelInstructions: s.cancel_instructions ?? s.cancelInstructions,
-        firstSeenDate: s.first_seen_date ?? s.firstSeenDate ?? s.created_at ?? '',
-        lastChargeDate: s.last_charge_date ?? s.lastChargeDate,
-        nextExpectedDate: s.next_expected_date ?? s.nextExpectedDate,
-        totalCharges: parseInt(s.total_charges ?? s.totalCharges ?? 0, 10),
-        totalSpent: parseFloat(s.total_spent ?? s.totalSpent ?? 0),
-        classifiedAt: s.classified_at ?? s.classifiedAt,
-        detectedAt: s.detected_at ?? s.detectedAt ?? s.created_at ?? '',
-      }));
-    },
-  });
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
 
-  const [cancelGuide, setCancelGuide] = useState<CancelGuide | null>(null);
-  const [cancelGuideLoading, setCancelGuideLoading] = useState(false);
+  const otherCategories = ['subscription', 'bill', 'debt'].filter(c => c !== sub.category);
 
-  const classifyMutation = useMutation({
-    mutationFn: async ({ id, input }: { id: string; input: ClassifySubscriptionInput }) => {
-      await api.patch(`/subscriptions/${id}/classify`, {
-        action: input.action,
-        ...(input.keepUntil ? { keep_until: input.keepUntil } : {}),
-        ...(input.keepReason ? { keep_reason: input.keepReason } : {}),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      setClassifyId(null);
-      setKeepUntil('');
-      setKeepReason('');
-      setCancelGuide(null);
-    },
-  });
-
-  if (isLoading) return <ListSkeleton />;
-
-  if (error) {
-    return (
-      <div className="card py-12 text-center">
-        <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+        title="Actions"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="8" cy="3" r="1.5" />
+          <circle cx="8" cy="8" r="1.5" />
+          <circle cx="8" cy="13" r="1.5" />
         </svg>
-        <h3 className="mt-3 text-sm font-medium text-gray-900">Something went wrong</h3>
-        <p className="mt-1 text-sm text-gray-500">{(error as Error).message}</p>
-        <button className="btn-secondary mt-4" onClick={() => refetch()}>Try again</button>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-48">
+          {otherCategories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => { onReclassify(sub.name, cat); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+            >
+              <span className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat]?.badge.split(' ')[0] || 'bg-gray-300'}`} />
+              Move to {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+          <div className="border-t border-gray-100 my-1" />
+          <button
+            onClick={() => { onDismiss(sub.name); setOpen(false); }}
+            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <line x1="3" y1="3" x2="11" y2="11" />
+              <line x1="11" y1="3" x2="3" y2="11" />
+            </svg>
+            Not recurring — remove
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Subscriptions() {
+  const [subs, setSubs] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'subscription' | 'bill' | 'debt'>('all');
+  const [showInactive, setShowInactive] = useState(false);
+  const [dismissed, setDismissed] = useState<{ name: string; sub: Subscription } | null>(null);
+  const [acting, setActing] = useState(false);
+
+  const loadSubs = () => {
+    setLoading(true);
+    api.get('/runway/subscriptions')
+      .then(r => setSubs(r.data))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadSubs(); }, []);
+
+  const handleDismiss = async (name: string) => {
+    const sub = subs.find(s => s.name === name);
+    if (!sub) return;
+    setActing(true);
+    try {
+      await api.post('/runway/subscriptions/dismiss', { merchantName: name });
+      setDismissed({ name, sub });
+      setSubs(prev => prev.filter(s => s.name !== name));
+    } catch { /* ignore */ }
+    setActing(false);
+  };
+
+  const handleRestore = async () => {
+    if (!dismissed) return;
+    setActing(true);
+    try {
+      await api.post('/runway/subscriptions/restore', { merchantName: dismissed.name });
+      setSubs(prev => [...prev, dismissed.sub].sort((a, b) => b.totalSpent - a.totalSpent));
+      setDismissed(null);
+    } catch { /* ignore */ }
+    setActing(false);
+  };
+
+  const handleReclassify = async (name: string, category: string) => {
+    setActing(true);
+    try {
+      await api.post('/runway/subscriptions/reclassify', { merchantName: name, category });
+      setSubs(prev => prev.map(s => s.name === name ? { ...s, category } : s));
+    } catch { /* ignore */ }
+    setActing(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <div className="inline-block w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-gray-500">Scanning your transactions...</p>
       </div>
     );
   }
 
-  const allSubs = subscriptions ?? [];
-  const filtered = allSubs.filter((s) => matchesFilter(s, activeTab));
+  const filtered = subs.filter(s => {
+    if (filter !== 'all' && s.category !== filter) return false;
+    if (!showInactive && !s.isActive) return false;
+    return true;
+  });
 
-  const monthlyCost = allSubs
-    .filter((s) => s.status !== 'cancelled' && s.status !== 'dismissed')
-    .reduce((sum, s) => {
-      if (s.frequency === 'weekly') return sum + s.estimatedAmount * 4.33;
-      if (s.frequency === 'bi-weekly') return sum + s.estimatedAmount * 2.17;
-      if (s.frequency === 'monthly') return sum + s.estimatedAmount;
-      if (s.frequency === 'quarterly') return sum + s.estimatedAmount / 3;
-      if (s.frequency === 'yearly') return sum + s.estimatedAmount / 12;
-      return sum + s.estimatedAmount;
-    }, 0);
+  const activeSubs = subs.filter(s => s.isActive);
+  const totalMonthly = activeSubs.reduce((s, x) => s + x.monthlyAmount, 0);
+  const totalLifetime = subs.reduce((s, x) => s + x.totalSpent, 0);
+  const subCount = subs.filter(s => s.category === 'subscription').length;
+  const billCount = subs.filter(s => s.category === 'bill').length;
+  const debtCount = subs.filter(s => s.category === 'debt').length;
+  const inactiveCount = subs.filter(s => !s.isActive).length;
 
-  function handleKeep(id: string) {
-    setClassifyId(id);
-  }
-
-  function submitKeep() {
-    if (!classifyId) return;
-    const input: ClassifySubscriptionInput = {
-      action: 'safe_list',
-      ...(keepUntil ? { keepUntil: new Date(keepUntil).toISOString() } : {}),
-      ...(keepReason ? { keepReason } : {}),
-    };
-    classifyMutation.mutate({ id: classifyId, input });
-  }
-
-  async function handleCancel(id: string) {
-    setCancelGuideLoading(true);
-    setCancelGuide(null);
-    try {
-      const res = await api.get<CancelGuide>(`/subscriptions/${id}/cancel-guide`);
-      if (res.data) {
-        setCancelGuide(res.data);
-      }
-    } catch {
-      // Cancel guide not available, proceed with classify directly
-    } finally {
-      setCancelGuideLoading(false);
-    }
-    classifyMutation.mutate({
-      id,
-      input: { action: 'cancel' },
-    });
-  }
-
-  function handleDismiss(id: string) {
-    classifyMutation.mutate({
-      id,
-      input: { action: 'dismiss' },
-    });
-  }
+  // Monthly by category
+  const monthlyBySub = activeSubs.filter(s => s.category === 'subscription').reduce((a, x) => a + x.monthlyAmount, 0);
+  const monthlyByBill = activeSubs.filter(s => s.category === 'bill').reduce((a, x) => a + x.monthlyAmount, 0);
+  const monthlyByDebt = activeSubs.filter(s => s.category === 'debt').reduce((a, x) => a + x.monthlyAmount, 0);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Manage your detected recurring payments and subscriptions.
+        <h1 className="text-xl font-semibold text-gray-900">Recurring Spend</h1>
+        <p className="text-sm text-gray-500">
+          Every subscription, bill, and debt payment we found in your transactions — with lifetime totals.
+          Use the <span className="font-mono text-gray-600">&#8942;</span> menu to reclassify or remove items that don't belong.
         </p>
       </div>
 
-      {/* Monthly Cost Summary */}
-      <div className="card bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
-        <p className="text-sm font-medium text-indigo-200">Total Monthly Subscription Cost</p>
-        <p className="mt-1 text-3xl font-bold">{fmtCurrency.format(monthlyCost)}</p>
-        <p className="mt-1 text-sm text-indigo-200">
-          across {allSubs.filter((s) => s.status !== 'cancelled' && s.status !== 'dismissed').length} active subscriptions
-        </p>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
-        {filterTabs.map((tab) => (
+      {/* Undo banner */}
+      {dismissed && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center justify-between">
+          <p className="text-sm text-amber-800">
+            <span className="font-medium">{dismissed.name}</span> removed from recurring list.
+          </p>
           <button
-            key={tab.key}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={handleRestore}
+            disabled={acting}
+            className="text-sm font-medium text-amber-700 hover:text-amber-900 underline"
           >
-            {tab.label}
+            Undo
+          </button>
+        </div>
+      )}
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Monthly total</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(totalMonthly)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">/month</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Lifetime spent</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(totalLifetime)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">all time</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Subscriptions</p>
+          <p className="text-2xl font-bold text-purple-600 mt-1">{formatMoney(monthlyBySub)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{subCount} services</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Bills</p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">{formatMoney(monthlyByBill)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{billCount} recurring</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {(['all', 'subscription', 'bill', 'debt'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+              filter === f
+                ? 'bg-indigo-600 text-white border-indigo-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            {f === 'all' ? `All (${subs.filter(s => showInactive || s.isActive).length})` :
+             f === 'subscription' ? `Subscriptions (${subCount})` :
+             f === 'bill' ? `Bills (${billCount})` :
+             `Debt (${debtCount})`}
           </button>
         ))}
+        {inactiveCount > 0 && (
+          <label className="flex items-center gap-1.5 text-sm text-gray-500 ml-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={e => setShowInactive(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            Show cancelled ({inactiveCount})
+          </label>
+        )}
       </div>
 
-      {/* Subscriptions List */}
-      {filtered.length === 0 ? (
-        <div className="card py-12 text-center">
-          <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <h3 className="mt-3 text-sm font-medium text-gray-900">No subscriptions found</h3>
-          <p className="mt-1 text-sm text-gray-500">No subscriptions in this category.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filtered.map((sub, index) => {
-            const badge = statusBadge[sub.status] ?? statusBadge.detected;
-            const isClassifying = classifyId === sub.id;
-
-            return (
-              <div
-                key={sub.id}
-                className={`card animate-fade-in-up ${statusBorderClass(sub.status)}`}
-                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        {sub.merchantName}
-                      </h3>
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.bg} ${badge.text}`}>
-                        {badge.label}
+      {/* Subscription list */}
+      <div className="space-y-2">
+        {filtered.map((sub, i) => {
+          const colors = CATEGORY_COLORS[sub.category] || CATEGORY_COLORS.bill;
+          return (
+            <div
+              key={i}
+              className={`rounded-lg border p-4 ${sub.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100 opacity-70'}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className={`font-medium ${sub.isActive ? 'text-gray-900' : 'text-gray-500 line-through'}`}>
+                      {sub.name}
+                    </h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${colors.badge}`}>
+                      {CATEGORY_LABELS[sub.category]?.replace(/s$/, '') || sub.category}
+                    </span>
+                    {!sub.isActive && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
+                        Cancelled
                       </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                      <span className="font-semibold text-gray-900">
-                        {fmtCurrency.format(sub.estimatedAmount)}
-                        <span className="font-normal text-gray-400">/{sub.frequency}</span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        Confidence:
-                        <span className={`font-medium ${
-                          sub.confidenceScore >= 0.8 ? 'text-green-600' :
-                          sub.confidenceScore >= 0.5 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {Math.round(sub.confidenceScore * 100)}%
-                        </span>
-                      </span>
-                      {sub.lastChargeDate && (
-                        <span>
-                          Last charged: {new Date(sub.lastChargeDate).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
-
-                  {/* Action Buttons */}
-                  {sub.status === 'detected' || sub.status === 'confirmed' ? (
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
-                        onClick={() => handleKeep(sub.id)}
-                      >
-                        Keep
-                      </button>
-                      <button
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
-                        onClick={() => handleCancel(sub.id)}
-                        disabled={classifyMutation.isPending}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                        onClick={() => handleDismiss(sub.id)}
-                        disabled={classifyMutation.isPending}
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  ) : null}
+                  <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 flex-wrap">
+                    <span>{sub.frequency}</span>
+                    <span>{sub.totalPayments} payment{sub.totalPayments !== 1 ? 's' : ''}</span>
+                    <span>Since {formatDate(sub.firstPaymentDate)}</span>
+                    {sub.monthsActive > 1 && <span>{sub.monthsActive} months</span>}
+                  </div>
                 </div>
-
-                {/* Classify Form (inline) */}
-                {isClassifying && (
-                  <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <h4 className="mb-3 text-sm font-semibold text-gray-700">
-                      Add to Safe List
-                    </h4>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                      <div className="flex-1">
-                        <label htmlFor="keepUntil" className="label">Keep Until (optional)</label>
-                        <input
-                          id="keepUntil"
-                          type="date"
-                          className="input"
-                          value={keepUntil}
-                          onChange={(e) => setKeepUntil(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label htmlFor="keepReason" className="label">Reason (optional)</label>
-                        <input
-                          id="keepReason"
-                          type="text"
-                          className="input"
-                          placeholder="e.g., Need it for work"
-                          value={keepReason}
-                          onChange={(e) => setKeepReason(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          className="btn-primary"
-                          onClick={submitKeep}
-                          disabled={classifyMutation.isPending}
-                        >
-                          {classifyMutation.isPending ? 'Saving...' : 'Confirm'}
-                        </button>
-                        <button
-                          className="btn-secondary"
-                          onClick={() => {
-                            setClassifyId(null);
-                            setKeepUntil('');
-                            setKeepReason('');
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
+                <div className="flex items-start gap-2 shrink-0">
+                  <div className="text-right">
+                    <p className={`text-lg font-semibold ${sub.isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {formatMoney(sub.monthlyAmount)}
+                      <span className="text-xs font-normal text-gray-400">/mo</span>
+                    </p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {formatMoney(sub.totalSpent)} total
+                    </p>
                   </div>
-                )}
-
-                {/* Cancel Guide */}
-                {cancelGuide && cancelGuide.subscriptionId === sub.id && (
-                  <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-orange-800">
-                        How to cancel {cancelGuide.merchantName}
-                      </h4>
-                      <button
-                        className="text-xs text-orange-600 hover:text-orange-800"
-                        onClick={() => setCancelGuide(null)}
-                      >
-                        Close
-                      </button>
-                    </div>
-                    {cancelGuide.cancelUrl && (
-                      <p className="mt-2 text-sm text-orange-700">
-                        Cancel online:{' '}
-                        <a
-                          href={cancelGuide.cancelUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium underline"
-                        >
-                          {cancelGuide.cancelUrl}
-                        </a>
-                      </p>
-                    )}
-                    {cancelGuide.cancelInstructions && (
-                      <p className="mt-2 text-sm text-orange-700">
-                        {cancelGuide.cancelInstructions}
-                      </p>
-                    )}
-                    {cancelGuide.steps.length > 0 && (
-                      <ol className="mt-3 list-inside list-decimal space-y-1 text-sm text-orange-700">
-                        {cancelGuide.steps.map((step, i) => (
-                          <li key={i}>{step}</li>
-                        ))}
-                      </ol>
-                    )}
-                  </div>
-                )}
+                  <ActionMenu
+                    sub={sub}
+                    onDismiss={handleDismiss}
+                    onReclassify={handleReclassify}
+                  />
+                </div>
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-gray-500">
+          <p>No recurring charges found.</p>
+          <p className="text-sm mt-1">Import bank transactions via CSV to see your subscriptions.</p>
+        </div>
+      )}
+
+      {/* Debt monthly total */}
+      {monthlyByDebt > 0 && filter !== 'subscription' && filter !== 'bill' && (
+        <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+          <p className="text-sm text-rose-800">
+            <span className="font-semibold">{formatMoney(monthlyByDebt)}/mo</span> goes toward debt payments.
+            {' '}
+            <a href="/debt" className="underline hover:text-rose-900">See payoff plan →</a>
+          </p>
         </div>
       )}
     </div>

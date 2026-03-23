@@ -1,10 +1,27 @@
-import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { webhookLimiter } from '../middleware/rateLimiter.js';
-import * as plaidController from '../controllers/plaid.controller.js';
+import { Router, Response } from 'express';
+import { AuthRequest, authenticate } from '../middleware/auth';
+import { createLinkToken, exchangePublicToken, syncAccounts } from '../services/plaid.service';
 
-export const plaidRoutes = Router();
+const router = Router();
 
-plaidRoutes.post('/create-link-token', authenticate, plaidController.createLinkToken);
-plaidRoutes.post('/exchange-token', authenticate, plaidController.exchangeToken);
-plaidRoutes.post('/webhooks', webhookLimiter, plaidController.handleWebhook);
+router.post('/create-link-token', authenticate, async (req: AuthRequest, res: Response) => {
+  const linkToken = await createLinkToken(req.userId!);
+  res.json({ link_token: linkToken });
+});
+
+router.post('/exchange-token', authenticate, async (req: AuthRequest, res: Response) => {
+  const { public_token } = req.body;
+  if (!public_token) {
+    res.status(400).json({ error: 'validation', message: 'public_token required' });
+    return;
+  }
+  await exchangePublicToken(req.userId!, public_token);
+  res.json({ success: true });
+});
+
+router.post('/sync', authenticate, async (req: AuthRequest, res: Response) => {
+  await syncAccounts(req.userId!);
+  res.json({ success: true });
+});
+
+export default router;

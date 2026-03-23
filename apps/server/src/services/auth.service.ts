@@ -1,258 +1,184 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import fs from 'fs';
-import { query, transaction } from '../config/database.js';
-import { env } from '../config/env.js';
-import {
-  UnauthorizedError,
-  ConflictError,
-  NotFoundError,
-} from '../utils/errors.js';
-import { logger } from '../utils/logger.js';
+import db from '../config/db';
+import { env } from '../config/env';
+import { sendVerificationEmail, sendPasswordResetEmail } from './email.service';
+import type { User } from '@runway/shared';
 
-const BCRYPT_ROUNDS = 12;
+const USER_SELECT_COLS = 'id, email, subscription_status, pay_frequency, next_payday, take_home_pay, email_verified, created_at';
 
-const privateKey = fs.readFileSync(env.JWT_PRIVATE_KEY_PATH, 'utf8');
-const publicKey = fs.readFileSync(env.JWT_PUBLIC_KEY_PATH, 'utf8');
+const ACCESS_TOKEN_EXPIRY = '15m';
+const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
-export { publicKey };
+function generateAccessToken(userId: string): string {
+  return jwt.sign({ userId }, env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
+}
 
-export async function register(input: {
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-}) {
-  const { email, password, firstName, lastName } = input;
-  const existing = await query(
-    'SELECT id FROM users WHERE email = $1',
-    [email.toLowerCase().trim()]
-  );
+export function generateRefreshToken(userId: string): string {
+  // Clean up expired refresh tokens for this user
+  db.prepare('DELETE FROM refresh_tokens WHERE user_id = ? AND expires_at < datetime(\'now\')').run(userId);
 
-  if (existing.rows.length > 0) {
-    throw new ConflictError('An account with this email already exists');
+  const token = crypto.randomUUID();
+  const id = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  db.prepare(
+    'INSERT INTO refresh_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)'
+  ).run(id, userId, token, expiresAt);
+
+  return token;
+}
+
+export function refreshAccessToken(refreshToken: string): { token: string; user: Omit<User, 'password_hash'> } {
+  const row = db.prepare(
+    'SELECT rt.user_id, rt.expires_at FROM refresh_tokens rt WHERE rt.token = ?'
+  ).get(refreshToken) as unknown as { user_id: string; expires_at: string } | undefined;
+
+  if (!row) {
+    throw new Error('Invalid refresh token');
   }
 
-  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-
-  const result = await query<{
-    id: string;
-    email: string;
-    first_name: string | null;
-    last_name: string | null;
-    created_at: Date;
-  }>(
-    `INSERT INTO users (email, password_hash, first_name, last_name)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, email, first_name, last_name, created_at`,
-    [email.toLowerCase().trim(), passwordHash, firstName || null, lastName || null]
-  );
-
-  const user = result.rows[0];
-
-  const tokens = await generateTokens(user.id);
-
-  logger.info({ userId: user.id }, 'User registered successfully');
-
-  return {
-    user: {
-      id: user.id,
-      email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      createdAt: user.created_at,
-    },
-    ...tokens,
-  };
-}
-
-export async function login(input: { email: string; password: string }) {
-  const { email, password } = input;
-  const result = await query<{
-    id: string;
-    email: string;
-    password_hash: string;
-    first_name: string | null;
-    last_name: string | null;
-    created_at: Date;
-  }>(
-    'SELECT id, email, password_hash, first_name, last_name, created_at FROM users WHERE email = $1',
-    [email.toLowerCase().trim()]
-  );
-
-  if (result.rows.length === 0) {
-    throw new UnauthorizedError('Invalid email or password');
+  if (new Date(row.expires_at) < new Date()) {
+    db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
+    throw new Error('Refresh token expired');
   }
 
-  const user = result.rows[0];
+  const user = db.prepare(
+    `SELECT ${USER_SELECT_COLS} FROM users WHERE id = ?`
+  ).get(row.user_id) as unknown as Omit<User, 'password_hash'> | undefined;
 
-  const isValid = await bcrypt.compare(password, user.password_hash);
-  if (!isValid) {
-    throw new UnauthorizedError('Invalid email or password');
+  if (!user) {
+    db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
+    throw new Error('User not found');
   }
 
-  const tokens = await generateTokens(user.id);
-
-  logger.info({ userId: user.id }, 'User logged in successfully');
-
-  return {
-    user: {
-      id: user.id,
-      email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      createdAt: user.created_at,
-    },
-    ...tokens,
-  };
+  const token = generateAccessToken(user.id);
+  return { token, user };
 }
 
-export async function generateTokens(userId: string) {
-  const accessToken = jwt.sign(
-    { sub: userId, type: 'access' },
-    privateKey,
-    {
-      algorithm: 'RS256',
-      expiresIn: env.JWT_ACCESS_EXPIRY,
-    }
-  );
-
-  const refreshToken = crypto.randomUUID();
-
-  const refreshTokenHash = await bcrypt.hash(refreshToken, BCRYPT_ROUNDS);
-
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
-
-  await query(
-    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-     VALUES ($1, $2, $3)`,
-    [userId, refreshTokenHash, expiresAt]
-  );
-
-  return { accessToken, refreshToken };
+export function revokeRefreshToken(refreshToken: string): void {
+  db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
 }
 
-export async function refresh(refreshToken: string) {
-  return transaction(async (client) => {
-    // Get all non-expired refresh tokens
-    const tokensResult = await client.query<{
-      id: string;
-      user_id: string;
-      token_hash: string;
-      revoked_at: Date | null;
-      expires_at: Date;
-    }>(
-      `SELECT id, user_id, token_hash, revoked_at, expires_at
-       FROM refresh_tokens
-       WHERE expires_at > NOW()
-       ORDER BY created_at DESC`,
-      []
-    );
+export async function registerUser(email: string, password: string): Promise<{ token: string; refreshToken: string; user: Omit<User, 'password_hash'> }> {
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (existing) {
+    throw new Error('Email already registered');
+  }
 
-    // Find the matching token by comparing hashes
-    let matchedToken: (typeof tokensResult.rows)[0] | null = null;
+  const hash = await bcrypt.hash(password, 10);
+  const id = crypto.randomUUID();
+  const verificationToken = crypto.randomUUID();
 
-    for (const row of tokensResult.rows) {
-      const isMatch = await bcrypt.compare(refreshToken, row.token_hash);
-      if (isMatch) {
-        matchedToken = row;
-        break;
-      }
-    }
+  db.prepare(
+    'INSERT INTO users (id, email, password_hash, verification_token) VALUES (?, ?, ?, ?)'
+  ).run(id, email, hash, verificationToken);
 
-    if (!matchedToken) {
-      throw new UnauthorizedError('Invalid refresh token');
-    }
+  await sendVerificationEmail(email, verificationToken);
 
-    // Breach detection: if the matched token was already revoked,
-    // someone is reusing a stolen token. Revoke ALL tokens for this user.
-    if (matchedToken.revoked_at) {
-      await client.query(
-        `UPDATE refresh_tokens SET revoked_at = NOW()
-         WHERE user_id = $1 AND revoked_at IS NULL`,
-        [matchedToken.user_id]
-      );
+  const user = db.prepare(
+    `SELECT ${USER_SELECT_COLS} FROM users WHERE id = ?`
+  ).get(id) as unknown as Omit<User, 'password_hash'>;
 
-      logger.warn(
-        { userId: matchedToken.user_id },
-        'Refresh token reuse detected — all tokens revoked'
-      );
-
-      throw new UnauthorizedError('Refresh token reuse detected. Please log in again.');
-    }
-
-    // Check expiry
-    if (matchedToken.expires_at < new Date()) {
-      throw new UnauthorizedError('Refresh token has expired');
-    }
-
-    // Revoke old token
-    await client.query(
-      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $1',
-      [matchedToken.id]
-    );
-
-    // Issue new token pair
-    const accessToken = jwt.sign(
-      { sub: matchedToken.user_id, type: 'access' },
-      privateKey,
-      {
-        algorithm: 'RS256',
-        expiresIn: env.JWT_ACCESS_EXPIRY,
-      }
-    );
-
-    const newRefreshToken = crypto.randomUUID();
-    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, BCRYPT_ROUNDS);
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    await client.query(
-      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-       VALUES ($1, $2, $3)`,
-      [matchedToken.user_id, newRefreshTokenHash, expiresAt]
-    );
-
-    logger.info({ userId: matchedToken.user_id }, 'Tokens refreshed');
-
-    return {
-      accessToken,
-      refreshToken: newRefreshToken,
-    };
-  });
+  const token = generateAccessToken(id);
+  const refreshToken = generateRefreshToken(id);
+  return { token, refreshToken, user };
 }
 
-export async function logout(userId: string, refreshToken?: string) {
-  if (!refreshToken) {
-    logger.info({ userId }, 'Logout called without refresh token');
+export async function loginUser(email: string, password: string): Promise<{ token: string; refreshToken: string; user: Omit<User, 'password_hash'> }> {
+  const row = db.prepare(
+    `SELECT ${USER_SELECT_COLS}, password_hash FROM users WHERE email = ?`
+  ).get(email) as unknown as (User | undefined);
+
+  if (!row) {
+    throw new Error('Invalid credentials');
+  }
+
+  const valid = await bcrypt.compare(password, row.password_hash!);
+  if (!valid) {
+    throw new Error('Invalid credentials');
+  }
+
+  const { password_hash, ...safeUser } = row;
+  const token = generateAccessToken(row.id);
+  const refreshToken = generateRefreshToken(row.id);
+  return { token, refreshToken, user: safeUser };
+}
+
+export function verifyEmail(token: string): { success: boolean; message: string } {
+  const row = db.prepare(
+    'SELECT id, email FROM users WHERE verification_token = ?'
+  ).get(token) as unknown as { id: string; email: string } | undefined;
+
+  if (!row) {
+    return { success: false, message: 'Invalid or expired verification token' };
+  }
+
+  db.prepare(
+    'UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?'
+  ).run(row.id);
+
+  console.log(`[EMAIL VERIFICATION] Email verified for ${row.email}`);
+  return { success: true, message: 'Email verified successfully' };
+}
+
+export async function resendVerification(email: string): Promise<{ success: boolean; message: string }> {
+  const row = db.prepare(
+    'SELECT id, email_verified FROM users WHERE email = ?'
+  ).get(email) as unknown as { id: string; email_verified: number } | undefined;
+
+  if (!row) {
+    return { success: true, message: 'If that email is registered, a verification link has been sent' };
+  }
+
+  if (row.email_verified) {
+    return { success: false, message: 'Email is already verified' };
+  }
+
+  const newToken = crypto.randomUUID();
+  db.prepare(
+    'UPDATE users SET verification_token = ? WHERE id = ?'
+  ).run(newToken, row.id);
+
+  await sendVerificationEmail(email, newToken);
+
+  return { success: true, message: 'If that email is registered, a verification link has been sent' };
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as unknown as { id: string } | undefined;
+  if (!user) {
+    // Don't reveal whether the email exists
     return;
   }
 
-  const tokensResult = await query<{
-    id: string;
-    token_hash: string;
-  }>(
-    `SELECT id, token_hash FROM refresh_tokens
-     WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > NOW()`,
-    [userId]
-  );
+  const resetToken = crypto.randomUUID();
+  const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
-  for (const row of tokensResult.rows) {
-    const isMatch = await bcrypt.compare(refreshToken, row.token_hash);
-    if (isMatch) {
-      await query(
-        'UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $1',
-        [row.id]
-      );
+  db.prepare(
+    'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?'
+  ).run(resetToken, expires, user.id);
 
-      logger.info({ userId }, 'User logged out');
-      return;
-    }
+  await sendPasswordResetEmail(email, resetToken);
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const user = db.prepare(
+    'SELECT id, reset_token_expires FROM users WHERE reset_token = ?'
+  ).get(token) as unknown as { id: string; reset_token_expires: string } | undefined;
+
+  if (!user) {
+    throw new Error('Invalid or expired reset token');
   }
 
-  // Token not found or already revoked — still succeed silently
-  logger.info({ userId }, 'Logout called but no matching active token found');
+  if (new Date(user.reset_token_expires) < new Date()) {
+    db.prepare('UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = ?').run(user.id);
+    throw new Error('Invalid or expired reset token');
+  }
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  db.prepare(
+    'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?'
+  ).run(hash, user.id);
 }

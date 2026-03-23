@@ -1,101 +1,87 @@
-import { pool, query } from '../config/database.js';
-import { logger } from '../utils/logger.js';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
+import db from '../config/db';
 
-async function seed() {
-  logger.info('Seeding database...');
+// Ensure schema exists
+const schema = fs.readFileSync(path.resolve(__dirname, 'schema.sql'), 'utf-8');
+db.exec(schema);
 
-  // Create a demo user
-  const passwordHash = await bcrypt.hash('Demo1234', 12);
-  const userResult = await query(
-    `INSERT INTO users (email, password_hash, first_name, last_name, email_verified)
-     VALUES ('demo@budgetguard.com', $1, 'Demo', 'User', true)
-     ON CONFLICT (email) DO UPDATE SET first_name = 'Demo'
-     RETURNING id`,
-    [passwordHash]
+const hash = bcrypt.hashSync('demo1234', 10);
+const userId = crypto.randomUUID();
+
+// Create demo user
+db.prepare(
+  `INSERT OR REPLACE INTO users (id, email, password_hash, pay_frequency, next_payday, take_home_pay)
+   VALUES (?, ?, ?, 'biweekly', date('now', '+6 days'), 2800)`
+).run(userId, 'demo@runway.app', hash);
+
+// Create accounts
+const checkingId = crypto.randomUUID();
+const savingsId = crypto.randomUUID();
+const creditId = crypto.randomUUID();
+
+db.prepare(
+  `INSERT INTO accounts (id, user_id, name, type, current_balance, available_balance)
+   VALUES (?, ?, 'Main Checking', 'checking', 3240.50, 3240.50)`
+).run(checkingId, userId);
+
+db.prepare(
+  `INSERT INTO accounts (id, user_id, name, type, current_balance, available_balance)
+   VALUES (?, ?, 'Savings', 'savings', 1500.00, 1500.00)`
+).run(savingsId, userId);
+
+db.prepare(
+  `INSERT INTO accounts (id, user_id, name, type, current_balance)
+   VALUES (?, ?, 'Discover Card', 'credit', 2340.00)`
+).run(creditId, userId);
+
+// Sample transactions
+const txns: [number, string, string, boolean][] = [
+  [-85.40, 'Whole Foods', 'Groceries', false],
+  [-12.99, 'Netflix', 'Entertainment', true],
+  [-45.00, 'Shell Gas', 'Transportation', false],
+  [-67.30, 'Target', 'Shopping', false],
+  [-23.50, 'Chipotle', 'Restaurants', false],
+  [-142.00, 'Electric Company', 'Utilities', false],
+  [-1200.00, 'Rent Payment', 'Housing', false],
+  [-34.99, 'Spotify + Hulu', 'Entertainment', true],
+  [-52.80, 'Kroger', 'Groceries', false],
+  [-18.00, 'Uber', 'Transportation', false],
+];
+
+const insertTxn = db.prepare(
+  `INSERT INTO transactions (id, user_id, account_id, amount, date, merchant_name, category, is_recurring)
+   VALUES (?, ?, ?, ?, date('now', ? || ' days'), ?, ?, ?)`
+);
+
+for (let i = 0; i < txns.length; i++) {
+  const dayOffset = -Math.floor(i * 2.5);
+  insertTxn.run(
+    crypto.randomUUID(), userId, checkingId,
+    txns[i][0], String(dayOffset), txns[i][1], txns[i][2], txns[i][3] ? 1 : 0
   );
-  const userId = userResult.rows[0].id;
-  logger.info({ userId }, 'Demo user created/updated');
-
-  // Create some sample subscriptions
-  const subs = [
-    { merchant: 'Netflix', amount: 15.99, freq: 'monthly', confidence: 0.95 },
-    { merchant: 'Spotify', amount: 10.99, freq: 'monthly', confidence: 0.92 },
-    { merchant: 'Adobe Creative Cloud', amount: 54.99, freq: 'monthly', confidence: 0.88 },
-    { merchant: 'Amazon Prime', amount: 14.99, freq: 'monthly', confidence: 0.90 },
-    { merchant: 'ChatGPT Plus', amount: 20.00, freq: 'monthly', confidence: 0.85 },
-    { merchant: 'Gym Membership', amount: 49.99, freq: 'monthly', confidence: 0.80 },
-  ];
-
-  for (const sub of subs) {
-    await query(
-      `INSERT INTO subscriptions (
-        user_id, merchant_name, normalized_name, estimated_amount,
-        frequency, confidence_score, first_seen_date, last_charge_date,
-        total_charges, total_spent, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE - INTERVAL '6 months',
-        CURRENT_DATE - INTERVAL '5 days', 6, $7, 'detected')
-      ON CONFLICT DO NOTHING`,
-      [
-        userId,
-        sub.merchant,
-        sub.merchant.toLowerCase().replace(/\s+/g, ' '),
-        sub.amount,
-        sub.freq,
-        sub.confidence,
-        sub.amount * 6,
-      ]
-    );
-  }
-  logger.info('Sample subscriptions created');
-
-  // Create sample budgets
-  const now = new Date();
-  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-
-  const budgets = [
-    { name: 'Dining & Restaurants', category: 'FOOD_AND_DRINK', limit: 350, spent: 220 },
-    { name: 'Transportation', category: 'TRANSPORTATION', limit: 200, spent: 145 },
-    { name: 'Entertainment', category: 'ENTERTAINMENT', limit: 150, spent: 89 },
-    { name: 'Shopping', category: 'SHOPPING', limit: 300, spent: 275 },
-    { name: 'Subscriptions', category: 'SUBSCRIPTIONS', limit: 170, spent: 166.95 },
-  ];
-
-  for (const budget of budgets) {
-    await query(
-      `INSERT INTO budgets (
-        user_id, name, category, amount_limit, amount_spent,
-        period, period_start, period_end, is_ai_generated, is_active
-      ) VALUES ($1, $2, $3, $4, $5, 'monthly', $6, $7, true, true)
-      ON CONFLICT DO NOTHING`,
-      [userId, budget.name, budget.category, budget.limit, budget.spent, periodStart, periodEnd]
-    );
-  }
-  logger.info('Sample budgets created');
-
-  // Create sample notifications
-  await query(
-    `INSERT INTO notifications (user_id, type, title, body, action_url)
-     VALUES
-       ($1, 'new_subscription', 'New subscription detected: ChatGPT Plus',
-        'We found a recurring charge to ChatGPT Plus for ~$20.00/monthly. Tap to keep or cancel.',
-        '/subscriptions'),
-       ($1, 'budget_alert', 'Shopping budget at 92%',
-        'You''ve spent $275 of your $300 shopping budget this month.',
-        '/budgets'),
-       ($1, 'smart_suggestion', 'Save $65/month on subscriptions',
-        'We found 2 subscriptions you might not need. Review your smart savings suggestions.',
-        '/suggestions')`,
-    [userId]
-  );
-  logger.info('Sample notifications created');
-
-  logger.info('Seeding complete!');
-  await pool.end();
 }
 
-seed().catch((err) => {
-  console.error('Seed failed:', err);
-  process.exit(1);
-});
+// Incoming events
+const insertEvent = db.prepare(
+  `INSERT INTO incoming_events (id, user_id, name, estimated_amount, expected_date, is_recurring)
+   VALUES (?, ?, ?, ?, ?, ?)`
+);
+insertEvent.run(crypto.randomUUID(), userId, 'Lawyer Payment', 5000, null, 0);
+insertEvent.run(crypto.randomUUID(), userId, 'Christmas Shopping', 800, '2026-12-25', 0);
+insertEvent.run(crypto.randomUUID(), userId, 'Summer Vacation', 2000, '2026-07-15', 0);
+
+// Budgets
+const insertBudget = db.prepare(
+  `INSERT INTO budgets (id, user_id, category, monthly_limit) VALUES (?, ?, ?, ?)`
+);
+insertBudget.run(crypto.randomUUID(), userId, 'Groceries', 400);
+insertBudget.run(crypto.randomUUID(), userId, 'Restaurants', 200);
+insertBudget.run(crypto.randomUUID(), userId, 'Entertainment', 100);
+insertBudget.run(crypto.randomUUID(), userId, 'Transportation', 150);
+
+console.log('Seed data inserted successfully');
+console.log('Demo login: demo@runway.app / demo1234');
+db.close();
