@@ -237,7 +237,8 @@
       "WebSearch",
       "WebFetch(domain:myrunway.app)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(node -e \"const l = require\\(''lucide-react''\\); console.log\\([''ChevronDown'',''Plus'',''FileText'',''Calendar'',''Repeat'',''Wallet''].map\\(n => n + '': '' + \\(typeof l[n]\\)\\).join\\(''\\\\n''\\)\\)\")"
     ]
   }
 }

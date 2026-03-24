@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon } from 'lucide-react';
+import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -111,6 +111,26 @@ function downloadTemplate(key: keyof typeof TEMPLATES) {
   URL.revokeObjectURL(url);
 }
 
+/* ───────── Section header outside cards (iOS-style) ───────── */
+function SectionHeader({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-1 mb-1.5">
+      <Icon className="w-4 h-4 text-indigo-500" />
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</h2>
+    </div>
+  );
+}
+
+/* ───────── Generic settings row ───────── */
+function SettingsRow({ children, last = false, className = '' }: { children: React.ReactNode; last?: boolean; className?: string }) {
+  return (
+    <div className={`px-4 py-3.5 ${!last ? 'border-b border-slate-100' : ''} ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ───────── Import Data (redesigned as rows) ───────── */
 function ImportData() {
   const [results, setResults] = useState<Record<string, { msg: string; ok: boolean }>>({});
   const [uploading, setUploading] = useState<string | null>(null);
@@ -136,61 +156,67 @@ function ImportData() {
     }
   }
 
+  const keys = Object.keys(TEMPLATES) as (keyof typeof TEMPLATES)[];
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-      <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-        <Upload className="w-4 h-4 text-indigo-600" />
-        Import Data
-      </h2>
-      <p className="text-xs text-gray-500 mb-4">
-        Download a template, fill it in with your info, and upload it back. Or upload your own CSV with similar columns.
-      </p>
-      <div className="space-y-3">
-        {(Object.keys(TEMPLATES) as (keyof typeof TEMPLATES)[]).map(key => {
+    <>
+      <SectionHeader icon={Upload} label="Import Data" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <div className="px-4 py-2.5 bg-slate-50/60 border-b border-slate-100">
+          <p className="text-xs text-slate-400">Download a template, fill it in, then upload it back.</p>
+        </div>
+        {keys.map((key, i) => {
           const t = TEMPLATES[key];
           const result = results[key];
           return (
-            <div key={key} className="flex items-center justify-between py-2 border-t border-gray-50 first:border-0">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">{t.label}</p>
-                <p className="text-xs text-gray-400">{t.desc}</p>
-                {result && (
-                  <p className={`text-xs mt-1 ${result.ok ? 'text-green-600' : 'text-red-600'}`}>
-                    {result.msg}
-                  </p>
-                )}
+            <SettingsRow key={key} last={i === keys.length - 1}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">{t.label}</p>
+                    <p className="text-xs text-slate-400 truncate">{t.desc}</p>
+                    {result && (
+                      <p className={`text-xs mt-0.5 ${result.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {result.msg}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  <button
+                    onClick={() => downloadTemplate(key)}
+                    className="text-xs font-medium text-indigo-600 active:text-indigo-800 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
+                  >
+                    Template
+                  </button>
+                  <button
+                    onClick={() => fileRefs[key].current?.click()}
+                    disabled={uploading === key}
+                    className="text-xs font-medium bg-gradient-to-b from-indigo-500 to-indigo-600 text-white px-3.5 py-1.5 rounded-xl active:from-indigo-600 active:to-indigo-700 disabled:opacity-50 shadow-sm transition-all"
+                  >
+                    {uploading === key ? '...' : 'Upload'}
+                  </button>
+                  <input
+                    ref={fileRefs[key]}
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(key, file);
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0 ml-3">
-                <button
-                  onClick={() => downloadTemplate(key)}
-                  className="text-xs text-indigo-600 active:text-indigo-800 px-2 py-1.5"
-                >
-                  Template
-                </button>
-                <button
-                  onClick={() => fileRefs[key].current?.click()}
-                  disabled={uploading === key}
-                  className="text-xs bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-3 py-1.5 rounded-xl active:from-indigo-700 active:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
-                >
-                  {uploading === key ? '...' : 'Upload'}
-                </button>
-                <input
-                  ref={fileRefs[key]}
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) handleUpload(key, file);
-                    e.target.value = '';
-                  }}
-                />
-              </div>
-            </div>
+            </SettingsRow>
           );
         })}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -199,6 +225,7 @@ interface TierInfo {
   limits: Record<string, any>;
 }
 
+/* ───────── Privacy & Data section ───────── */
 function PrivacySection() {
   const [exporting, setExporting] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
@@ -261,86 +288,100 @@ function PrivacySection() {
 
   return (
     <>
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-      <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-        <Shield className="w-4 h-4 text-indigo-600" />
-        Privacy & Data
-      </h2>
-      <p className="text-xs text-gray-500 mb-4">
-        Export or delete all your data. These actions comply with GDPR data portability and right-to-erasure requirements.
-      </p>
-
-      <div className="flex items-center justify-between py-2">
-        <div>
-          <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
-            <Download className="w-3.5 h-3.5 text-gray-400" />
-            Export My Data
-          </p>
-          <p className="text-xs text-gray-400">Download all your data as a JSON file</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
-          >
-            {exporting ? 'Exporting...' : 'Export'}
-          </button>
-          <button
-            onClick={handleExportCsv}
-            disabled={exportingCsv}
-            className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm transition-all"
-          >
-            {exportingCsv ? 'Exporting...' : 'Export as Spreadsheet'}
-          </button>
-        </div>
+      <SectionHeader icon={Shield} label="Data & Privacy" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        {/* Export JSON row */}
+        <SettingsRow>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <Download className="w-4 h-4 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">Export as JSON</p>
+                <p className="text-xs text-slate-400">All your data in one file</p>
+              </div>
+            </div>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="text-sm font-medium text-indigo-600 active:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 disabled:opacity-50 transition-colors"
+            >
+              {exporting ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
+        </SettingsRow>
+        {/* Export CSV row */}
+        <SettingsRow last>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">Export as Spreadsheet</p>
+                <p className="text-xs text-slate-400">CSV format for Excel / Sheets</p>
+              </div>
+            </div>
+            <button
+              onClick={handleExportCsv}
+              disabled={exportingCsv}
+              className="text-sm font-medium text-indigo-600 active:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 disabled:opacity-50 transition-colors"
+            >
+              {exportingCsv ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
+        </SettingsRow>
       </div>
-    </div>
 
-    {/* Delete account - red-tinted card */}
-    <div className="bg-red-50/50 rounded-2xl shadow-sm border border-red-200/60 p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-red-600 flex items-center gap-1.5">
-            <Trash2 className="w-4 h-4" />
-            Delete My Account
-          </p>
-          <p className="text-xs text-red-400 mt-0.5">Permanently delete your account and all data. This cannot be undone.</p>
-        </div>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="text-sm bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-xl hover:from-red-600 hover:to-red-700 shadow-sm transition-all"
-        >
-          Delete
-        </button>
+      {/* Delete account — red-tinted separate card */}
+      <div className="mt-4 bg-red-50/50 rounded-2xl shadow-sm border border-red-200/40 overflow-hidden">
+        <SettingsRow last>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-100/80 flex items-center justify-center shrink-0">
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-red-600">Delete Account</p>
+                <p className="text-xs text-red-400">Permanently erase all data</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="text-sm font-medium bg-gradient-to-b from-red-500 to-red-600 text-white px-4 py-1.5 rounded-xl hover:from-red-600 hover:to-red-700 shadow-sm transition-all"
+            >
+              Delete
+            </button>
+          </div>
+        </SettingsRow>
       </div>
-    </div>
 
       {/* Delete confirmation modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm p-6 shadow-xl safe-area-bottom">
             <h3 className="text-lg font-semibold text-red-600 mb-2 flex items-center gap-2">
               <Trash2 className="w-5 h-5" />
               Delete Account
             </h3>
-            <p className="text-sm text-gray-600 mb-1">
+            <p className="text-sm text-slate-600 mb-1">
               This action is <strong>permanent and irreversible</strong>. All your data will be deleted immediately:
             </p>
-            <ul className="text-xs text-gray-500 list-disc ml-4 mb-4 space-y-0.5">
+            <ul className="text-xs text-slate-500 list-disc ml-4 mb-4 space-y-0.5">
               <li>Accounts and transactions</li>
               <li>Budgets and savings goals</li>
               <li>Chat history and AI insights</li>
               <li>All settings and preferences</li>
             </ul>
-            <label className="block text-sm text-gray-700 mb-1">Enter your password to confirm</label>
+            <label className="block text-sm text-slate-700 mb-1">Enter your password to confirm</label>
             <input
               type="password"
               value={deletePassword}
               onChange={e => setDeletePassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleDeleteAccount()}
               placeholder="Your password"
-              className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 mb-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+              className="w-full text-sm border border-slate-200 rounded-xl bg-slate-50 px-3 py-3 mb-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
               autoFocus
             />
             {deleteError && (
@@ -349,14 +390,14 @@ function PrivacySection() {
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => { setShowDeleteModal(false); setDeletePassword(''); setDeleteError(''); }}
-                className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5"
+                className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2.5 rounded-xl"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleting || !deletePassword}
-                className="text-sm bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-xl hover:from-red-600 hover:to-red-700 disabled:opacity-50 shadow-sm transition-all"
+                className="text-sm bg-gradient-to-b from-red-500 to-red-600 text-white px-5 py-2.5 rounded-xl hover:from-red-600 hover:to-red-700 disabled:opacity-50 shadow-sm transition-all"
               >
                 {deleting ? 'Deleting...' : 'Permanently Delete'}
               </button>
@@ -368,6 +409,9 @@ function PrivacySection() {
   );
 }
 
+/* ═══════════════════════════════════════════
+   Main Settings page
+   ═══════════════════════════════════════════ */
 export default function Settings() {
   const [data, setData] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -384,6 +428,7 @@ export default function Settings() {
   const [payNextDate, setPayNextDate] = useState('');
   const [savingPaycheck, setSavingPaycheck] = useState(false);
   const [tierInfo, setTierInfo] = useState<TierInfo | null>(null);
+  const [expandedAcct, setExpandedAcct] = useState<string | null>(null);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -464,59 +509,538 @@ export default function Settings() {
     } : null);
   }
 
-  if (loading) return <div className="text-gray-500 text-center py-12">Loading...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+    </div>
+  );
   if (!data) return null;
 
   const cashAccounts = data.accounts.filter(a => CASH_TYPES.includes(a.type));
   const debtAccounts = data.accounts.filter(a => isDebtType(a.type));
+  const freqLabel: Record<string, string> = { weekly: 'Weekly', biweekly: 'Every 2 weeks', twice_monthly: '1st & 15th', monthly: 'Monthly' };
+  const memberSince = data.user.created_at ? new Date(data.user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '';
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl shadow-sm px-5 py-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-          <SettingsIcon className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold text-white">Settings</h1>
-          <p className="text-xs text-white/60">Manage your account, paycheck, and preferences</p>
-        </div>
-      </div>
+    <div className="w-full max-w-2xl mx-auto space-y-6 pb-8">
 
-      {/* Account info + Tier */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-        <h2 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-          <User className="w-4 h-4 text-indigo-600" />
-          Account
-        </h2>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Email</span>
-            <span className="text-gray-900">{data.user.email}</span>
+      {/* ────────── PROFILE CARD ────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-800 px-5 py-6 flex items-center gap-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/[0.03] rounded-full -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/[0.03] rounded-full translate-y-1/2 -translate-x-1/3" />
+          {/* Avatar */}
+          <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+            <span className="text-xl font-bold text-white">{data.user.email?.[0]?.toUpperCase() || 'U'}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Plan</span>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                tierInfo?.tier === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
+          <div className="relative flex-1 min-w-0">
+            <p className="text-base font-semibold text-white truncate">{data.user.email}</p>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                tierInfo?.tier === 'pro'
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-amber-900'
+                  : 'bg-white/15 text-white/80'
               }`}>
                 {tierInfo?.tier === 'pro' ? 'Pro' : 'Free'}
               </span>
-              {tierInfo?.tier !== 'pro' ? (
-                <button onClick={handleUpgrade} className="text-xs text-indigo-600 font-medium">
-                  Upgrade to Pro
-                </button>
-              ) : (
-                <button onClick={handleDowngrade} className="text-xs text-gray-400">
-                  Downgrade
-                </button>
+              {memberSince && (
+                <span className="text-[11px] text-white/40">Member since {memberSince}</span>
               )}
             </div>
+            {tierInfo?.tier !== 'pro' && (
+              <button onClick={handleUpgrade} className="text-xs text-indigo-300 hover:text-indigo-200 mt-1.5 font-medium transition-colors">
+                Upgrade to Pro &rarr;
+              </button>
+            )}
+            {tierInfo?.tier === 'pro' && (
+              <button onClick={handleDowngrade} className="text-xs text-white/30 hover:text-white/50 mt-1.5 transition-colors">
+                Downgrade
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Tier comparison */}
-        {tierInfo?.tier !== 'pro' && (
-          <div className="mt-4 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/20 relative overflow-hidden">
+      {/* ────────── PAYCHECK / INCOME ────────── */}
+      <SectionHeader icon={DollarSign} label="Income" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        {editingPaycheck ? (
+          <div className="p-4 space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Pay frequency</label>
+              <select
+                value={payFreq}
+                onChange={e => setPayFreq(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded-xl bg-slate-50 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+              >
+                <option value="">Select...</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
+                <option value="twice_monthly">Twice a month (1st & 15th)</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Take-home pay (per paycheck)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-3 text-sm text-slate-400">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={payAmount}
+                  onChange={e => setPayAmount(e.target.value)}
+                  className="w-full text-sm border border-slate-200 rounded-xl bg-slate-50 pl-7 pr-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Next payday</label>
+              <input
+                type="date"
+                value={payNextDate}
+                onChange={e => setPayNextDate(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded-xl bg-slate-50 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+              />
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                onClick={() => setEditingPaycheck(false)}
+                className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2.5 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={savePaycheck}
+                disabled={savingPaycheck || !payFreq || !payAmount || !payNextDate}
+                className="text-sm bg-gradient-to-b from-indigo-500 to-indigo-600 text-white px-5 py-2.5 rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-500/25 transition-all"
+              >
+                {savingPaycheck ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Frequency row */}
+            <SettingsRow>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                    <Repeat className="w-4 h-4 text-indigo-500" />
+                  </div>
+                  <span className="text-sm text-slate-500">Pay frequency</span>
+                </div>
+                <button onClick={startEditPaycheck} className="text-sm font-medium text-slate-900 hover:text-indigo-600 transition-colors">
+                  {freqLabel[data.user.pay_frequency] || data.user.pay_frequency?.replace('_', ' ') || 'Not set'}
+                </button>
+              </div>
+            </SettingsRow>
+            {/* Amount row */}
+            <SettingsRow>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                    <Wallet className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <span className="text-sm text-slate-500">Take-home pay</span>
+                </div>
+                <button onClick={startEditPaycheck} className="text-sm font-semibold text-slate-900 hover:text-indigo-600 transition-colors">
+                  {data.user.take_home_pay ? `$${data.user.take_home_pay.toLocaleString()}` : 'Not set'}
+                </button>
+              </div>
+            </SettingsRow>
+            {/* Next payday row */}
+            <SettingsRow last>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <Calendar className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <span className="text-sm text-slate-500">Next payday</span>
+                </div>
+                <button onClick={startEditPaycheck} className="text-sm font-medium text-slate-900 hover:text-indigo-600 transition-colors">
+                  {data.user.next_payday ? new Date(data.user.next_payday + 'T00:00:00').toLocaleDateString() : 'Not set'}
+                </button>
+              </div>
+            </SettingsRow>
+          </>
+        )}
+      </div>
+
+      {/* ────────── ACCOUNTS ────────── */}
+      <SectionHeader icon={Landmark} label="Accounts" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        {/* Cash sub-header */}
+        {cashAccounts.length > 0 && (
+          <>
+            <div className="px-4 pt-3 pb-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <PiggyBank className="w-3 h-3" /> Cash
+              </p>
+            </div>
+            {cashAccounts.map((acct, i) => (
+              <div key={acct.id}>
+                <SettingsRow last={i === cashAccounts.length - 1 && debtAccounts.length === 0}>
+                  {/* Main row: tap to expand */}
+                  <div
+                    className="flex items-center justify-between cursor-pointer -mx-4 -my-3.5 px-4 py-3.5 active:bg-slate-50 transition-colors"
+                    onClick={() => setExpandedAcct(expandedAcct === acct.id ? null : acct.id)}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                        <AccountTypeIcon type={acct.type} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{acct.name}</p>
+                        <p className="text-xs text-slate-400">{ACCOUNT_TYPES[acct.type] || acct.type}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {editingBalance === acct.id ? (
+                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                          <span className="text-sm text-slate-400">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editBalance}
+                            onChange={e => setEditBalance(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && saveBalance(acct.id)}
+                            className="w-24 text-sm border border-slate-200 rounded-xl bg-slate-50 px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
+                            autoFocus
+                          />
+                          <button onClick={() => saveBalance(acct.id)} className="text-xs font-medium text-indigo-600">Save</button>
+                          <button onClick={() => setEditingBalance(null)} className="text-xs text-slate-400">Cancel</button>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-semibold text-slate-900 tabular-nums">
+                          ${(acct.current_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      )}
+                      <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform ${expandedAcct === acct.id ? 'rotate-180' : ''}`} />
+                    </div>
+                  </div>
+
+                  {/* Expanded detail */}
+                  {expandedAcct === acct.id && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Purpose</span>
+                        <select
+                          value={acct.purpose || 'general'}
+                          onChange={e => updateAccountField(acct.id, 'purpose', e.target.value)}
+                          className="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
+                        >
+                          {Object.entries(PURPOSE_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Per paycheck</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-400">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="--"
+                            value={acct.income_allocation || ''}
+                            onChange={e => updateAccountField(acct.id, 'income_allocation', e.target.value || null)}
+                            className="w-20 text-xs border border-slate-200 rounded-lg bg-slate-50 px-2 py-1 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Balance</span>
+                        <button
+                          onClick={() => { setEditingBalance(acct.id); setEditBalance(String(acct.current_balance || 0)); }}
+                          className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                        >
+                          Edit balance
+                        </button>
+                      </div>
+                      <div className="pt-1">
+                        <button onClick={() => removeAccount(acct.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                          Remove account
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </SettingsRow>
+                {/* Divider between cash and debt if needed */}
+                {i === cashAccounts.length - 1 && debtAccounts.length > 0 && (
+                  <div className="border-b border-slate-100" />
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Debt sub-header */}
+        {debtAccounts.length > 0 && (
+          <>
+            <div className="px-4 pt-3 pb-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <CreditCard className="w-3 h-3" /> Debt
+              </p>
+            </div>
+            {/* APR warning */}
+            {debtAccounts.some(a => !a.interest_rate) && (
+              <div className="mx-4 mb-2 bg-amber-50 border border-amber-200/60 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Some accounts use estimated APRs
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Enter your real APR for accurate payoff calculations. Check your latest statement.
+                </p>
+              </div>
+            )}
+            {debtAccounts.map((acct, i) => (
+              <SettingsRow key={acct.id} last={i === debtAccounts.length - 1}>
+                {/* Main row */}
+                <div
+                  className="flex items-center justify-between cursor-pointer -mx-4 -my-3.5 px-4 py-3.5 active:bg-slate-50 transition-colors"
+                  onClick={() => setExpandedAcct(expandedAcct === acct.id ? null : acct.id)}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                      <AccountTypeIcon type={acct.type} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{acct.name}</p>
+                      <p className="text-xs text-slate-400">{ACCOUNT_TYPES[acct.type] || acct.type}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {editingBalance === acct.id ? (
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        <span className="text-sm text-slate-400">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editBalance}
+                          onChange={e => setEditBalance(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && saveBalance(acct.id)}
+                          className="w-24 text-sm border border-slate-200 rounded-xl bg-slate-50 px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
+                          autoFocus
+                        />
+                        <button onClick={() => saveBalance(acct.id)} className="text-xs font-medium text-indigo-600">Save</button>
+                        <button onClick={() => setEditingBalance(null)} className="text-xs text-slate-400">Cancel</button>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-semibold text-red-600 tabular-nums">
+                        ${(acct.current_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    )}
+                    <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform ${expandedAcct === acct.id ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {expandedAcct === acct.id && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">APR</span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder={`~${DEFAULT_RATES[acct.type] || 22}`}
+                          value={acct.interest_rate || ''}
+                          onChange={e => updateAccountField(acct.id, 'interest_rate', e.target.value || null)}
+                          className="w-16 text-xs border border-slate-200 rounded-lg bg-slate-50 px-2 py-1 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-right"
+                        />
+                        <span className="text-xs text-slate-400">%</span>
+                        {!acct.interest_rate && (
+                          <span className="text-amber-500 text-xs ml-1" title={RATE_HELP[acct.type]}>est.</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Min payment</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-400">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="--"
+                          value={acct.minimum_payment || ''}
+                          onChange={e => updateAccountField(acct.id, 'minimum_payment', e.target.value || null)}
+                          className="w-20 text-xs border border-slate-200 rounded-lg bg-slate-50 px-2 py-1 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-right"
+                        />
+                        {!acct.minimum_payment && (
+                          <span className="text-amber-500 text-xs" title="Estimated as 2% of balance">est.</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Balance</span>
+                      <button
+                        onClick={() => { setEditingBalance(acct.id); setEditBalance(String(acct.current_balance || 0)); }}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                      >
+                        Edit balance
+                      </button>
+                    </div>
+                    <div className="pt-1">
+                      <button onClick={() => removeAccount(acct.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                        Remove account
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </SettingsRow>
+            ))}
+          </>
+        )}
+
+        {data.accounts.length === 0 && (
+          <div className="px-4 py-8 text-center">
+            <Landmark className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">No accounts yet</p>
+            <p className="text-xs text-slate-400 mt-0.5">Add one to get started</p>
+          </div>
+        )}
+
+        {/* Add account button / slide-down panel */}
+        {showAddAccount ? (
+          <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">New Account</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <input
+                type="text"
+                placeholder="Name (e.g. Chase Visa)"
+                value={newAccount.name}
+                onChange={e => setNewAccount({ ...newAccount, name: e.target.value })}
+                className="sm:col-span-2 text-sm border border-slate-200 rounded-xl bg-white px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              />
+              <select
+                value={newAccount.type}
+                onChange={e => {
+                  const t = e.target.value;
+                  const rate = DEFAULT_RATES[t];
+                  setNewAccount({ ...newAccount, type: t, interest_rate: rate ? String(rate) : '' });
+                }}
+                className="text-sm border border-slate-200 rounded-xl bg-white px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              >
+                <optgroup label="Cash">
+                  <option value="checking">Checking</option>
+                  <option value="savings">Savings</option>
+                </optgroup>
+                <optgroup label="Debt">
+                  <option value="credit">Credit Card</option>
+                  <option value="mortgage">Mortgage</option>
+                  <option value="auto_loan">Auto Loan</option>
+                  <option value="student_loan">Student Loan</option>
+                  <option value="personal_loan">Personal Loan</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="number"
+                step="0.01"
+                placeholder={isDebtType(newAccount.type) ? 'Amount owed' : 'Current balance'}
+                value={newAccount.balance}
+                onChange={e => setNewAccount({ ...newAccount, balance: e.target.value })}
+                className="text-sm border border-slate-200 rounded-xl bg-white px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              />
+              {!isDebtType(newAccount.type) ? (
+                <select
+                  value={newAccount.purpose}
+                  onChange={e => setNewAccount({ ...newAccount, purpose: e.target.value })}
+                  className="text-sm border border-slate-200 rounded-xl bg-white px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                >
+                  {Object.entries(PURPOSE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder={`Rate % (avg ~${DEFAULT_RATES[newAccount.type] || 22}%)`}
+                  value={newAccount.interest_rate}
+                  onChange={e => setNewAccount({ ...newAccount, interest_rate: e.target.value })}
+                  className="text-sm border border-slate-200 rounded-xl bg-white px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              )}
+            </div>
+
+            {isDebtType(newAccount.type) && (
+              <div className="space-y-1">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Monthly minimum payment"
+                  value={newAccount.minimum_payment}
+                  onChange={e => setNewAccount({ ...newAccount, minimum_payment: e.target.value })}
+                  className="w-full text-sm border border-slate-200 rounded-xl bg-white px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+                <p className="text-xs text-slate-400 px-1">
+                  Don't know your rate? We'll estimate ~{DEFAULT_RATES[newAccount.type] || 22}%. {RATE_HELP[newAccount.type] || ''}
+                </p>
+              </div>
+            )}
+
+            {CASH_TYPES.includes(newAccount.type) && (
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="How much of each paycheck goes here? (optional)"
+                  value={newAccount.income_allocation}
+                  onChange={e => setNewAccount({ ...newAccount, income_allocation: e.target.value })}
+                  className="w-full text-sm border border-slate-200 rounded-xl bg-white px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+                <p className="text-xs text-slate-400 mt-1 px-1">e.g. $935 if you send $935 from each paycheck to this account</p>
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end pt-1">
+              <button onClick={() => setShowAddAccount(false)} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2.5 rounded-xl">
+                Cancel
+              </button>
+              <button onClick={addAccount} className="text-sm bg-gradient-to-b from-indigo-500 to-indigo-600 text-white px-5 py-2.5 rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all">
+                Add Account
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="border-t border-dashed border-slate-200">
+            <button
+              onClick={() => setShowAddAccount(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50/50 active:bg-indigo-50 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Account
+            </button>
+          </div>
+        )}
+
+        {/* CSV upload link */}
+        {!showAddAccount && (
+          <div className="border-t border-slate-100">
+            <button
+              onClick={() => navigate('/csv-upload')}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs text-slate-400 hover:text-indigo-600 hover:bg-slate-50/50 transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Or upload accounts via CSV
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ────────── IMPORT DATA ────────── */}
+      <ImportData />
+
+      {/* ────────── PRO UPGRADE (free tier only) ────────── */}
+      {tierInfo?.tier !== 'pro' && (
+        <>
+          <SectionHeader icon={Crown} label="Go Pro" />
+          <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/20 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
             <div className="relative">
@@ -535,451 +1059,45 @@ export default function Settings() {
               </ul>
               <button
                 onClick={handleUpgrade}
-                className="w-full bg-white text-indigo-700 text-sm py-2.5 rounded-xl font-semibold hover:bg-indigo-50 shadow-sm transition-all"
+                className="w-full bg-white text-indigo-700 text-sm py-3 rounded-xl font-semibold hover:bg-indigo-50 shadow-sm transition-all"
               >
                 Upgrade to Pro
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* Paycheck info */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium text-gray-900 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-indigo-600" />
-            Paycheck
-          </h2>
-          {!editingPaycheck && (
-            <button onClick={startEditPaycheck} className="text-sm text-indigo-600 hover:text-indigo-700">
-              Edit
-            </button>
-          )}
-        </div>
-
-        {editingPaycheck ? (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Pay frequency</label>
-              <select
-                value={payFreq}
-                onChange={e => setPayFreq(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-              >
-                <option value="">Select...</option>
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Every 2 weeks</option>
-                <option value="twice_monthly">Twice a month (1st & 15th)</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Take-home pay (per paycheck)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-sm text-gray-400">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={payAmount}
-                  onChange={e => setPayAmount(e.target.value)}
-                  className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 pl-7 pr-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Next payday</label>
-              <input
-                type="date"
-                value={payNextDate}
-                onChange={e => setPayNextDate(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-              />
-            </div>
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                onClick={() => setEditingPaycheck(false)}
-                className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={savePaycheck}
-                disabled={savingPaycheck || !payFreq || !payAmount || !payNextDate}
-                className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-lg shadow-indigo-500/25 transition-all"
-              >
-                {savingPaycheck ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Frequency</span>
-              <span className="text-gray-900 capitalize">{data.user.pay_frequency?.replace('_', ' ') || 'Not set'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Next payday</span>
-              <span className="text-gray-900">
-                {data.user.next_payday ? new Date(data.user.next_payday + 'T00:00:00').toLocaleDateString() : 'Not set'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Take-home</span>
-              <span className="text-gray-900">
-                {data.user.take_home_pay ? `$${data.user.take_home_pay.toLocaleString()}` : 'Not set'}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Accounts & Debts */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="font-medium text-gray-900 flex items-center gap-2">
-              <Landmark className="w-4 h-4 text-indigo-600" />
-              Your Accounts & Debts
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">Add all your accounts — checking, savings, credit cards, loans, mortgage</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => navigate('/csv-upload')} className="text-sm text-indigo-600 hover:text-indigo-700">
-              Upload CSV
-            </button>
-            <button onClick={() => setShowAddAccount(true)} className="text-sm text-indigo-600 hover:text-indigo-700">
-              + Add
-            </button>
-          </div>
-        </div>
-
-        {/* Add account form */}
-        {showAddAccount && (
-          <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              <input
-                type="text"
-                placeholder="Name (e.g. Chase Visa, Car Loan)"
-                value={newAccount.name}
-                onChange={e => setNewAccount({ ...newAccount, name: e.target.value })}
-                className="col-span-2 text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-              />
-              <select
-                value={newAccount.type}
-                onChange={e => {
-                  const t = e.target.value;
-                  const rate = DEFAULT_RATES[t];
-                  setNewAccount({ ...newAccount, type: t, interest_rate: rate ? String(rate) : '' });
-                }}
-                className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-              >
-                <optgroup label="Cash">
-                  <option value="checking">Checking</option>
-                  <option value="savings">Savings</option>
-                </optgroup>
-                <optgroup label="Debt">
-                  <option value="credit">Credit Card</option>
-                  <option value="mortgage">Mortgage</option>
-                  <option value="auto_loan">Auto Loan</option>
-                  <option value="student_loan">Student Loan</option>
-                  <option value="personal_loan">Personal Loan</option>
-                </optgroup>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                type="number"
-                step="0.01"
-                placeholder={isDebtType(newAccount.type) ? 'Amount owed' : 'Current balance'}
-                value={newAccount.balance}
-                onChange={e => setNewAccount({ ...newAccount, balance: e.target.value })}
-                className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-              />
-              {!isDebtType(newAccount.type) ? (
-                <select
-                  value={newAccount.purpose}
-                  onChange={e => setNewAccount({ ...newAccount, purpose: e.target.value })}
-                  className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-                >
-                  {Object.entries(PURPOSE_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder={`Rate % (avg ~${DEFAULT_RATES[newAccount.type] || 22}%)`}
-                  value={newAccount.interest_rate}
-                  onChange={e => setNewAccount({ ...newAccount, interest_rate: e.target.value })}
-                  className="text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-                />
-              )}
-            </div>
-
-            {/* Debt minimum payment + helper */}
-            {isDebtType(newAccount.type) && (
-              <div className="space-y-1">
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Monthly minimum payment"
-                  value={newAccount.minimum_payment}
-                  onChange={e => setNewAccount({ ...newAccount, minimum_payment: e.target.value })}
-                  className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-                />
-                <p className="text-xs text-gray-400">
-                  Don't know your rate? We'll estimate ~{DEFAULT_RATES[newAccount.type] || 22}%. {RATE_HELP[newAccount.type] || ''}
-                </p>
-              </div>
-            )}
-
-            {/* Income allocation for cash accounts */}
-            {CASH_TYPES.includes(newAccount.type) && (
-              <div>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="How much of each paycheck goes here? (optional)"
-                  value={newAccount.income_allocation}
-                  onChange={e => setNewAccount({ ...newAccount, income_allocation: e.target.value })}
-                  className="w-full text-sm border border-gray-200 rounded-xl bg-gray-50 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-                />
-                <p className="text-xs text-gray-400 mt-1">e.g. $935 if you send $935 from each paycheck to this account</p>
-              </div>
-            )}
-
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowAddAccount(false)} className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1">
-                Cancel
-              </button>
-              <button onClick={addAccount} className="text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-500/25 transition-all">
-                Add
-              </button>
-            </div>
-          </div>
-        )}
-
-        {data.accounts.length === 0 && (
-          <p className="text-sm text-gray-500">No accounts yet. Add one to get started.</p>
-        )}
-
-        {/* Cash accounts */}
-        {cashAccounts.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-              <PiggyBank className="w-3.5 h-3.5" />
-              Cash Accounts
-            </h3>
-            <div className="space-y-3">
-              {cashAccounts.map(acct => (
-                <div key={acct.id} className="border border-slate-100 rounded-xl p-3 hover:border-slate-200 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
-                        <AccountTypeIcon type={acct.type} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{acct.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-gray-500">{ACCOUNT_TYPES[acct.type] || acct.type}</span>
-                        <select
-                          value={acct.purpose || 'general'}
-                          onChange={e => updateAccountField(acct.id, 'purpose', e.target.value)}
-                          className="text-xs border border-gray-200 rounded-lg px-1.5 py-0.5 text-gray-600 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-                        >
-                          {Object.entries(PURPOSE_LABELS).map(([val, label]) => (
-                            <option key={val} value={val}>{label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {editingBalance === acct.id ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-gray-400">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editBalance}
-                            onChange={e => setEditBalance(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && saveBalance(acct.id)}
-                            className="w-28 text-sm border border-gray-200 rounded-xl bg-gray-50 px-2 py-1 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-                            autoFocus
-                          />
-                          <button onClick={() => saveBalance(acct.id)} className="text-xs text-indigo-600">Save</button>
-                          <button onClick={() => setEditingBalance(null)} className="text-xs text-gray-400">Cancel</button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { setEditingBalance(acct.id); setEditBalance(String(acct.current_balance || 0)); }}
-                          className="text-sm font-medium text-gray-900 hover:text-indigo-600"
-                          title="Click to edit balance"
-                        >
-                          ${(acct.current_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </button>
-                      )}
-                      <button onClick={() => removeAccount(acct.id)} className="text-xs text-red-500 hover:text-red-700">
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-2 ml-12 flex items-center gap-2 text-xs">
-                    <span className="text-gray-500">Per paycheck:</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="—"
-                      value={acct.income_allocation || ''}
-                      onChange={e => updateAccountField(acct.id, 'income_allocation', e.target.value || null)}
-                      className="w-24 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Debt accounts */}
-        {debtAccounts.length > 0 && (
-          <div>
-            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5" />
-              Debts
-            </h3>
-            {/* APR warning banner */}
-            {debtAccounts.some(a => !a.interest_rate) && (
-              <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-3 mb-3">
-                <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  Some accounts are using estimated APRs
-                </p>
-                <p className="text-xs text-amber-700 mt-0.5">
-                  Accounts marked "est." use national averages, which may be off by 5-10%. Enter your real APR for accurate debt payoff calculations.
-                  Check your latest statement or log into your lender's website.
-                </p>
-              </div>
-            )}
-            <div className="space-y-3">
-              {debtAccounts.map(acct => (
-                <div key={acct.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30 hover:border-red-200 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-                        <AccountTypeIcon type={acct.type} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{acct.name}</p>
-                        <span className="text-xs text-gray-500">{ACCOUNT_TYPES[acct.type] || acct.type}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {editingBalance === acct.id ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-gray-400">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editBalance}
-                            onChange={e => setEditBalance(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && saveBalance(acct.id)}
-                            className="w-28 text-sm border border-gray-200 rounded-xl bg-gray-50 px-2 py-1 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-                            autoFocus
-                          />
-                          <button onClick={() => saveBalance(acct.id)} className="text-xs text-indigo-600">Save</button>
-                          <button onClick={() => setEditingBalance(null)} className="text-xs text-gray-400">Cancel</button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { setEditingBalance(acct.id); setEditBalance(String(acct.current_balance || 0)); }}
-                          className="text-sm font-semibold text-red-600 hover:text-red-700"
-                          title="Click to edit balance owed"
-                        >
-                          ${(acct.current_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </button>
-                      )}
-                      <button onClick={() => removeAccount(acct.id)} className="text-xs text-red-500 hover:text-red-700">
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-2 ml-12 flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-500">APR:</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder={`~${DEFAULT_RATES[acct.type] || 22}`}
-                        value={acct.interest_rate || ''}
-                        onChange={e => updateAccountField(acct.id, 'interest_rate', e.target.value || null)}
-                        className="w-16 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-                      />
-                      <span className="text-gray-400">%</span>
-                      {!acct.interest_rate && (
-                        <span className="text-amber-500 ml-1" title={RATE_HELP[acct.type]}>est.</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-500">Min payment:</span>
-                      <span className="text-gray-400">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="—"
-                        value={acct.minimum_payment || ''}
-                        onChange={e => updateAccountField(acct.id, 'minimum_payment', e.target.value || null)}
-                        className="w-20 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-                      />
-                      {!acct.minimum_payment && (
-                        <span className="text-amber-500" title="Estimated as 2% of balance">est.</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Import Data */}
-      <ImportData />
-
-      {/* Family */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+      {/* ────────── FAMILY ────────── */}
+      <SectionHeader icon={Users} label="Family" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <SettingsRow last>
+          <a href="/family" className="flex items-center justify-between -mx-4 -my-3.5 px-4 py-3.5 active:bg-slate-50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
                 <Users className="w-4 h-4 text-violet-600" />
               </div>
-              Family Plan
-            </h2>
-            <p className="text-xs text-gray-500 mt-1">Manage your family and invite members to share finances together.</p>
-          </div>
-          <a href="/family" className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:from-indigo-700 hover:to-violet-700 shadow-sm transition-all">
-            Manage Family
-            <ChevronRight className="w-4 h-4" />
+              <div>
+                <p className="text-sm font-medium text-slate-900">Manage Family</p>
+                <p className="text-xs text-slate-400">Invite members to share finances</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
           </a>
-        </div>
+        </SettingsRow>
       </div>
 
-      {/* Privacy & Data */}
+      {/* ────────── DATA & PRIVACY ────────── */}
       <PrivacySection />
 
-      {/* Actions */}
-      <div className="space-y-2">
+      {/* ────────── LOGOUT ────────── */}
+      <div className="pt-2 pb-4">
         <button
           onClick={logout}
-          className="w-full bg-white border border-slate-200/60 rounded-2xl shadow-sm py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all flex items-center justify-center gap-2"
+          className="w-full bg-white border border-slate-200/60 rounded-2xl shadow-sm py-3.5 text-sm font-medium text-red-500 hover:bg-red-50 active:bg-red-100 transition-all flex items-center justify-center gap-2"
         >
           <LogOut className="w-4 h-4" />
-          Log out
+          Log Out
         </button>
       </div>
     </div>
