@@ -19,10 +19,27 @@ function loadCerts(): { cert: Buffer; key: Buffer } {
   if (cert && key) return { cert, key };
 
   if (env.TELLER_CERTIFICATE && env.TELLER_PRIVATE_KEY) {
-    // Load from env vars (replace literal \n with actual newlines)
-    cert = Buffer.from(env.TELLER_CERTIFICATE.replace(/\\n/g, '\n'));
-    key = Buffer.from(env.TELLER_PRIVATE_KEY.replace(/\\n/g, '\n'));
+    // Normalize PEM content from env vars:
+    // - Replace literal "\n" strings with actual newlines
+    // - Handle base64-encoded PEM (Railway sometimes base64-encodes multiline values)
+    function normalizePem(raw: string): string {
+      // If it looks base64-encoded (no BEGIN marker), try decoding
+      if (!raw.includes('-----BEGIN') && raw.length > 100) {
+        try {
+          const decoded = Buffer.from(raw, 'base64').toString('utf-8');
+          if (decoded.includes('-----BEGIN')) return decoded;
+        } catch {}
+      }
+      // Replace literal \n with real newlines
+      return raw.replace(/\\n/g, '\n');
+    }
+    const certStr = normalizePem(env.TELLER_CERTIFICATE);
+    const keyStr = normalizePem(env.TELLER_PRIVATE_KEY);
+    cert = Buffer.from(certStr);
+    key = Buffer.from(keyStr);
     console.log('Teller certs loaded from environment variables');
+    console.log('Cert starts with:', certStr.substring(0, 30));
+    console.log('Key starts with:', keyStr.substring(0, 30));
   } else {
     const certsDir = env.TELLER_CERT_PATH || path.resolve(__dirname, '../../certs');
     try {
