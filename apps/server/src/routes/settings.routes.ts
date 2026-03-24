@@ -95,6 +95,7 @@ router.patch('/accounts/:id', authenticate, (req: AuthRequest, res: Response) =>
 
 router.delete('/accounts/:id', authenticate, (req: AuthRequest, res: Response) => {
   // Delete account and its transactions
+  db.prepare('DELETE FROM transactions WHERE account_id = ? AND user_id = ?').run(req.params.id, req.userId);
   const result = db.prepare(
     'DELETE FROM accounts WHERE id = ? AND user_id = ?'
   ).run(req.params.id, req.userId);
@@ -104,6 +105,21 @@ router.delete('/accounts/:id', authenticate, (req: AuthRequest, res: Response) =
     return;
   }
   res.json({ success: true });
+});
+
+// Disconnect bank: remove all Teller-linked accounts, their transactions, and clear the access token
+router.delete('/bank', authenticate, (req: AuthRequest, res: Response) => {
+  const tellerAccounts = db.prepare(
+    'SELECT id FROM accounts WHERE user_id = ? AND teller_account_id IS NOT NULL'
+  ).all(req.userId) as any[];
+
+  for (const acct of tellerAccounts) {
+    db.prepare('DELETE FROM transactions WHERE account_id = ? AND user_id = ?').run(acct.id, req.userId);
+  }
+  db.prepare('DELETE FROM accounts WHERE user_id = ? AND teller_account_id IS NOT NULL').run(req.userId);
+  db.prepare('UPDATE users SET teller_access_token = NULL WHERE id = ?').run(req.userId);
+
+  res.json({ success: true, removed: tellerAccounts.length });
 });
 
 // --- GDPR: Export all user data ---

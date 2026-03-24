@@ -4,6 +4,7 @@ import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import useTrack from '../hooks/useTrack';
+import TellerConnectButton from '../components/TellerConnect';
 
 interface Account {
   id: string;
@@ -473,6 +474,17 @@ export default function Settings() {
       setSyncMsg(err.response?.data?.message || 'Sync failed');
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function disconnectBank() {
+    if (!confirm('This will remove all bank-linked accounts and their transactions. You can reconnect anytime.')) return;
+    try {
+      await api.delete('/settings/bank');
+      const r = await api.get('/settings');
+      setData(r.data);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to disconnect');
     }
   }
 
@@ -1046,16 +1058,35 @@ export default function Settings() {
         {!showAddAccount && (
           <>
             {data?.accounts.some(a => a.teller_account_id) && (
-              <div className="border-t border-slate-100">
-                <button
-                  onClick={syncBank}
-                  disabled={syncing}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                  {syncing ? 'Syncing...' : 'Sync Bank Accounts'}
-                  {syncMsg && <span className="text-xs text-slate-500 ml-2">{syncMsg}</span>}
-                </button>
+              <>
+                <div className="border-t border-slate-100">
+                  <button
+                    onClick={syncBank}
+                    disabled={syncing}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                    {syncing ? 'Syncing...' : 'Sync Bank Accounts'}
+                    {syncMsg && <span className="text-xs text-slate-500 ml-2">{syncMsg}</span>}
+                  </button>
+                </div>
+                <div className="border-t border-slate-100">
+                  <button
+                    onClick={disconnectBank}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs text-red-400 hover:text-red-600 hover:bg-red-50/50 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Disconnect Bank & Remove Linked Accounts
+                  </button>
+                </div>
+              </>
+            )}
+            {!data?.accounts.some(a => a.teller_account_id) && (
+              <div className="border-t border-slate-100 px-4 py-3.5 flex justify-center">
+                <TellerConnectButton onSuccess={async () => {
+                  const r = await api.get('/settings');
+                  setData(r.data);
+                }} />
               </div>
             )}
             <div className="border-t border-slate-100">
