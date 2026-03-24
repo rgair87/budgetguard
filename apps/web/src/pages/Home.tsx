@@ -6,6 +6,7 @@ import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
 import InfoTip from '../components/InfoTip';
 import { SkeletonDashboard } from '../components/Skeleton';
+import TellerConnectButton from '../components/TellerConnect';
 import useTrack from '../hooks/useTrack';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@runway/shared';
 
@@ -370,16 +371,20 @@ export default function Home() {
             <p className="text-sm text-indigo-100">Add your accounts so Runway can calculate your financial runway</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Link to="/settings" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 text-center card-hover group">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mx-auto mb-3 group-hover:scale-105 transition-transform">
+            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 text-center flex flex-col items-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mx-auto mb-3">
                 <Landmark className="w-6 h-6 text-white" />
               </div>
               <p className="text-sm font-semibold text-slate-800 mb-0.5">Connect Bank</p>
-              <p className="text-xs text-slate-400">Securely link via Teller</p>
-              <div className="flex items-center justify-center gap-1 mt-2 text-xs text-indigo-500 font-medium">
-                Get started <ArrowRight className="w-3 h-3" />
-              </div>
-            </Link>
+              <p className="text-xs text-slate-400 mb-3">Securely link via Teller</p>
+              <TellerConnectButton
+                onSuccess={() => window.location.reload()}
+                className="inline-flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-sm hover:from-indigo-700 hover:to-indigo-800 transition"
+              />
+              <Link to="/settings" className="text-[11px] text-slate-400 hover:text-indigo-500 mt-2 transition-colors">
+                or add manually
+              </Link>
+            </div>
             <Link to="/csv-upload" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 text-center card-hover group">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-3 group-hover:scale-105 transition-transform">
                 <Upload className="w-6 h-6 text-white" />
