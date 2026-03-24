@@ -6,7 +6,7 @@
     "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:web\"",
     "dev:server": "pnpm --filter @runway/server dev",
     "dev:web": "pnpm --filter @runway/web dev",
-    "build": "pnpm --filter @runway/shared build && pnpm --filter @runway/server build && pnpm --filter @runway/web build",
+    "build": "pnpm --filter @runway/shared build && pnpm --filter @runway/web build",
     "db:init": "pnpm --filter @runway/server db:init",
     "db:seed": "pnpm --filter @runway/server db:seed"
   },
