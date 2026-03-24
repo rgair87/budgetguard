@@ -16,7 +16,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 
-/* Tiny info tooltip — tap/hover to see explanation */
+/* Tiny info tooltip - tap/hover to see explanation */
 function InfoTip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -338,7 +338,7 @@ export default function Calendar() {
         {/* Left to spend */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-sm">
           <div className="absolute top-2 right-2">
-            <InfoTip text="Your monthly budget minus what you've already spent on everyday things like groceries, dining, and shopping. Bills aren't included — they're already accounted for." />
+            <InfoTip text="Your monthly budget minus what you've already spent on everyday things like groceries, dining, and shopping. Bills aren't included because they're already accounted for." />
           </div>
           <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-100">Left to Spend</p>
           <p className="text-xl font-bold mt-1">${fmt(Math.max(0, data.monthlyBudget - data.spentSoFar))}</p>
@@ -348,7 +348,7 @@ export default function Calendar() {
         {/* Spent so far */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 p-4 text-white shadow-sm">
           <div className="absolute top-2 right-2">
-            <InfoTip text="How much you've spent this month on everyday purchases — groceries, dining out, shopping, etc. This doesn't include your fixed bills like rent or subscriptions." />
+            <InfoTip text="How much you've spent this month on everyday purchases like groceries, dining out, shopping, etc. This doesn't include your fixed bills like rent or subscriptions." />
           </div>
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-300">Spent So Far</p>
           <p className="text-xl font-bold mt-1">${fmt(data.spentSoFar)}</p>

@@ -227,7 +227,7 @@ export default function CsvUpload() {
           <div className="px-5 py-3 bg-gray-50/80 border-b border-slate-200/60">
             <p className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
               <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
-              Preview — {totalRows} transactions detected
+              Preview: {totalRows} transactions detected
             </p>
             {totalRows === 0 && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -279,7 +279,7 @@ export default function CsvUpload() {
             <div>
               <p className="text-green-800 font-medium">
                 Imported {result.imported} transactions
-                {result.recurringDetected > 0 && ` — found ${result.recurringDetected} recurring`}
+                {result.recurringDetected > 0 && `, found ${result.recurringDetected} recurring`}
               </p>
               {result.skippedDupes > 0 && (
                 <p className="text-green-600 text-sm mt-1">
@@ -321,7 +321,7 @@ export default function CsvUpload() {
                           setResult({ ...result, recurringExpenses: result.recurringExpenses.filter((_, j) => j !== i) });
                         }}
                         className="text-red-400 hover:text-red-600 text-xs"
-                        title="Not a bill — remove"
+                        title="Not a bill - remove"
                       >
                         Remove
                       </button>
@@ -331,7 +331,7 @@ export default function CsvUpload() {
               </div>
               {result.recurringExpenses.length > 10 && (
                 <p className="text-xs text-gray-500">
-                  +{result.recurringExpenses.length - 10} more — view all in Settings
+                  +{result.recurringExpenses.length - 10} more. View all in Settings
                 </p>
               )}
             </div>
@@ -343,7 +343,7 @@ export default function CsvUpload() {
               <div>
                 <h3 className="text-base font-semibold text-amber-900">What's your current balance?</h3>
                 <p className="text-sm text-amber-700 mt-1">
-                  Your CSV only has transactions — we need your actual account balance so the numbers are right.
+                  Your CSV only has transactions, so we need your actual account balance so the numbers are right.
                   Check your bank app and enter what it says right now.
                 </p>
               </div>
@@ -445,7 +445,7 @@ export default function CsvUpload() {
                       {isExpanded && !isAdded && (
                         <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
                           <p className="text-xs text-gray-500">
-                            We know the monthly payment. Confirm the type and enter details if you know them — or skip and add later.
+                            We know the monthly payment. Confirm the type and enter details if you know them, or skip and add later.
                           </p>
                           <label className="block">
                             <span className="text-xs font-medium text-gray-600">Debt type</span>
@@ -553,7 +553,7 @@ export default function CsvUpload() {
             </div>
           )}
 
-          {/* Step 3: Pay schedule — editable */}
+          {/* Step 3: Pay schedule - editable */}
           {step === 'pay' && (
             <>
               {result.paySchedule?.detected ? (
@@ -561,7 +561,7 @@ export default function CsvUpload() {
                   <div>
                     <h3 className="text-base font-semibold text-indigo-900">Set up your pay schedule</h3>
                     <p className="text-sm text-indigo-700 mt-1">
-                      We guessed from your deposits — fix anything that's wrong:
+                      We guessed from your deposits. Fix anything that's wrong:
                     </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -615,7 +615,7 @@ export default function CsvUpload() {
                   </div>
                 </div>
               ) : (
-                // No pay detected — let them enter manually
+                // No pay detected - let them enter manually
                 <div className="bg-gray-50 border border-slate-200/60 rounded-2xl p-5 space-y-4">
                   <div>
                     <h3 className="text-base font-semibold text-gray-900">Set up your pay schedule</h3>
@@ -670,7 +670,7 @@ export default function CsvUpload() {
                       onClick={() => setStep('done')}
                       className="text-sm text-gray-500 hover:text-gray-700"
                     >
-                      Skip — I'll do it in Settings
+                      Skip - I'll do it in Settings
                     </button>
                   </div>
                 </div>

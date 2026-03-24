@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet,
@@ -8,8 +9,41 @@ import {
   TrendingUp,
   Clock,
   Shield,
+  HelpCircle,
 } from 'lucide-react';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType } from '@runway/shared';
+
+/* Tiny info tooltip - tap/hover to see explanation */
+function InfoTip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!show) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [show]);
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setShow(!show); }}
+        className="opacity-50 hover:opacity-80 transition-opacity"
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+      </button>
+      {show && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-xl">
+          {text}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-900" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -21,7 +55,7 @@ function fmt(n: number): string {
 }
 
 // Calculate how many days you gain by cutting $X/day from spending
-// Accounts for income — the real drain is (burn - income), not just burn
+// Accounts for income - the real drain is (burn - income), not just burn
 function daysGained(balance: number, burnRate: number, dailyIncome: number, cutPerDay: number): number {
   if (burnRate <= 0 || cutPerDay <= 0) return 0;
   const netBurn = burnRate - dailyIncome;
@@ -95,12 +129,13 @@ export default function RunwayScore({ score, plan }: Props) {
           <p className="text-6xl font-extrabold text-white tracking-tight leading-none">
             {score.runwayDays >= 365 ? '365+' : score.runwayDays}
           </p>
-          <p className="text-lg font-medium text-white/80 mt-1">
+          <p className="text-lg font-medium text-white/80 mt-1 flex items-center gap-1.5">
             {`day${score.runwayDays !== 1 ? 's' : ''} of runway`}
+            <InfoTip text="How many days your current cash will last based on your spending habits and upcoming bills." />
           </p>
           <p className="text-sm text-white/65 mt-2 max-w-sm leading-relaxed">
             {isGood ? (
-              "You're in great shape — income covers spending, bills, and upcoming events. Keep it up!"
+              "You're in great shape. Income covers spending, bills, and upcoming events. Keep it up!"
             ) : score.runwayDays >= 365 ? (
               "You have savings, but you're spending more than you earn."
             ) : score.runoutDate ? (
@@ -121,7 +156,7 @@ export default function RunwayScore({ score, plan }: Props) {
             {score.daysToPayday !== null && (
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm bg-white/15 text-white">
                 <Clock className="w-3.5 h-3.5" />
-                Payday in {score.daysToPayday} day{score.daysToPayday !== 1 ? 's' : ''}
+                Payday in {score.daysToPayday} day{score.daysToPayday !== 1 ? 's' : ''} <InfoTip text="Days until your next expected paycheck based on your income history." />
               </span>
             )}
           </div>
@@ -135,7 +170,7 @@ export default function RunwayScore({ score, plan }: Props) {
             <div className="p-1.5 bg-emerald-50 rounded-lg">
               <Wallet className="w-4 h-4 text-emerald-600" />
             </div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Available Cash</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide flex items-center gap-1">Available Cash <InfoTip text="Total money in your checking and savings accounts right now." /></p>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             ${score.spendableBalance.toLocaleString()}
@@ -146,7 +181,7 @@ export default function RunwayScore({ score, plan }: Props) {
             <div className="p-1.5 bg-gray-50 rounded-lg">
               <CreditCard className="w-4 h-4 text-gray-500" />
             </div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Debt</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide flex items-center gap-1">Total Debt <InfoTip text="Total owed across all your credit cards and loans." /></p>
           </div>
           <p className={`text-2xl font-bold ${score.totalDebt > 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
             {score.totalDebt > 0 ? `$${score.totalDebt.toLocaleString()}` : '$0'}

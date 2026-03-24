@@ -341,7 +341,7 @@ export default function Layout() {
 
       {mobileBottomNav}
 
-      {/* Floating chat bubble — hidden on the full /chat page */}
+      {/* Floating chat bubble - hidden on the full /chat page */}
       {location.pathname !== '/chat' && <ChatBubble />}
     </div>
   );

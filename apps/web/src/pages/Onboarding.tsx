@@ -22,7 +22,7 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
-      {/* Progress bar — hidden on welcome step */}
+      {/* Progress bar - hidden on welcome step */}
       {step > 0 && (
         <div className="w-full max-w-lg mb-8">
           <div className="flex items-center justify-between text-xs font-medium text-gray-400 mb-2">

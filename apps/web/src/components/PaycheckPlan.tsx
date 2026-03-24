@@ -10,7 +10,7 @@ function fmt(n: number): string {
 export default function PaycheckPlan() {
   const [plan, setPlan] = useState<PaycheckPlanType | null>(null);
   const [notSet, setNotSet] = useState(false);
-  // Categories always start expanded — it's the most important section
+  // Categories always start expanded - it's the most important section
   const [expanded, setExpanded] = useState<string | null>('categories');
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function PaycheckPlan() {
         </p>
       </div>
 
-      {/* Bills Covered — #1 confidence signal */}
+      {/* Bills Covered - #1 confidence signal */}
       {plan.billsCovered ? (
         <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
           <span className="text-emerald-600 text-lg">&#10003;</span>
@@ -132,7 +132,7 @@ export default function PaycheckPlan() {
           </div>
         )}
 
-        {/* Debt — amber, not red. Debt is normal. */}
+        {/* Debt - amber, not red. Debt is normal. */}
         {buckets.debt.amount > 0 && (
           <>
             <button
@@ -222,7 +222,7 @@ export default function PaycheckPlan() {
 
           {expanded === 'categories' && (
             <div className="px-5 pb-4 space-y-1">
-              {/* Discretionary (cuttable) — shown first */}
+              {/* Discretionary (cuttable) - shown first */}
               {discretionary.length > 0 && (
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide pb-1">Can cut</p>
               )}
@@ -258,7 +258,7 @@ export default function PaycheckPlan() {
         </div>
       )}
 
-      {/* Overspending alert — category-specific, not burn rate */}
+      {/* Overspending alert - category-specific, not burn rate */}
       {plan.isOverspending && !plan.isShortfall && (
         <div className="border-t-2 border-amber-200 bg-amber-50 px-5 py-4">
           <p className="text-sm font-semibold text-amber-900 mb-1">Spending is above plan</p>
@@ -285,7 +285,7 @@ export default function PaycheckPlan() {
         </div>
       )}
 
-      {/* Wins — celebrate progress */}
+      {/* Wins - celebrate progress */}
       {plan.wins.length > 0 && (
         <div className="border-t border-gray-100 px-5 py-3 space-y-1">
           {plan.wins.map((win, i) => (

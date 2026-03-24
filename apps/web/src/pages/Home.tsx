@@ -1,11 +1,43 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import api from '../api/client';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, HelpCircle } from 'lucide-react';
 import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
 import { SkeletonDashboard } from '../components/Skeleton';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@runway/shared';
+
+/* Tiny info tooltip - tap/hover to see explanation */
+function InfoTip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!show) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [show]);
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setShow(!show); }}
+        className="opacity-50 hover:opacity-80 transition-opacity"
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+      </button>
+      {show && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-xl">
+          {text}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-900" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const CATEGORY_OPTIONS = [
   'Groceries', 'Restaurants', 'Shopping', 'Entertainment',
@@ -136,7 +168,7 @@ function SpendingByCategory() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-gray-500">{data.periodLabel} — ${data.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} total</p>
+        <p className="text-xs text-gray-500">{data.periodLabel}, ${data.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} total</p>
         <select
           value={period}
           onChange={e => setPeriod(e.target.value as any)}
@@ -283,15 +315,17 @@ export default function Home() {
     setClearingDemo(true);
     try {
       await api.post('/auth/clear-demo-data');
-      await loadData();
-    } catch { /* ignore */ }
-    setClearingDemo(false);
+      window.location.reload();
+    } catch (e) {
+      console.error('Failed to clear demo data:', e);
+      setClearingDemo(false);
+    }
   }
 
   async function loadData() {
     setLoading(true);
     await Promise.all([
-      api.get('/runway').then((r) => setScore(r.data)).catch(() => {}),
+      api.get('/runway').then((r) => setScore(r.data)).catch((e) => console.error('Runway load failed:', e?.response?.status, e?.message)),
       api.get('/runway/paycheck-plan').then((r) => setPlan(r.data)).catch(() => {}),
       api.get('/accounts').then((r) => {
         setAccounts(r.data.accounts);
@@ -311,9 +345,12 @@ export default function Home() {
     setLoadingDemo(true);
     try {
       await api.post('/auth/demo-data');
-      await loadData();
-    } catch { /* ignore */ }
-    setLoadingDemo(false);
+      // Force full page reload to ensure all components pick up the new data
+      window.location.reload();
+    } catch (e) {
+      console.error('Failed to load demo data:', e);
+      setLoadingDemo(false);
+    }
   }
 
   if (loading) {
@@ -354,7 +391,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* No accounts — friendly welcome state */}
+      {/* No accounts - friendly welcome state */}
       {accounts.length === 0 && (
         <div className="space-y-5 animate-fade-in">
           <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-6 shadow-lg shadow-indigo-200/50 text-center">
@@ -396,7 +433,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Critical alerts only — these deserve top-level attention (hide when no data) */}
+      {/* Critical alerts only - these deserve top-level attention (hide when no data) */}
       {accounts.length > 0 && criticalAlerts.slice(0, 2).map(alert => (
         <div key={alert.id} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -436,14 +473,14 @@ export default function Home() {
               <Wallet className="w-4 h-4 text-slate-500" />
             </div>
             <p className="text-lg font-bold text-slate-900 animate-count-up">${score.spentThisMonth.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Spent this month</p>
+            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">Spent this month <InfoTip text="Total amount you've spent so far this calendar month across all your accounts." /></p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover">
             <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-2">
               <CreditCard className="w-4 h-4 text-slate-500" />
             </div>
             <p className="text-lg font-bold text-slate-900 animate-count-up">${score.dailyBurnRate.toFixed(0)}</p>
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Daily burn</p>
+            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">Daily burn <InfoTip text="How much you spend per day on average, based on the last 90 days." /></p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 ${score.remainingBudget >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
@@ -452,17 +489,17 @@ export default function Home() {
             <p className={`text-lg font-bold animate-count-up ${score.remainingBudget >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               ${Math.abs(score.remainingBudget).toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">{score.remainingBudget >= 0 ? 'Budget left' : 'Over budget'}</p>
+            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">{score.remainingBudget >= 0 ? 'Budget left' : 'Over budget'} <InfoTip text="How much spending room you have left this month before your next paycheck, based on your income and bills." /></p>
           </div>
         </div>
       )}
 
-      {/* Merchant review — compact */}
+      {/* Merchant review - compact */}
       {showReview && unclassified.length > 0 && (
         <MerchantReview merchants={unclassified} onDone={() => setShowReview(false)} />
       )}
 
-      {/* Non-critical alerts — collapsed (hide when no data) */}
+      {/* Non-critical alerts - collapsed (hide when no data) */}
       {accounts.length > 0 && otherAlerts.length > 0 && (
         <Section title="Alerts" badge={`${otherAlerts.length}`} defaultOpen={false} icon={AlertTriangle}>
           <div className="space-y-2">
@@ -490,7 +527,7 @@ export default function Home() {
         </Section>
       )}
 
-      {/* Advisor top insight — just 1 teaser */}
+      {/* Advisor top insight - just 1 teaser */}
       {advisorSummary?.available && advisorSummary.topInsights && advisorSummary.topInsights.length > 0 && (
         <Link to="/advisor" className="block bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 hover:shadow-md transition-shadow card-hover animate-fade-in">
           <div className="flex items-center justify-between mb-2">
@@ -525,17 +562,17 @@ export default function Home() {
         </Link>
       )}
 
-      {/* Paycheck Plan — collapsed by default */}
+      {/* Paycheck Plan - collapsed by default */}
       <Section title="Paycheck Plan" linkTo="/calendar" linkLabel="Calendar" defaultOpen={false} icon={Wallet}>
         <PaycheckPlan />
       </Section>
 
-      {/* Spending breakdown — collapsed, shows top 5 */}
+      {/* Spending breakdown - collapsed, shows top 5 */}
       <Section title="Where Your Money Goes" linkTo="/transactions" linkLabel="Transactions" defaultOpen={false} icon={CreditCard}>
         <SpendingByCategory />
       </Section>
 
-      {/* Accounts — collapsed */}
+      {/* Accounts - collapsed */}
       <Section title="Accounts" badge={`${accounts.length}`} linkTo="/settings" linkLabel="Manage" defaultOpen={false} icon={Wallet}>
         <div className="space-y-2">
           {accounts.map((acct) => (
@@ -552,7 +589,7 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* Upcoming events — collapsed */}
+      {/* Upcoming events - collapsed */}
       {events.length > 0 && (
         <Section title="Upcoming Collisions" badge={`${events.length}`} linkTo="/calendar" linkLabel="Manage" defaultOpen={false} icon={CalendarClock}>
           <div className="space-y-2">

@@ -243,7 +243,9 @@
       "Bash(curl -s http://localhost:3001/api/auth/demo-data -H \"Authorization: Bearer $TOKEN\" -X POST)",
       "Bash(curl -s http://localhost:3001/api/runway -H \"Authorization: Bearer $TOKEN\")",
       "Bash(python3 -m json.tool)",
-      "Bash(curl -s http://localhost:3001/api/runway -H 'Authorization: Bearer $TOKEN')"
+      "Bash(curl -s http://localhost:3001/api/runway -H 'Authorization: Bearer $TOKEN')",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0NzkyM2U1Ni0zODRhLTQwM2YtOGFiNS1hYWQyMGZlMmM2YmIiLCJpYXQiOjE3NzQzNzA5NzQsImV4cCI6MTc3NDM3MTg3NH0.6dH4DDsQfECFC4SFzpu0tsb7WTNecuofWkCdXTA9YJA\")",
+      "Bash(curl -s \"http://localhost:3001/api/accounts\" -H \"Authorization: Bearer $TOKEN\")"
     ]
   }
 }

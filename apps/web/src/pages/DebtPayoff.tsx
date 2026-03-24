@@ -181,7 +181,7 @@ function getRecommendation(
     return {
       strategy: 'avalanche',
       headline: 'Focus all extra payments here',
-      explanation: 'You have one debt — no strategy comparison needed. Every extra dollar goes straight to paying it down faster.',
+      explanation: 'You have one debt, so no strategy comparison needed. Every extra dollar goes straight to paying it down faster.',
       icon: 'target',
     };
   }
@@ -204,7 +204,7 @@ function getRecommendation(
   if (rateSpread > 5 && interestDiff > 50) {
     return {
       strategy: 'avalanche',
-      headline: 'Avalanche — tackle high interest first',
+      headline: 'Avalanche: tackle high interest first',
       explanation: `Your ${highestRateDebt.name} at ${highestRateDebt.interestRate}% APR costs you $${Math.round(monthlyInterestOnHighest)}/mo in interest alone. Paying it first saves you $${interestDiff.toLocaleString()} overall.`,
       icon: 'dollar',
     };
@@ -214,7 +214,7 @@ function getRecommendation(
   if (hasQuickWin && interestDiff < 100) {
     return {
       strategy: 'snowball',
-      headline: 'Snowball — build momentum fast',
+      headline: 'Snowball: build momentum fast',
       explanation: `Pay off ${smallest.name} ($${smallest.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}) in just ${smallestPayoffMonths} months for a quick win, then roll that payment into the next debt.`,
       icon: 'target',
     };
@@ -224,7 +224,7 @@ function getRecommendation(
   if (interestDiff > 10) {
     return {
       strategy: 'avalanche',
-      headline: 'Avalanche — save the most on interest',
+      headline: 'Avalanche: save the most on interest',
       explanation: `Targeting your highest-rate debt first saves $${interestDiff.toLocaleString()} in interest compared to the snowball approach.`,
       icon: 'dollar',
     };
@@ -233,7 +233,7 @@ function getRecommendation(
   // Strategies are essentially identical
   return {
     strategy: 'snowball',
-    headline: 'Snowball — quick wins keep you motivated',
+    headline: 'Snowball: quick wins keep you motivated',
     explanation: 'Both strategies cost about the same in interest. Snowball gives you faster visible progress by eliminating smaller debts first.',
     icon: 'target',
   };

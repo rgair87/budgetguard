@@ -299,8 +299,8 @@ export default function Goals() {
                 goal.onTrack ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
               }`}>
                 {goal.onTrack
-                  ? `On track — save $${goal.dailyNeeded.toFixed(0)}/day to reach your goal by ${new Date(goal.deadline! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                  : `Behind pace — need $${goal.dailyNeeded.toFixed(0)}/day to catch up (${goal.daysLeft} days left)`
+                  ? `On track. Save $${goal.dailyNeeded.toFixed(0)}/day to reach your goal by ${new Date(goal.deadline! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                  : `Behind pace. Need $${goal.dailyNeeded.toFixed(0)}/day to catch up (${goal.daysLeft} days left)`
                 }
               </div>
             )}
