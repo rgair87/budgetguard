@@ -15,6 +15,8 @@ export const env = {
   TELLER_APP_ID: process.env.TELLER_APP_ID || 'app_pq8bujpq2bv1virlra000',
   TELLER_ENV: (process.env.TELLER_ENV || 'development') as 'sandbox' | 'development' | 'production',
   TELLER_CERT_PATH: process.env.TELLER_CERT_PATH || '',
+  TELLER_CERTIFICATE: process.env.TELLER_CERTIFICATE || '',   // PEM content as env var (for Railway/Docker)
+  TELLER_PRIVATE_KEY: process.env.TELLER_PRIVATE_KEY || '',   // PEM content as env var (for Railway/Docker)
   JWT_SECRET: required('JWT_SECRET'),
   PORT: parseInt(process.env.PORT || '3001', 10),
   CORS_ORIGINS: process.env.CORS_ORIGINS || 'http://localhost:5173',

@@ -3,21 +3,34 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import db from '../config/db';
+import { env } from '../config/env';
 
 // ─── mTLS Agent ──────────────────────────────────────────────
 // Teller requires mutual TLS for all API calls.
+// Certs can be loaded from:
+//   1. TELLER_CERTIFICATE / TELLER_PRIVATE_KEY env vars (PEM content, for Railway/Docker)
+//   2. Files on disk at TELLER_CERT_PATH or default ./certs/ dir
 
-const certsDir = process.env.TELLER_CERT_PATH || path.resolve(__dirname, '../../certs');
 let cert: Buffer;
 let key: Buffer;
 
-try {
-  cert = fs.readFileSync(path.join(certsDir, 'certificate.pem'));
-  key = fs.readFileSync(path.join(certsDir, 'private_key.pem'));
-} catch {
-  console.warn('Teller certificates not found at', certsDir, '- bank sync will not work');
-  cert = Buffer.from('');
-  key = Buffer.from('');
+if (env.TELLER_CERTIFICATE && env.TELLER_PRIVATE_KEY) {
+  // Load from env vars (replace literal \n with actual newlines)
+  cert = Buffer.from(env.TELLER_CERTIFICATE.replace(/\\n/g, '\n'));
+  key = Buffer.from(env.TELLER_PRIVATE_KEY.replace(/\\n/g, '\n'));
+  console.log('Teller certs loaded from environment variables');
+} else {
+  const certsDir = env.TELLER_CERT_PATH || path.resolve(__dirname, '../../certs');
+  try {
+    cert = fs.readFileSync(path.join(certsDir, 'certificate.pem'));
+    key = fs.readFileSync(path.join(certsDir, 'private_key.pem'));
+    console.log('Teller certs loaded from', certsDir);
+  } catch {
+    console.warn('Teller certificates not found - bank sync will not work');
+    console.warn('Set TELLER_CERTIFICATE and TELLER_PRIVATE_KEY env vars, or place cert files at', certsDir);
+    cert = Buffer.from('');
+    key = Buffer.from('');
+  }
 }
 
 const agent = new https.Agent({ cert, key });
