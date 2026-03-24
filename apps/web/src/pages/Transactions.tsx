@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface Transaction {
   id: string;
@@ -18,6 +19,7 @@ const CATEGORY_OPTIONS = [
 ];
 
 export default function Transactions() {
+  const track = useTrack('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);

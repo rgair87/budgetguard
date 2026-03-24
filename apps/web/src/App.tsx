@@ -25,6 +25,7 @@ import Simulator from './pages/Simulator';
 import Family from './pages/Family';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
+import Analytics from './pages/Analytics';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
@@ -68,6 +69,7 @@ function AppRoutes() {
         <Route path="simulator" element={<Simulator />} />
         <Route path="family" element={<Family />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="analytics" element={<Analytics />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

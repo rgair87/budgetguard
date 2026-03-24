@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 /* ── types ── */
 
@@ -70,6 +71,7 @@ const kindColor = (k: ScenarioKind) =>
 /* ── component ── */
 
 export default function Simulator() {
+  const track = useTrack('simulator');
   const [runway, setRunway] = useState<RunwayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [scenarios, setScenarios] = useState<ActiveScenario[]>([]);
@@ -94,6 +96,7 @@ export default function Simulator() {
     const raw = cardInputs[template.key];
     const amount = parseFloat(raw);
     if (isNaN(amount) || amount <= 0) return;
+    track('simulator', 'add_scenario');
 
     const kind = overrideKind ?? template.kind;
     const title = template.key === 'custom' && customName.trim()

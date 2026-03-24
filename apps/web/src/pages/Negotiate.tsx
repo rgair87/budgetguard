@@ -13,6 +13,7 @@ import {
   Award,
 } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface NegotiationSuggestion {
   id: string;
@@ -42,6 +43,7 @@ function parseSuccessRate(rate: string): number {
 }
 
 export default function Negotiate() {
+  const track = useTrack('negotiate');
   const [suggestions, setSuggestions] = useState<NegotiationSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

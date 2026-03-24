@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, AlertTriangle, CheckCircle, Target, ArrowRight, Zap } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface CategoryPrediction {
   category: string;
@@ -37,6 +38,7 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 export default function Predictions() {
+  const track = useTrack('predictions');
   const [data, setData] = useState<SpendingPredictions | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, Sparkles } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface Message {
   id: string;
@@ -23,6 +24,7 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export default function Chat() {
+  const track = useTrack('chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,6 +50,7 @@ export default function Chat() {
   async function send(text?: string) {
     const msg = text || input.trim();
     if (!msg || loading || atLimit) return;
+    track('chat', 'send_message');
     setInput('');
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: msg, created_at: new Date().toISOString() };

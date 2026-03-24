@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import api from '../api/client';
 import type { AdvisorReport, AdvisorInsight, InsightSeverity, InsightCategory } from '@runway/shared';
+import useTrack from '../hooks/useTrack';
 
 /* ── Helpers ────────────────────────────────────────────────── */
 
@@ -273,6 +274,7 @@ function InsightRow({ insight }: { insight: AdvisorInsight }) {
 /* ── Main Component ─────────────────────────────────────────── */
 
 export default function Advisor() {
+  const track = useTrack('advisor');
   const [report, setReport] = useState<AdvisorReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

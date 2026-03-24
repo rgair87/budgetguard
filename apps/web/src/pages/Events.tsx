@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 import type { IncomingEvent } from '@runway/shared';
 
 export default function Events() {
+  const track = useTrack('events');
   const [events, setEvents] = useState<IncomingEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');

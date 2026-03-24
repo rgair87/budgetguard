@@ -6,6 +6,7 @@ import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
 import InfoTip from '../components/InfoTip';
 import { SkeletonDashboard } from '../components/Skeleton';
+import useTrack from '../hooks/useTrack';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@runway/shared';
 
 const CATEGORY_OPTIONS = [
@@ -258,6 +259,7 @@ interface Alert {
 // HOME PAGE
 // =========================
 export default function Home() {
+  const track = useTrack('home');
   const [score, setScore] = useState<RunwayScoreType | null>(null);
   const [plan, setPlan] = useState<PaycheckPlanType | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);

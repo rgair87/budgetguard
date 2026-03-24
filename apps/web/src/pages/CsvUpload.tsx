@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileSpreadsheet, Check, AlertCircle } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface Account {
   id: string;
@@ -45,6 +46,7 @@ interface ImportResult {
 }
 
 export default function CsvUpload() {
+  const track = useTrack('csv_upload');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string[][] | null>(null);
   const [totalRows, setTotalRows] = useState(0);
@@ -105,6 +107,7 @@ export default function CsvUpload() {
 
   async function handleImport() {
     if (!file) return;
+    track('csv_upload', 'upload');
     setImporting(true);
     setError('');
 

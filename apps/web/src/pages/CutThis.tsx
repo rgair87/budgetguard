@@ -18,6 +18,7 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface Recommendation {
   emoji: string;
@@ -54,6 +55,7 @@ function recIcon(emoji: string) {
 }
 
 export default function CutThis() {
+  const track = useTrack('cut_this');
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
@@ -198,7 +200,7 @@ export default function CutThis() {
                       Dismiss
                     </button>
                     <button
-                      onClick={() => setDismissed(new Set([...dismissed, i]))}
+                      onClick={() => { track('cut_this', 'cut_subscription'); setDismissed(new Set([...dismissed, i])); }}
                       className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-indigo-800 transition"
                     >
                       <ThumbsUp className="h-4 w-4" />

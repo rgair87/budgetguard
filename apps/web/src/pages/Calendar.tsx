@@ -15,6 +15,7 @@ import {
   Download,
 } from 'lucide-react';
 import InfoTip from '../components/InfoTip';
+import useTrack from '../hooks/useTrack';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -112,6 +113,7 @@ function downloadFile(content: string, filename: string, mime: string) {
 }
 
 export default function Calendar() {
+  const track = useTrack('calendar');
   const [data, setData] = useState<CalendarMonth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +199,7 @@ export default function Calendar() {
 
   async function handleAddEvent() {
     if (!newEventName.trim() || !newEventAmount.trim() || !selectedDay) return;
+    track('calendar', 'add_expense');
     setSaving(true);
     try {
       await api.post('/events', {

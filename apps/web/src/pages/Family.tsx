@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, UserPlus, Crown, Mail, X, LogOut } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface FamilyMember {
   id: string;
@@ -22,6 +23,7 @@ interface Family {
 }
 
 export default function FamilyPage() {
+  const track = useTrack('family');
   const [family, setFamily] = useState<Family | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');

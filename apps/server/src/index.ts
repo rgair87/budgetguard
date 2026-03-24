@@ -24,6 +24,7 @@ import predictionsRoutes from './routes/predictions.routes';
 import trendsRoutes from './routes/trends.routes';
 import negotiateRoutes from './routes/negotiate.routes';
 import familyRoutes from './routes/family.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use('/api/predictions', predictionsRoutes);
 app.use('/api/trends', trendsRoutes);
 app.use('/api/negotiate', negotiateRoutes);
 app.use('/api/family', familyRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

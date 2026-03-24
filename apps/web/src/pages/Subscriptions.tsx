@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface Subscription {
   name: string;
@@ -96,6 +97,7 @@ function ActionMenu({ sub, onDismiss, onReclassify }: {
 }
 
 export default function Subscriptions() {
+  const track = useTrack('subscriptions');
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'subscription' | 'bill' | 'debt'>('all');

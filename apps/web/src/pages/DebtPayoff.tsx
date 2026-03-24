@@ -17,6 +17,7 @@ import {
   CircleDollarSign,
   PartyPopper,
 } from 'lucide-react';
+import useTrack from '../hooks/useTrack';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -244,6 +245,7 @@ function getRecommendation(
 /* ------------------------------------------------------------------ */
 
 export default function DebtPayoff() {
+  const track = useTrack('debt_payoff');
   const [plan, setPlan] = useState<DebtPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [extraPayment, setExtraPayment] = useState(100);

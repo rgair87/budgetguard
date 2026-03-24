@@ -95,4 +95,16 @@ db.exec(`CREATE TABLE IF NOT EXISTS family_members (
   joined_at TEXT
 )`);
 
+// Feature usage analytics
+db.exec(`CREATE TABLE IF NOT EXISTS analytics_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  feature TEXT NOT NULL,
+  action TEXT NOT NULL DEFAULT 'view',
+  metadata TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+db.exec("CREATE INDEX IF NOT EXISTS idx_analytics_feature ON analytics_events(feature, created_at)");
+db.exec("CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_id, created_at)");
+
 export default db;

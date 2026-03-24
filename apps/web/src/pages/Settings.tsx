@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet } from 'lucide-react';
+import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet, BarChart3 } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import useTrack from '../hooks/useTrack';
 
 interface Account {
   id: string;
@@ -414,6 +415,7 @@ function PrivacySection() {
    Main Settings page
    ═══════════════════════════════════════════ */
 export default function Settings() {
+  const track = useTrack('settings');
   const [data, setData] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddAccount, setShowAddAccount] = useState(false);
@@ -443,6 +445,7 @@ export default function Settings() {
   }, []);
 
   async function handleUpgrade() {
+    track('settings', 'upgrade_pro');
     await api.post('/settings/upgrade');
     setTierInfo(t => t ? { ...t, tier: 'pro' } : null);
     setData(d => d ? { ...d, user: { ...d.user, subscription_status: 'active' } } : null);
@@ -1081,6 +1084,25 @@ export default function Settings() {
               <div>
                 <p className="text-sm font-medium text-slate-900">Manage Family</p>
                 <p className="text-xs text-slate-400">Invite members to share finances</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
+          </a>
+        </SettingsRow>
+      </div>
+
+      {/* ────────── ANALYTICS ────────── */}
+      <SectionHeader icon={BarChart3} label="Analytics" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <SettingsRow last>
+          <a href="/analytics" className="flex items-center justify-between -mx-4 -my-3.5 px-4 py-3.5 active:bg-slate-50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">Feature Analytics</p>
+                <p className="text-xs text-slate-400">See which features are used most and least</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import api from '../api/client';
+import useTrack from '../hooks/useTrack';
 
 interface Goal {
   id: string;
@@ -84,6 +85,7 @@ const INSIGHT_STYLES: Record<string, { bg: string; border: string; icon: LucideI
 };
 
 export default function Goals() {
+  const track = useTrack('goals');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [insights, setInsights] = useState<Record<string, GoalInsight[]>>({});
   const [loading, setLoading] = useState(true);
@@ -109,6 +111,7 @@ export default function Goals() {
 
   async function handleCreate() {
     if (!form.name || !form.target_amount) return;
+    track('goals', 'add_goal');
     setSaving(true);
     try {
       await api.post('/goals', {
