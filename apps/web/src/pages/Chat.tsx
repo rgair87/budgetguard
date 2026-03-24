@@ -82,10 +82,23 @@ export default function Chat() {
     setMessages([]);
   }
 
+  // Handle mobile keyboard: resize chat when virtual keyboard appears
+  const [viewportH, setViewportH] = useState<number | null>(null);
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    const vv = window.visualViewport;
+    const onResize = () => setViewportH(vv.height);
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
   if (initialLoad) return <div className="text-slate-400 text-center py-12">Loading...</div>;
 
+  // Use visualViewport height when keyboard is open, otherwise dvh
+  const chatHeight = viewportH ? `${viewportH - 64}px` : 'calc(100dvh - 8rem)';
+
   return (
-    <div className="flex flex-col h-[calc(100dvh-8rem)]">
+    <div className="flex flex-col" style={{ height: chatHeight }}>
       {/* Gradient header bar */}
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl shadow-sm px-5 py-4 mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -171,6 +184,7 @@ export default function Chat() {
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
+              onFocus={() => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 300)}
               placeholder="Ask about your finances..."
               disabled={loading}
               enterKeyHint="send"

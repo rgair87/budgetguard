@@ -248,14 +248,23 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
         accessToken!,
       );
 
+      console.log(`Teller: fetched ${transactions.length} transactions for account ${acct.id}`);
+      if (transactions.length > 0) {
+        console.log('Sample transaction:', JSON.stringify(transactions[0]));
+      }
+
       for (const txn of transactions) {
-        const amount = parseFloat(txn.amount);
+        const rawAmount = parseFloat(txn.amount);
+        // Teller amounts: negative = money out (debits), positive = money in (credits)
+        // Our DB convention: negative = spending, positive = income — same as Teller
+        const amount = rawAmount;
         const merchantName = txn.details?.counterparty?.name || txn.description;
         const category = txn.details?.category || null;
 
         insertTxn.run(
-          crypto.randomUUID(), userId, acctRow.id,
-          amount, // Teller: negative = money out, positive = money in (same as our convention)
+          `teller_${txn.id}`, // Use Teller's ID to prevent duplicates on re-sync
+          userId, acctRow.id,
+          amount,
           txn.date, merchantName, category,
         );
       }

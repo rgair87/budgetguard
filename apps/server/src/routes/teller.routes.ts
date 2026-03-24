@@ -38,4 +38,29 @@ router.post('/sync', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
+/**
+ * GET /api/teller/status
+ * Debug: check what Teller has synced for this user.
+ */
+router.get('/status', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const db = (await import('../config/db')).default;
+    const user = db.prepare('SELECT teller_access_token FROM users WHERE id = ?').get(req.userId!) as any;
+    const accounts = db.prepare(
+      'SELECT id, name, type, teller_account_id, current_balance, last_synced_at FROM accounts WHERE user_id = ? AND teller_account_id IS NOT NULL'
+    ).all(req.userId!) as any[];
+    const txnCount = db.prepare(
+      'SELECT COUNT(*) as count FROM transactions WHERE user_id = ?'
+    ).get(req.userId!) as any;
+
+    res.json({
+      hasAccessToken: !!user?.teller_access_token,
+      accounts,
+      transactionCount: txnCount.count,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
