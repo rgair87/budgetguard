@@ -113,6 +113,10 @@ router.post('/clear-demo-data', authenticate, (req: AuthRequest, res: Response) 
     db.prepare('DELETE FROM merchant_categories WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM fixed_expenses WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM ai_cache WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM savings_goals WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
+    // Reset paycheck settings so calendar/budget don't show stale numbers
+    db.prepare('UPDATE users SET pay_frequency = NULL, next_payday = NULL, take_home_pay = NULL WHERE id = ?').run(userId);
     res.json({ success: true, message: 'Demo data cleared. Add your own accounts to get started!' });
   } catch (err: any) {
     console.error('Clear demo data error:', err);
