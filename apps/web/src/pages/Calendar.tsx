@@ -13,7 +13,40 @@ import {
   DollarSign,
   ArrowRight,
   Download,
+  HelpCircle,
 } from 'lucide-react';
+
+/* Tiny info tooltip — tap/hover to see explanation */
+function InfoTip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!show) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [show]);
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setShow(!show); }}
+        className="opacity-50 hover:opacity-80 transition-opacity"
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+      </button>
+      {show && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-xl">
+          {text}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-900" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -304,8 +337,8 @@ export default function Calendar() {
       <div className="grid grid-cols-3 gap-3">
         {/* Left to spend */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-sm">
-          <div className="absolute top-2 right-2 opacity-20">
-            <Wallet className="w-8 h-8" />
+          <div className="absolute top-2 right-2">
+            <InfoTip text="Your monthly budget minus what you've already spent on everyday things like groceries, dining, and shopping. Bills aren't included — they're already accounted for." />
           </div>
           <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-100">Left to Spend</p>
           <p className="text-xl font-bold mt-1">${fmt(Math.max(0, data.monthlyBudget - data.spentSoFar))}</p>
@@ -314,8 +347,8 @@ export default function Calendar() {
 
         {/* Spent so far */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 p-4 text-white shadow-sm">
-          <div className="absolute top-2 right-2 opacity-20">
-            <Receipt className="w-8 h-8" />
+          <div className="absolute top-2 right-2">
+            <InfoTip text="How much you've spent this month on everyday purchases — groceries, dining out, shopping, etc. This doesn't include your fixed bills like rent or subscriptions." />
           </div>
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-300">Spent So Far</p>
           <p className="text-xl font-bold mt-1">${fmt(data.spentSoFar)}</p>
@@ -330,8 +363,8 @@ export default function Calendar() {
             ? 'bg-gradient-to-br from-amber-500 to-amber-600'
             : 'bg-gradient-to-br from-emerald-500 to-emerald-600'
         }`}>
-          <div className="absolute top-2 right-2 opacity-20">
-            <TrendingUp className="w-8 h-8" />
+          <div className="absolute top-2 right-2">
+            <InfoTip text="Based on your spending pace so far, this is how much you'll likely spend by the end of the month. Green means you're on track, yellow means watch out, red means you're over budget." />
           </div>
           <p className="text-[11px] font-medium uppercase tracking-wider opacity-80">On Pace For</p>
           <p className="text-xl font-bold mt-1">${fmt(data.projectedMonthlySpend)}</p>
@@ -585,7 +618,10 @@ function SidePanelContent({
 
       {/* What you'll have */}
       <div className="bg-slate-50 rounded-xl p-4">
-        <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">You'll Have</p>
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">You'll Have</p>
+          <InfoTip text="Your estimated bank balance on this day, based on your current balance, upcoming paychecks, and bills." />
+        </div>
         <p className={`text-2xl font-bold mt-1 ${balanceColor}`}>
           ${fmt(day.projectedBalance)}
         </p>
