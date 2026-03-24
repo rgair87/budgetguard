@@ -42,6 +42,9 @@ export const TIER_LIMITS = {
   },
 } as const;
 
+// Admin emails always get Pro (comma-separated in env var)
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
 export function attachTier(req: TieredRequest, _res: Response, next: NextFunction) {
   if (!req.userId) {
     req.tier = 'free';
@@ -50,10 +53,14 @@ export function attachTier(req: TieredRequest, _res: Response, next: NextFunctio
   }
 
   const user = db.prepare(
-    'SELECT subscription_status FROM users WHERE id = ?'
-  ).get(req.userId) as { subscription_status: string } | undefined;
+    'SELECT email, subscription_status FROM users WHERE id = ?'
+  ).get(req.userId) as { email: string; subscription_status: string } | undefined;
 
-  req.tier = (user?.subscription_status === 'active') ? 'pro' : 'free';
+  if (user && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+    req.tier = 'pro';
+  } else {
+    req.tier = (user?.subscription_status === 'active') ? 'pro' : 'free';
+  }
   next();
 }
 
