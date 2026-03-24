@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet, BarChart3 } from 'lucide-react';
+import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet, BarChart3, RefreshCw } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import useTrack from '../hooks/useTrack';
@@ -432,6 +432,8 @@ export default function Settings() {
   const [savingPaycheck, setSavingPaycheck] = useState(false);
   const [tierInfo, setTierInfo] = useState<TierInfo | null>(null);
   const [expandedAcct, setExpandedAcct] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -455,6 +457,23 @@ export default function Settings() {
     await api.post('/settings/downgrade');
     setTierInfo(t => t ? { ...t, tier: 'free' } : null);
     setData(d => d ? { ...d, user: { ...d.user, subscription_status: 'trial' } } : null);
+  }
+
+  async function syncBank() {
+    setSyncing(true);
+    setSyncMsg('');
+    try {
+      await api.post('/teller/sync');
+      setSyncMsg('Synced!');
+      // Refresh accounts
+      const r = await api.get('/settings');
+      setData(r.data);
+      setTimeout(() => setSyncMsg(''), 3000);
+    } catch (err: any) {
+      setSyncMsg(err.response?.data?.message || 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
   }
 
   async function removeAccount(id: string) {
@@ -1023,17 +1042,32 @@ export default function Settings() {
           </div>
         )}
 
-        {/* CSV upload link */}
+        {/* Sync bank + CSV upload */}
         {!showAddAccount && (
-          <div className="border-t border-slate-100">
-            <button
-              onClick={() => navigate('/csv-upload')}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs text-slate-400 hover:text-indigo-600 hover:bg-slate-50/50 transition-colors"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              Or upload accounts via CSV
-            </button>
-          </div>
+          <>
+            {data?.accounts.some(a => a.teller_account_id) && (
+              <div className="border-t border-slate-100">
+                <button
+                  onClick={syncBank}
+                  disabled={syncing}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Bank Accounts'}
+                  {syncMsg && <span className="text-xs text-slate-500 ml-2">{syncMsg}</span>}
+                </button>
+              </div>
+            )}
+            <div className="border-t border-slate-100">
+              <button
+                onClick={() => navigate('/csv-upload')}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs text-slate-400 hover:text-indigo-600 hover:bg-slate-50/50 transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Or upload accounts via CSV
+              </button>
+            </div>
+          </>
         )}
       </div>
 
