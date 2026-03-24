@@ -87,7 +87,7 @@ function ActionMenu({ sub, onDismiss, onReclassify }: {
               <line x1="3" y1="3" x2="11" y2="11" />
               <line x1="11" y1="3" x2="3" y2="11" />
             </svg>
-            Not recurring — remove
+            Not recurring - remove
           </button>
         </div>
       )}
@@ -177,7 +177,7 @@ export default function Subscriptions() {
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Recurring Spend</h1>
         <p className="text-sm text-gray-500">
-          Every subscription, bill, and debt payment we found in your transactions — with lifetime totals.
+          Every subscription, bill, and debt payment we found in your transactions - with lifetime totals.
           Use the <span className="font-mono text-gray-600">&#8942;</span> menu to reclassify or remove items that don't belong.
         </p>
       </div>

@@ -60,7 +60,7 @@ export default function Onboarding() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 0 — Welcome / Value Prop                                     */
+/*  Step 0 - Welcome / Value Prop                                     */
 /* ------------------------------------------------------------------ */
 
 function StepWelcome({
@@ -100,7 +100,7 @@ function StepWelcome({
               Welcome to Runway
             </h1>
             <p className="text-indigo-200 text-base leading-relaxed max-w-sm mx-auto">
-              Know exactly when you'll run out of money — and what to do about it
+              Know exactly when you'll run out of money - and what to do about it
             </p>
           </div>
         </div>
@@ -169,7 +169,7 @@ function ValueProp({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 1 — Connect Bank                                             */
+/*  Step 1 - Connect Bank                                             */
 /* ------------------------------------------------------------------ */
 
 function StepConnect({ onNext }: { onNext: () => void }) {
@@ -196,7 +196,7 @@ function StepConnect({ onNext }: { onNext: () => void }) {
               onClick={onNext}
               className="text-sm text-indigo-600 font-medium hover:text-indigo-800 transition-colors"
             >
-              Skip — I'll add accounts manually in Settings
+              Skip - I'll add accounts manually in Settings
             </button>
             <p className="text-xs text-gray-400 leading-relaxed">
               You can also upload a CSV of your transactions later, or add accounts and balances by hand in Settings.
@@ -209,7 +209,7 @@ function StepConnect({ onNext }: { onNext: () => void }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 2 — Upcoming Events                                          */
+/*  Step 2 - Upcoming Events                                          */
 /* ------------------------------------------------------------------ */
 
 function StepEvents({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
@@ -373,7 +373,7 @@ function StepEvents({ onNext, onBack }: { onNext: () => void; onBack: () => void
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 3 — Paycheck Info                                            */
+/*  Step 3 - Paycheck Info                                            */
 /* ------------------------------------------------------------------ */
 
 function StepPaycheck({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {

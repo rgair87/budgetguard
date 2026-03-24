@@ -273,7 +273,7 @@ export default function Negotiate() {
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 transition-colors"
                     >
                       <Check className="w-4 h-4" />
-                      I called — it worked!
+                      I called - it worked!
                     </button>
                     <button
                       onClick={() => setCompletedIds(prev => new Set([...prev, s.id]))}

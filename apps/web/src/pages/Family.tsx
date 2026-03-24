@@ -108,7 +108,7 @@ export default function FamilyPage() {
   const currentUserEmail = family?.members.find(m => m.role === 'owner')?.email;
   const isOwner = family?.members.some(m => m.role === 'owner' && m.status === 'active');
 
-  // No family yet — show create CTA
+  // No family yet - show create CTA
   if (!family) {
     return (
       <div className="max-w-lg mx-auto py-12">

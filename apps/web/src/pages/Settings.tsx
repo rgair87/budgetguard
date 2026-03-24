@@ -69,11 +69,11 @@ function AccountTypeIcon({ type, className = 'w-4 h-4' }: { type: string; classN
 }
 
 const RATE_HELP: Record<string, string> = {
-  credit: 'Check your statement or app — usually 18-30%',
-  mortgage: 'On your loan statement or closing docs — usually 5-8%',
-  auto_loan: 'On your loan agreement or payment portal — usually 5-12%',
-  student_loan: 'On studentaid.gov or your servicer — usually 4-8%',
-  personal_loan: 'On your loan agreement — usually 8-20%',
+  credit: 'Check your statement or app - usually 18-30%',
+  mortgage: 'On your loan statement or closing docs - usually 5-8%',
+  auto_loan: 'On your loan agreement or payment portal - usually 5-12%',
+  student_loan: 'On studentaid.gov or your servicer - usually 4-8%',
+  personal_loan: 'On your loan agreement - usually 8-20%',
 };
 
 const TEMPLATES = {
@@ -334,7 +334,7 @@ function PrivacySection() {
         </SettingsRow>
       </div>
 
-      {/* Delete account — red-tinted separate card */}
+      {/* Delete account - red-tinted separate card */}
       <div className="mt-4 bg-red-50/50 rounded-2xl shadow-sm border border-red-200/40 overflow-hidden">
         <SettingsRow last>
           <div className="flex items-center justify-between">

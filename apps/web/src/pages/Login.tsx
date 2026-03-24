@@ -35,7 +35,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left brand panel — hidden on mobile */}
+      {/* Left brand panel - hidden on mobile */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 relative overflow-hidden">
         {/* Decorative circles */}
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-700/20 rounded-full blur-3xl" />
@@ -44,7 +44,7 @@ export default function Login() {
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-20 w-full">
           <h1 className="text-5xl font-bold text-white tracking-tight mb-4">Runway</h1>
           <p className="text-indigo-200 text-lg leading-relaxed mb-12 max-w-md">
-            The finance app that plans around your real life — not the other way around.
+            The finance app that plans around your real life - not the other way around.
           </p>
 
           <div className="space-y-8">
