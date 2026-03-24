@@ -85,7 +85,7 @@ export default function Chat() {
   if (initialLoad) return <div className="text-slate-400 text-center py-12">Loading...</div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-[calc(100dvh-8rem)]">
       {/* Gradient header bar */}
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl shadow-sm px-5 py-4 mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -173,7 +173,8 @@ export default function Chat() {
               onChange={e => setInput(e.target.value)}
               placeholder="Ask about your finances..."
               disabled={loading}
-              className="flex-1 border border-slate-200/60 bg-white rounded-2xl px-5 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-300 disabled:opacity-50 transition-all placeholder:text-slate-400"
+              enterKeyHint="send"
+              className="flex-1 border border-slate-200/60 bg-white rounded-2xl px-5 py-3 text-[16px] md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-300 disabled:opacity-50 transition-all placeholder:text-slate-400"
             />
             <button
               type="submit"

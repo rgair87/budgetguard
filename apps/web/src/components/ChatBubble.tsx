@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, X, Send, ExternalLink, Sparkles } from 'lucide-react';
 import api from '../api/client';
@@ -21,24 +21,62 @@ export default function ChatBubble() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [hasAnimated, setHasAnimated] = useState(false);
+  const [viewportH, setViewportH] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // Pulse animation on first load, stop after a few seconds
+  // Pulse animation on first load
   useEffect(() => {
     const t = setTimeout(() => setHasAnimated(true), 4000);
     return () => clearTimeout(t);
   }, []);
+
+  // Track visual viewport height (shrinks when keyboard opens on mobile)
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    function onResize() {
+      setViewportH(vv!.height);
+    }
+    onResize();
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
+    };
+  }, [open]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  // Focus input when panel opens
+  // Focus input when panel opens (only on desktop to avoid keyboard pop on mobile)
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (open && window.innerWidth >= 768) {
+      inputRef.current?.focus();
+    }
   }, [open]);
+
+  // Close on escape
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    // Blur input to dismiss keyboard
+    inputRef.current?.blur();
+  }, []);
 
   async function send(text?: string) {
     const msg = text || input.trim();
@@ -69,26 +107,37 @@ export default function ChatBubble() {
     }
   }
 
+  // On mobile, use full viewport height minus some padding.
+  // When keyboard is open, viewportH shrinks so the panel shrinks with it.
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const panelHeight = isMobile
+    ? viewportH
+      ? `${viewportH - 24}px`  // 24px breathing room from top
+      : 'calc(100dvh - 1.5rem)'
+    : '500px';
+
   return (
     <>
       {/* Backdrop on mobile when open */}
       {open && (
         <div
           className="md:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
-          onClick={() => setOpen(false)}
+          onClick={handleClose}
         />
       )}
 
       {/* Chat panel */}
       <div
+        ref={panelRef}
         className={`fixed z-50 transition-all duration-300 ease-out ${
           open
-            ? 'bottom-6 right-4 md:right-6 w-[calc(100%-2rem)] md:w-96 h-[500px] opacity-100 translate-y-0 scale-100'
-            : 'bottom-6 right-4 md:right-6 w-0 h-0 opacity-0 translate-y-4 scale-95 pointer-events-none'
+            ? 'bottom-0 md:bottom-6 right-0 md:right-6 w-full md:w-96 opacity-100 translate-y-0 scale-100'
+            : 'bottom-6 right-4 md:right-6 w-0 opacity-0 translate-y-4 scale-95 pointer-events-none'
         }`}
+        style={open ? { height: panelHeight } : { height: 0 }}
       >
         {open && (
-          <div className="flex flex-col w-full h-full bg-white rounded-2xl shadow-2xl border border-slate-200/60 overflow-hidden">
+          <div className="flex flex-col w-full h-full bg-white md:rounded-2xl rounded-t-2xl shadow-2xl border border-slate-200/60 overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 shrink-0">
               <div className="flex items-center gap-2">
@@ -98,14 +147,14 @@ export default function ChatBubble() {
               <div className="flex items-center gap-1">
                 <Link
                   to="/chat"
-                  onClick={() => setOpen(false)}
+                  onClick={handleClose}
                   className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-indigo-100 hover:bg-white/15 transition-colors"
                 >
                   Open full chat
                   <ExternalLink className="w-3 h-3" />
                 </Link>
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={handleClose}
                   className="p-1.5 rounded-md hover:bg-white/15 transition-colors"
                 >
                   <X className="w-4 h-4 text-white" />
@@ -114,7 +163,7 @@ export default function ChatBubble() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 overscroll-contain">
               {messages.length === 0 && !loading && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center mb-3">
@@ -165,10 +214,11 @@ export default function ChatBubble() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input */}
+            {/* Input - stays above keyboard */}
             <form
               onSubmit={e => { e.preventDefault(); send(); }}
-              className="shrink-0 flex items-center gap-2 px-3 py-3 border-t border-slate-100 bg-white"
+              className="shrink-0 flex items-center gap-2 px-3 py-3 border-t border-slate-100 bg-white safe-bottom"
+              style={{ paddingBottom: `max(0.75rem, env(safe-area-inset-bottom))` }}
             >
               <input
                 ref={inputRef}
@@ -176,12 +226,13 @@ export default function ChatBubble() {
                 onChange={e => setInput(e.target.value)}
                 placeholder="Ask about your finances..."
                 disabled={loading}
-                className="flex-1 text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 placeholder:text-slate-400"
+                enterKeyHint="send"
+                className="flex-1 text-[16px] md:text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 placeholder:text-slate-400"
               />
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="p-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 disabled:opacity-40 transition-all duration-150 shrink-0"
+                className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 disabled:opacity-40 transition-all duration-150 shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>
