@@ -210,6 +210,51 @@ function mapTellerCategory(tellerCat: string | null): string | null {
   return TELLER_CATEGORY_MAP[tellerCat.toLowerCase()] || null;
 }
 
+// ─── Merchant name cleaning ──────────────────────────────────
+
+const US_STATES = new Set(['TX','WA','CA','NY','FL','IL','PA','OH','GA','NC','MI','NJ','VA','AZ','MA','CO','WI','MN','MO','MD','IN','TN','OR','SC','KY','LA','OK','CT','IA','MS','AR','KS','NV','NM','NE','WV','ID','HI','ME','NH','RI','MT','DE','SD','ND','AK','VT','WY','DC']);
+
+function cleanMerchantName(raw: string): string {
+  return raw
+    // Strip transaction type prefixes
+    .replace(/\s*(DEBIT CARD PURCHASE|RECURRING DEBIT CARD|POS DEBIT|POS PURCHASE|CHECKCARD|CHECK CARD|PURCHASE AUTHORIZED ON \d{2}\/\d{2})\s*/gi, '')
+    .replace(/\s*(ACH WEB-?RECUR?|ACH WEB|ACH DEBIT|ACH TEL|ACH DR|PPD ID:?\s*\S+|WEB ID:?\s*\S+)\s*/gi, '')
+    .replace(/\s*(EXTERNAL WITHDRAWAL|EXTERNAL DEPOSIT|ONLINE PAYMENT|ONLINE TRANSFER|MOBILE PAYMENT)\s*/gi, '')
+    // Strip card numbers and masked digits
+    .replace(/\s*POSxxxx\d+\s*xxx\d+/gi, '')
+    .replace(/x{4,}\d*/gi, '')
+    .replace(/\d{16}/g, '')
+    .replace(/\s*(CARD\d+|\[PENDING\])/gi, '')
+    // Strip trailing phone numbers
+    .replace(/\s+\d{3}-\d{3,}-?\d*\s+\w{2}\s*$/i, '')
+    .replace(/\s+\d{3}-\d{3,4}-?\d{0,4}$/i, '')
+    // Strip trailing dates
+    .replace(/\s+\d{2}\/\d{2}$/i, '')
+    // Strip trailing city + state like "CONROE TX" or "WILLIS TX"
+    .replace(/\s+[A-Z][a-z]+\s+([A-Z]{2})\s*$/i, (match, state) => {
+      return US_STATES.has(state.toUpperCase()) ? '' : match;
+    })
+    // Strip trailing bare state codes
+    .replace(/\s+([A-Z]{2})\s*$/i, (match, state) => {
+      return US_STATES.has(state.toUpperCase()) ? '' : match;
+    })
+    // Strip trailing transaction reference numbers
+    .replace(/\s+#\S+$/i, '')
+    .replace(/\s+REF\s*#?\s*\S+$/i, '')
+    // Collapse whitespace and trim
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Title case a cleaned merchant name
+function titleCase(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/(?:^|\s)\S/g, c => c.toUpperCase())
+    // Keep known acronyms uppercase
+    .replace(/\b(Cvs|Heb|Usps|Ups|Atm|Ach)\b/gi, m => m.toUpperCase());
+}
+
 // ─── Service functions ───────────────────────────────────────
 
 /**
@@ -310,7 +355,8 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
         const rawAmount = parseFloat(txn.amount);
         // Teller amounts: negative = money out (debits), positive = money in (credits)
         const amount = rawAmount;
-        const merchantName = txn.details?.counterparty?.name || txn.description;
+        const rawName = txn.details?.counterparty?.name || txn.description;
+        const merchantName = titleCase(cleanMerchantName(rawName));
         const tellerCategory = txn.details?.category || null;
 
         // Classify: 1) existing mapping, 2) keyword match, 3) Teller's category, 4) leave for AI
@@ -384,6 +430,27 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       console.warn('Teller: AI classification failed, transactions saved without categories:', err);
     }
   }
+}
+
+/**
+ * Re-clean all merchant names in the database for a user.
+ * Useful after improving the cleaning logic.
+ */
+export function recleanMerchantNames(userId: string): number {
+  const rows = db.prepare(
+    'SELECT id, merchant_name FROM transactions WHERE user_id = ? AND merchant_name IS NOT NULL'
+  ).all(userId) as any[];
+
+  const update = db.prepare('UPDATE transactions SET merchant_name = ? WHERE id = ?');
+  let updated = 0;
+  for (const row of rows) {
+    const cleaned = titleCase(cleanMerchantName(row.merchant_name));
+    if (cleaned !== row.merchant_name) {
+      update.run(cleaned, row.id);
+      updated++;
+    }
+  }
+  return updated;
 }
 
 /**

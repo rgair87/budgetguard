@@ -22,6 +22,7 @@ export default function ChatBubble() {
   const [loading, setLoading] = useState(false);
   const [hasAnimated, setHasAnimated] = useState(false);
   const [viewportH, setViewportH] = useState<number | null>(null);
+  const [viewportOffset, setViewportOffset] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -40,6 +41,7 @@ export default function ChatBubble() {
 
     function onResize() {
       setViewportH(vv!.height);
+      setViewportOffset(vv!.offsetTop);
     }
     onResize();
     vv.addEventListener('resize', onResize);
@@ -107,12 +109,14 @@ export default function ChatBubble() {
     }
   }
 
-  // On mobile, use full viewport height minus some padding.
-  // When keyboard is open, viewportH shrinks so the panel shrinks with it.
+  // On mobile, fill the visual viewport (shrinks when keyboard opens).
+  // Use top positioning instead of bottom so the panel stays anchored to the
+  // visible area and the keyboard doesn't cover the input.
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const keyboardOpen = isMobile && viewportH && viewportH < window.innerHeight * 0.8;
   const panelHeight = isMobile
     ? viewportH
-      ? `${viewportH - 24}px`  // 24px breathing room from top
+      ? `${viewportH}px`
       : 'calc(100dvh - 1.5rem)'
     : '500px';
 
@@ -131,10 +135,18 @@ export default function ChatBubble() {
         ref={panelRef}
         className={`fixed z-50 transition-all duration-300 ease-out ${
           open
-            ? 'bottom-0 md:bottom-6 right-0 md:right-6 w-full md:w-96 opacity-100 translate-y-0 scale-100'
+            ? 'right-0 md:right-6 w-full md:w-96 opacity-100 translate-y-0 scale-100'
             : 'bottom-6 right-4 md:right-6 w-0 opacity-0 translate-y-4 scale-95 pointer-events-none'
         }`}
-        style={open ? { height: panelHeight } : { height: 0 }}
+        style={open ? {
+          height: panelHeight,
+          // On mobile with keyboard: position from top of visual viewport
+          // On mobile without keyboard: anchor to bottom
+          // On desktop: anchor to bottom
+          ...(keyboardOpen
+            ? { top: `${viewportOffset}px`, bottom: 'auto' }
+            : { bottom: isMobile ? 0 : 24 }),
+        } : { height: 0 }}
       >
         {open && (
           <div className="flex flex-col w-full h-full bg-white md:rounded-2xl rounded-t-2xl shadow-2xl border border-slate-200/60 overflow-hidden">
@@ -227,6 +239,7 @@ export default function ChatBubble() {
                 placeholder="Ask about your finances..."
                 disabled={loading}
                 enterKeyHint="send"
+                onFocus={() => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 300)}
                 className="flex-1 text-[16px] md:text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 placeholder:text-slate-400"
               />
               <button

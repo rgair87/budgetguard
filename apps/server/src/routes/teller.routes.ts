@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
-import { enrollBank, syncAccounts } from '../services/teller.service';
+import { enrollBank, syncAccounts, recleanMerchantNames } from '../services/teller.service';
 
 const router = Router();
 
@@ -60,6 +60,20 @@ router.get('/status', authenticate, async (req: AuthRequest, res: Response) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/teller/reclean
+ * Re-clean all merchant names with improved cleaning logic.
+ */
+router.post('/reclean', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const updated = recleanMerchantNames(req.userId!);
+    res.json({ success: true, updated });
+  } catch (err: any) {
+    console.error('Reclean error:', err);
+    res.status(500).json({ error: 'reclean_error', message: err.message });
   }
 });
 

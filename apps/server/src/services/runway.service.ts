@@ -19,10 +19,16 @@ export function calculateRunway(userId: string): RunwayScore {
   const totalDebt = debtAccounts.reduce((sum, a) => sum + a.current_balance, 0);
 
   // Daily burn rate from last 90 days — use actual calendar days, not just days with spending
+  // Exclude transfers and internal movements (credit card payments, account transfers)
+  const EXCLUDED_CATEGORIES = ['Transfers', 'Transfer', 'Debt Payments'];
   const spendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total,
             MIN(date) as earliest_date
-     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')`
+     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
+       AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer', 'Debt Payments')
+       AND merchant_name NOT LIKE '%transfer%'
+       AND merchant_name NOT LIKE '%payment to%'
+       AND merchant_name NOT LIKE '%CREDIT CARD%'`
   ).get(userId) as unknown as any;
   let calendarDays = 90; // default to full window
   if (spendRow.earliest_date) {
@@ -33,10 +39,14 @@ export function calculateRunway(userId: string): RunwayScore {
   }
   const dailyBurnRate = spendRow.total / calendarDays;
 
-  // Spent this month
+  // Spent this month (exclude transfers)
   const monthSpendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions
-     WHERE user_id = ? AND amount < 0 AND date >= date('now', 'start of month')`
+     WHERE user_id = ? AND amount < 0 AND date >= date('now', 'start of month')
+       AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer', 'Debt Payments')
+       AND merchant_name NOT LIKE '%transfer%'
+       AND merchant_name NOT LIKE '%payment to%'
+       AND merchant_name NOT LIKE '%CREDIT CARD%'`
   ).get(userId) as unknown as any;
   const spentThisMonth = monthSpendRow.total;
 
