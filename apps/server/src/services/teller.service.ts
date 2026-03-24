@@ -11,29 +11,40 @@ import { env } from '../config/env';
 //   1. TELLER_CERTIFICATE / TELLER_PRIVATE_KEY env vars (PEM content, for Railway/Docker)
 //   2. Files on disk at TELLER_CERT_PATH or default ./certs/ dir
 
-let cert: Buffer;
-let key: Buffer;
+let cert: Buffer | null = null;
+let key: Buffer | null = null;
+let _agent: https.Agent | null = null;
 
-if (env.TELLER_CERTIFICATE && env.TELLER_PRIVATE_KEY) {
-  // Load from env vars (replace literal \n with actual newlines)
-  cert = Buffer.from(env.TELLER_CERTIFICATE.replace(/\\n/g, '\n'));
-  key = Buffer.from(env.TELLER_PRIVATE_KEY.replace(/\\n/g, '\n'));
-  console.log('Teller certs loaded from environment variables');
-} else {
-  const certsDir = env.TELLER_CERT_PATH || path.resolve(__dirname, '../../certs');
-  try {
-    cert = fs.readFileSync(path.join(certsDir, 'certificate.pem'));
-    key = fs.readFileSync(path.join(certsDir, 'private_key.pem'));
-    console.log('Teller certs loaded from', certsDir);
-  } catch {
-    console.warn('Teller certificates not found - bank sync will not work');
-    console.warn('Set TELLER_CERTIFICATE and TELLER_PRIVATE_KEY env vars, or place cert files at', certsDir);
-    cert = Buffer.from('');
-    key = Buffer.from('');
+function loadCerts(): { cert: Buffer; key: Buffer } {
+  if (cert && key) return { cert, key };
+
+  if (env.TELLER_CERTIFICATE && env.TELLER_PRIVATE_KEY) {
+    // Load from env vars (replace literal \n with actual newlines)
+    cert = Buffer.from(env.TELLER_CERTIFICATE.replace(/\\n/g, '\n'));
+    key = Buffer.from(env.TELLER_PRIVATE_KEY.replace(/\\n/g, '\n'));
+    console.log('Teller certs loaded from environment variables');
+  } else {
+    const certsDir = env.TELLER_CERT_PATH || path.resolve(__dirname, '../../certs');
+    try {
+      cert = fs.readFileSync(path.join(certsDir, 'certificate.pem'));
+      key = fs.readFileSync(path.join(certsDir, 'private_key.pem'));
+      console.log('Teller certs loaded from', certsDir);
+    } catch {
+      throw new Error(
+        'Teller certificates not found. Set TELLER_CERTIFICATE and TELLER_PRIVATE_KEY env vars, or place cert files at ' +
+        (env.TELLER_CERT_PATH || path.resolve(__dirname, '../../certs'))
+      );
+    }
   }
+  return { cert, key };
 }
 
-const agent = new https.Agent({ cert, key });
+function getAgent(): https.Agent {
+  if (_agent) return _agent;
+  const certs = loadCerts();
+  _agent = new https.Agent({ cert: certs.cert, key: certs.key });
+  return _agent;
+}
 
 const TELLER_BASE = 'https://api.teller.io';
 
@@ -52,7 +63,7 @@ async function tellerFetch<T = any>(
       'Content-Type': 'application/json',
     },
     // @ts-ignore - Node fetch supports dispatcher/agent via undici
-    dispatcher: agent,
+    dispatcher: getAgent(),
   } as any);
 
   if (!res.ok) {
@@ -71,14 +82,15 @@ async function tellerRequest<T = any>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const url = new URL(`${TELLER_BASE}${endpoint}`);
+    const certs = loadCerts();
     const req = https.request(
       {
         hostname: url.hostname,
         port: 443,
         path: url.pathname + url.search,
         method,
-        cert,
-        key,
+        cert: certs.cert,
+        key: certs.key,
         headers: {
           'Authorization': `Basic ${Buffer.from(`${accessToken}:`).toString('base64')}`,
           'Content-Type': 'application/json',
