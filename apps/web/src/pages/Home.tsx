@@ -283,22 +283,22 @@ export default function Home() {
     setClearingDemo(true);
     try {
       await api.post('/auth/clear-demo-data');
-      loadData();
+      await loadData();
     } catch { /* ignore */ }
     setClearingDemo(false);
   }
 
-  function loadData() {
+  async function loadData() {
     setLoading(true);
-    Promise.all([
-      api.get('/runway').then((r) => setScore(r.data)),
+    await Promise.all([
+      api.get('/runway').then((r) => setScore(r.data)).catch(() => {}),
       api.get('/runway/paycheck-plan').then((r) => setPlan(r.data)).catch(() => {}),
       api.get('/accounts').then((r) => {
         setAccounts(r.data.accounts);
         setHasLinkedBank(r.data.hasLinkedBank);
         setLatestTransactionDate(r.data.latestTransactionDate);
-      }),
-      api.get('/events').then((r) => setEvents(r.data)),
+      }).catch(() => {}),
+      api.get('/events').then((r) => setEvents(r.data)).catch(() => {}),
       api.get('/runway/review-merchants').then((r) => setUnclassified(r.data.merchants)).catch(() => {}),
       api.get('/advisor/summary').then((r) => setAdvisorSummary(r.data)).catch(() => {}),
       api.get('/alerts').then((r) => setAlerts(r.data.alerts || [])).catch(() => {}),
@@ -311,7 +311,7 @@ export default function Home() {
     setLoadingDemo(true);
     try {
       await api.post('/auth/demo-data');
-      loadData();
+      await loadData();
     } catch { /* ignore */ }
     setLoadingDemo(false);
   }

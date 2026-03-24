@@ -238,7 +238,12 @@
       "WebFetch(domain:myrunway.app)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(node -e \"const l = require\\(''lucide-react''\\); console.log\\([''ChevronDown'',''Plus'',''FileText'',''Calendar'',''Repeat'',''Wallet''].map\\(n => n + '': '' + \\(typeof l[n]\\)\\).join\\(''\\\\n''\\)\\)\")"
+      "Bash(node -e \"const l = require\\(''lucide-react''\\); console.log\\([''ChevronDown'',''Plus'',''FileText'',''Calendar'',''Repeat'',''Wallet''].map\\(n => n + '': '' + \\(typeof l[n]\\)\\).join\\(''\\\\n''\\)\\)\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0NzkyM2U1Ni0zODRhLTQwM2YtOGFiNS1hYWQyMGZlMmM2YmIiLCJpYXQiOjE3NzQzNzAyNzgsImV4cCI6MTc3NDM3MTE3OH0.FDiH7JlsDiEh_78McVhR_uZ5gxw-6-ZEA3VKHziwjaA\")",
+      "Bash(curl -s http://localhost:3001/api/auth/demo-data -H \"Authorization: Bearer $TOKEN\" -X POST)",
+      "Bash(curl -s http://localhost:3001/api/runway -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:3001/api/runway -H 'Authorization: Bearer $TOKEN')"
     ]
   }
 }
