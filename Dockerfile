@@ -1,4 +1,4 @@
-# Stage 1: Build frontend
+# Stage 1: Build frontend (cache bust: 2026-03-24)
 FROM node:22-alpine AS build
 
 RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
