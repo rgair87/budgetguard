@@ -83,7 +83,7 @@ export function calculateRunway(userId: string): RunwayScore {
   let balance = spendableBalance;
   let runoutDate: string | null = null;
   let runwayDays = 0;
-  const maxDays = 365;
+  const maxDays = 730; // project up to 2 years
   const urgentEvents: { name: string; amount: number }[] = [];
 
   // Deduct undated events immediately (could hit anytime)
@@ -111,7 +111,7 @@ export function calculateRunway(userId: string): RunwayScore {
       const intervalDays = parseRecurrenceInterval(evt.recurrence_interval);
       if (intervalDays > 0) {
         let nextDate = new Date(evt.expected_date + 'T00:00:00');
-        for (let i = 0; i < 52; i++) { // up to ~1 year of recurrences
+        for (let i = 0; i < 104; i++) { // up to ~2 years of recurrences
           nextDate = new Date(nextDate);
           nextDate.setDate(nextDate.getDate() + intervalDays);
           const ds = nextDate.toISOString().split('T')[0];

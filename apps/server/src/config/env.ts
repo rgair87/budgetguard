@@ -12,9 +12,9 @@ function required(key: string): string {
 export const env = {
   NODE_ENV: (process.env.NODE_ENV || 'development') as 'development' | 'production' | 'test',
   ANTHROPIC_API_KEY: required('ANTHROPIC_API_KEY'),
-  PLAID_CLIENT_ID: required('PLAID_CLIENT_ID'),
-  PLAID_SECRET: required('PLAID_SECRET'),
-  PLAID_ENV: (process.env.PLAID_ENV || 'sandbox') as 'sandbox' | 'production',
+  TELLER_APP_ID: process.env.TELLER_APP_ID || 'app_pq8bujpq2bv1virlra000',
+  TELLER_ENV: (process.env.TELLER_ENV || 'development') as 'sandbox' | 'development' | 'production',
+  TELLER_CERT_PATH: process.env.TELLER_CERT_PATH || '',
   JWT_SECRET: required('JWT_SECRET'),
   PORT: parseInt(process.env.PORT || '3001', 10),
   CORS_ORIGINS: process.env.CORS_ORIGINS || 'http://localhost:5173',

@@ -13,40 +13,8 @@ import {
   DollarSign,
   ArrowRight,
   Download,
-  HelpCircle,
 } from 'lucide-react';
-
-/* Tiny info tooltip - tap/hover to see explanation */
-function InfoTip({ text }: { text: string }) {
-  const [show, setShow] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!show) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [show]);
-
-  return (
-    <div className="relative inline-block" ref={ref}>
-      <button
-        onClick={(e) => { e.stopPropagation(); setShow(!show); }}
-        className="opacity-50 hover:opacity-80 transition-opacity"
-      >
-        <HelpCircle className="w-3.5 h-3.5" />
-      </button>
-      {show && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-xl">
-          {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-900" />
-        </div>
-      )}
-    </div>
-  );
-}
+import InfoTip from '../components/InfoTip';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -114,7 +82,7 @@ function generateICS(data: CalendarMonth, monthLabel: string): string {
 }
 
 function generateCSV(data: CalendarMonth): string {
-  const rows: string[] = ['Date,Day,Projected Balance,Income,Bills/Events,Status'];
+  const rows: string[] = ['Date,Day,Projected Balance,Income,Bills/Expenses,Status'];
 
   data.days.forEach(day => {
     const d = new Date(day.date + 'T00:00:00');
@@ -156,11 +124,18 @@ export default function Calendar() {
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
-  // Add event form state
+  // Add expense form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEventName, setNewEventName] = useState('');
   const [newEventAmount, setNewEventAmount] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Standalone "Add Expense" modal (doesn't require clicking a day first)
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickDate, setQuickDate] = useState('');
+  const [quickName, setQuickName] = useState('');
+  const [quickAmount, setQuickAmount] = useState('');
+  const [quickSaving, setQuickSaving] = useState(false);
 
   // Export dropdown state
   const [exportOpen, setExportOpen] = useState(false);
@@ -240,6 +215,27 @@ export default function Calendar() {
     }
   }
 
+  async function handleQuickAdd() {
+    if (!quickName.trim() || !quickAmount.trim() || !quickDate) return;
+    setQuickSaving(true);
+    try {
+      await api.post('/events', {
+        name: quickName.trim(),
+        estimated_amount: parseFloat(quickAmount),
+        expected_date: quickDate,
+      });
+      setQuickName('');
+      setQuickAmount('');
+      setQuickDate('');
+      setShowQuickAdd(false);
+      fetchCalendar();
+    } catch {
+      // Could show an error toast here
+    } finally {
+      setQuickSaving(false);
+    }
+  }
+
   // Limit to 6 months forward from today
   const today = new Date();
   const maxMonth = `${today.getFullYear()}-${String(today.getMonth() + 7).padStart(2, '0')}`;
@@ -286,6 +282,14 @@ export default function Calendar() {
         </button>
         <h1 className="text-lg font-semibold text-slate-900 tracking-tight">{monthLabel}</h1>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setShowQuickAdd(true); setQuickDate(''); }}
+            className="p-2 rounded-xl hover:bg-indigo-50 text-indigo-500 transition-all duration-200"
+            aria-label="Add upcoming expense"
+            title="Add upcoming expense"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
           <div className="relative" ref={exportRef}>
             <button
               onClick={() => setExportOpen(v => !v)}
@@ -560,6 +564,75 @@ export default function Calendar() {
           </div>
         </div>
       </div>
+
+      {/* ---- Quick Add Expense Modal ---- */}
+      {showQuickAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowQuickAdd(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Add Upcoming Expense</h2>
+              <button onClick={() => setShowQuickAdd(false)} className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 -mt-2">Add a bill, purchase, or expense you're expecting. It'll show up on your calendar so your balance projections stay accurate.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">What's the expense?</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Car Insurance, Dentist Visit"
+                  value={quickName}
+                  onChange={e => setQuickName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-sm text-slate-400">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      value={quickAmount}
+                      onChange={e => setQuickAmount(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-7 pr-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={quickDate}
+                    onChange={e => setQuickDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setShowQuickAdd(false)}
+                className="px-4 py-2.5 rounded-xl text-sm text-slate-600 hover:bg-slate-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleQuickAdd}
+                disabled={quickSaving || !quickName.trim() || !quickAmount.trim() || !quickDate}
+                className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-indigo-500/25"
+              >
+                {quickSaving ? 'Adding...' : 'Add Expense'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -638,9 +711,9 @@ function SidePanelContent({
         </div>
       )}
 
-      {/* Bills & Events */}
+      {/* Bills & Expenses */}
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-2">Bills & Events</p>
+        <p className="text-sm font-semibold text-slate-700 mb-2">Bills & Expenses</p>
         {day.events.length > 0 ? (
           <div className="space-y-2">
             {day.events.map((ev, i) => (
@@ -651,25 +724,25 @@ function SidePanelContent({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-400">No bills or events on this day.</p>
+          <p className="text-sm text-slate-400">Nothing scheduled for this day.</p>
         )}
       </div>
 
-      {/* Add Event */}
+      {/* Add Expense */}
       {!showAddForm ? (
         <button
           onClick={() => setShowAddForm(true)}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all duration-200 text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
-          Add Event
+          Add Expense
         </button>
       ) : (
         <div className="space-y-3 bg-slate-50 rounded-xl p-4">
-          <p className="text-sm font-semibold text-slate-700">New Event</p>
+          <p className="text-sm font-semibold text-slate-700">New Upcoming Expense</p>
           <input
             type="text"
-            placeholder="Event name"
+            placeholder="e.g. Car Insurance, Doctor Visit"
             value={newEventName}
             onChange={e => setNewEventName(e.target.value)}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"

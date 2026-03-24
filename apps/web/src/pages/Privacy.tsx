@@ -78,14 +78,14 @@ export default function Privacy() {
 
               <div className="mt-3 space-y-3">
                 <div className="bg-gray-50 rounded-md p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1">Plaid</h3>
+                  <h3 className="font-semibold text-gray-900 mb-1">Teller</h3>
                   <p>
-                    We use Plaid to securely connect your bank accounts and retrieve financial data.
-                    When you link a bank account, Plaid facilitates the connection between Runway and
-                    your financial institution. Plaid may collect and process your banking credentials
+                    We use Teller to securely connect your bank accounts and retrieve financial data.
+                    When you link a bank account, Teller facilitates the connection between Runway and
+                    your financial institution. Teller may collect and process your banking credentials
                     and financial data in accordance with their own{' '}
                     <a
-                      href="https://plaid.com/legal/"
+                      href="https://teller.io/privacy"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-indigo-600 hover:underline"

@@ -1,43 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api/client';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, HelpCircle } from 'lucide-react';
+import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight } from 'lucide-react';
 import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
+import InfoTip from '../components/InfoTip';
 import { SkeletonDashboard } from '../components/Skeleton';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@runway/shared';
-
-/* Tiny info tooltip - tap/hover to see explanation */
-function InfoTip({ text }: { text: string }) {
-  const [show, setShow] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!show) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [show]);
-
-  return (
-    <div className="relative inline-block" ref={ref}>
-      <button
-        onClick={(e) => { e.stopPropagation(); setShow(!show); }}
-        className="opacity-50 hover:opacity-80 transition-opacity"
-      >
-        <HelpCircle className="w-3.5 h-3.5" />
-      </button>
-      {show && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-xl">
-          {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-900" />
-        </div>
-      )}
-    </div>
-  );
-}
 
 const CATEGORY_OPTIONS = [
   'Groceries', 'Restaurants', 'Shopping', 'Entertainment',
@@ -404,7 +373,7 @@ export default function Home() {
                 <Landmark className="w-6 h-6 text-white" />
               </div>
               <p className="text-sm font-semibold text-slate-800 mb-0.5">Connect Bank</p>
-              <p className="text-xs text-slate-400">Securely link via Plaid</p>
+              <p className="text-xs text-slate-400">Securely link via Teller</p>
               <div className="flex items-center justify-center gap-1 mt-2 text-xs text-indigo-500 font-medium">
                 Get started <ArrowRight className="w-3 h-3" />
               </div>
@@ -591,7 +560,7 @@ export default function Home() {
 
       {/* Upcoming events - collapsed */}
       {events.length > 0 && (
-        <Section title="Upcoming Collisions" badge={`${events.length}`} linkTo="/calendar" linkLabel="Manage" defaultOpen={false} icon={CalendarClock}>
+        <Section title="Upcoming Expenses" badge={`${events.length}`} linkTo="/calendar" linkLabel="Manage" defaultOpen={false} icon={CalendarClock}>
           <div className="space-y-2">
             {events.slice(0, 5).map((evt) => (
               <div key={evt.id} className="flex items-center justify-between py-1.5">

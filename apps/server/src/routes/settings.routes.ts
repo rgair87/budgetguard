@@ -15,7 +15,7 @@ router.get('/', authenticate, attachTier, (req: TieredRequest, res: Response) =>
   ).get(req.userId) as unknown as any;
 
   const accounts = db.prepare(
-    'SELECT id, name, type, current_balance, purpose, income_allocation, interest_rate, minimum_payment, plaid_account_id, last_synced_at FROM accounts WHERE user_id = ?'
+    'SELECT id, name, type, current_balance, purpose, income_allocation, interest_rate, minimum_payment, plaid_account_id, teller_account_id, last_synced_at FROM accounts WHERE user_id = ?'
   ).all(req.userId);
 
   const tier = req.tier!;

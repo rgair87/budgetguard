@@ -6,3 +6,4 @@ dist/
 nul
 *.log
 coverage/
+apps/server/certs/

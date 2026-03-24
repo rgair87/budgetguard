@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wallet,
@@ -9,41 +9,9 @@ import {
   TrendingUp,
   Clock,
   Shield,
-  HelpCircle,
 } from 'lucide-react';
+import InfoTip from './InfoTip';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType } from '@runway/shared';
-
-/* Tiny info tooltip - tap/hover to see explanation */
-function InfoTip({ text }: { text: string }) {
-  const [show, setShow] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!show) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [show]);
-
-  return (
-    <div className="relative inline-block" ref={ref}>
-      <button
-        onClick={(e) => { e.stopPropagation(); setShow(!show); }}
-        className="opacity-50 hover:opacity-80 transition-opacity"
-      >
-        <HelpCircle className="w-3.5 h-3.5" />
-      </button>
-      {show && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-xl">
-          {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-900" />
-        </div>
-      )}
-    </div>
-  );
-}
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -63,7 +31,7 @@ function daysGained(balance: number, burnRate: number, dailyIncome: number, cutP
   const currentDays = balance / netBurn;
   const newNetBurn = Math.max(0.1, netBurn - cutPerDay);
   const newDays = balance / newNetBurn;
-  return Math.round(Math.max(0, Math.min(newDays - currentDays, 365)));
+  return Math.round(Math.max(0, Math.min(newDays - currentDays, 730)));
 }
 
 interface Props {
@@ -72,7 +40,7 @@ interface Props {
 }
 
 export default function RunwayScore({ score, plan }: Props) {
-  const isGood = score.runwayDays >= 365 && score.status === 'green';
+  const isGood = score.runwayDays >= 180 && score.status === 'green';
   const isTight = score.status === 'yellow';
   const isDanger = score.status === 'red';
   const needsHelp = isTight || isDanger;
@@ -127,17 +95,19 @@ export default function RunwayScore({ score, plan }: Props) {
           </div>
 
           <p className="text-6xl font-extrabold text-white tracking-tight leading-none">
-            {score.runwayDays >= 365 ? '365+' : score.runwayDays}
+            {score.runwayDays >= 730 ? '2yr+' : score.runwayDays >= 365 ? `${Math.round(score.runwayDays / 30)}mo` : score.runwayDays}
           </p>
           <p className="text-lg font-medium text-white/80 mt-1 flex items-center gap-1.5">
-            {`day${score.runwayDays !== 1 ? 's' : ''} of runway`}
+            {score.runwayDays >= 365
+              ? `${score.runwayDays} days of runway`
+              : `day${score.runwayDays !== 1 ? 's' : ''} of runway`}
             <InfoTip text="How many days your current cash will last based on your spending habits and upcoming bills." />
           </p>
           <p className="text-sm text-white/65 mt-2 max-w-sm leading-relaxed">
             {isGood ? (
               "You're in great shape. Income covers spending, bills, and upcoming events. Keep it up!"
             ) : score.runwayDays >= 365 ? (
-              "You have savings, but you're spending more than you earn."
+              "You have solid savings, but you're spending more than you earn. Consider trimming expenses."
             ) : score.runoutDate ? (
               <>Covered through <span className="font-semibold text-white/90">{formatDate(score.runoutDate)}</span></>
             ) : (
@@ -150,7 +120,7 @@ export default function RunwayScore({ score, plan }: Props) {
               {isDanger
                 ? (score.amount < 0 ? "Let's make a plan" : 'Time to take action')
                 : isTight
-                  ? (score.runwayDays >= 365 ? 'Spending more than you earn' : "Getting tight, let's find room")
+                  ? (score.runwayDays >= 180 ? 'Spending more than you earn' : "Getting tight, let's find room")
                   : 'On track'}
             </span>
             {score.daysToPayday !== null && (

@@ -329,7 +329,7 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
       const currentRunwayDays = spendableBalance / netBurn;
       const newNetBurn = Math.max(0.1, netBurn - dailySavings);
       const newRunwayDays = spendableBalance / newNetBurn;
-      runwayImpactDays = Math.round(Math.min(newRunwayDays - currentRunwayDays, 365));
+      runwayImpactDays = Math.round(Math.min(newRunwayDays - currentRunwayDays, 730));
     }
 
     categories.push({

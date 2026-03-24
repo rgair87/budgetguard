@@ -15,6 +15,7 @@ testDb.exec(`
     next_payday TEXT,
     take_home_pay REAL,
     plaid_access_token TEXT,
+    teller_access_token TEXT,
     email_verified INTEGER NOT NULL DEFAULT 0,
     verification_token TEXT,
     reset_token TEXT,
@@ -49,9 +50,8 @@ vi.mock('../config/env', () => ({
     PORT: 3001,
     CORS_ORIGINS: 'http://localhost:5173',
     ANTHROPIC_API_KEY: 'test-key',
-    PLAID_CLIENT_ID: 'test-plaid-id',
-    PLAID_SECRET: 'test-plaid-secret',
-    PLAID_ENV: 'sandbox',
+    TELLER_APP_ID: 'test-teller-app-id',
+    TELLER_ENV: 'sandbox',
   },
 }));
 

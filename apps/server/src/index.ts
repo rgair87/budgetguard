@@ -6,7 +6,7 @@ import logger from './config/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { generalLimiter, authLimiter, aiLimiter } from './middleware/rateLimiter';
 import authRoutes from './routes/auth.routes';
-import plaidRoutes from './routes/plaid.routes';
+import tellerRoutes from './routes/teller.routes';
 import accountsRoutes from './routes/accounts.routes';
 import transactionsRoutes from './routes/transactions.routes';
 import eventsRoutes from './routes/events.routes';
@@ -52,7 +52,7 @@ app.use(generalLimiter);
 
 // Routes
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/plaid', plaidRoutes);
+app.use('/api/teller', tellerRoutes);
 app.use('/api/accounts', accountsRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/events', eventsRoutes);

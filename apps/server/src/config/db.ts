@@ -26,6 +26,12 @@ try { db.exec("ALTER TABLE users ADD COLUMN verification_token TEXT"); } catch {
 try { db.exec("ALTER TABLE users ADD COLUMN reset_token TEXT"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN reset_token_expires TEXT"); } catch {}
 
+// Migration: Plaid → Teller (add teller columns alongside plaid for backwards compat)
+try { db.exec("ALTER TABLE users ADD COLUMN teller_access_token TEXT"); } catch {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN teller_account_id TEXT"); } catch {}
+// Create unique index for teller upserts (can't use UNIQUE constraint in ALTER TABLE)
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_user_teller ON accounts(user_id, teller_account_id)"); } catch {}
+
 // Refresh tokens table
 db.exec(`CREATE TABLE IF NOT EXISTS refresh_tokens (
   id TEXT PRIMARY KEY,

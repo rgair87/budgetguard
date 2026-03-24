@@ -19,6 +19,13 @@ export function invalidateCache(prefix: string): void {
   }
 }
 
+/** Flush every cache entry that contains the given userId anywhere in its key */
+export function invalidateUserCache(userId: string): void {
+  for (const key of cache.keys()) {
+    if (key.includes(userId)) cache.delete(key);
+  }
+}
+
 // Cleanup expired entries every 5 minutes
 setInterval(() => {
   const now = Date.now();

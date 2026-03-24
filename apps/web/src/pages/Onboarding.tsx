@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import PlaidLinkButton from '../components/PlaidLink';
+import TellerConnectButton from '../components/TellerConnect';
 import {
   Shield,
   TrendingDown,
@@ -189,7 +189,7 @@ function StepConnect({ onNext }: { onNext: () => void }) {
         </div>
 
         <div className="space-y-5">
-          <PlaidLinkButton onSuccess={onNext} />
+          <TellerConnectButton onSuccess={onNext} />
 
           <div className="border-t border-gray-100 pt-5 space-y-2">
             <button

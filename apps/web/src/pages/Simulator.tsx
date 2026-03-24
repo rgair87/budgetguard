@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Sparkles,
   ShoppingBag,
@@ -80,6 +80,9 @@ export default function Simulator() {
   const [customName, setCustomName] = useState('');
   const [customKind, setCustomKind] = useState<ScenarioKind>('one-time-expense');
 
+  // Ref for auto-scrolling to results
+  const resultsRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     api.get('/runway')
       .then(r => setRunway(r.data))
@@ -117,6 +120,16 @@ export default function Simulator() {
   const removeScenario = (id: string) => {
     setScenarios(prev => prev.filter(s => s.id !== id));
   };
+
+  // Auto-scroll to results when scenarios are added
+  useEffect(() => {
+    if (scenarios.length > 0 && resultsRef.current) {
+      // Small delay to let the DOM update
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  }, [scenarios.length]);
 
   /* ── loading / error ── */
   if (loading) {
@@ -335,7 +348,7 @@ export default function Simulator() {
 
       {/* ── Results Panel ── */}
       {hasScenarios && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
+        <div ref={resultsRef} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
           <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             {daysDiff >= 0
               ? <TrendingUp className="w-4 h-4 text-emerald-500" />

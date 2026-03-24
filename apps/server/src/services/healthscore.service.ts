@@ -21,7 +21,7 @@ export function calculateHealthScore(userId: string): HealthScoreResult {
   let runwayDetail: string;
   if (runway.runwayDays >= 365) {
     runwayScore = 30;
-    runwayDetail = `${runway.runwayDays}+ days — excellent cushion`;
+    runwayDetail = `${runway.runwayDays} days — excellent cushion`;
   } else if (runway.runwayDays >= 90) {
     runwayScore = 20 + Math.round((runway.runwayDays - 90) / 275 * 10);
     runwayDetail = `${runway.runwayDays} days — solid runway`;

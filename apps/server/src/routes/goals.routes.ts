@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { getGoals, createGoal, updateGoal, deleteGoal, addToGoal, NotFoundError } from '../services/goals.service';
+import { getGoals, createGoal, updateGoal, deleteGoal, addToGoal, getGoalInsights, NotFoundError } from '../services/goals.service';
 import { validate } from '../middleware/validate';
 import { createGoalSchema, addToGoalSchema } from '../validation/schemas';
 
@@ -9,7 +9,8 @@ router.use(authenticate);
 
 router.get('/', (req: AuthRequest, res: Response) => {
   const goals = getGoals(req.userId!);
-  res.json({ goals });
+  const insights = getGoalInsights(req.userId!);
+  res.json({ goals, insights });
 });
 
 router.post('/', validate(createGoalSchema), (req: AuthRequest, res: Response) => {

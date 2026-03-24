@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   next_payday TEXT,
   take_home_pay REAL,
   plaid_access_token TEXT,
+  teller_access_token TEXT,
   email_verified INTEGER NOT NULL DEFAULT 0,
   verification_token TEXT,
   reset_token TEXT,
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   plaid_account_id TEXT,
+  teller_account_id TEXT,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   current_balance REAL NOT NULL DEFAULT 0,
@@ -25,7 +27,8 @@ CREATE TABLE IF NOT EXISTS accounts (
   purpose TEXT DEFAULT 'general',
   income_allocation REAL,
   last_synced_at TEXT,
-  UNIQUE(user_id, plaid_account_id)
+  UNIQUE(user_id, plaid_account_id),
+  UNIQUE(user_id, teller_account_id)
 );
 
 CREATE TABLE IF NOT EXISTS transactions (

@@ -4,6 +4,7 @@ import { AuthRequest, authenticate } from '../middleware/auth';
 import { loadDemoData } from '../services/demo.service';
 import { validate } from '../middleware/validate';
 import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from '../validation/schemas';
+import { invalidateUserCache } from '../utils/cache';
 import db from '../config/db';
 
 const router = Router();
@@ -117,6 +118,8 @@ router.post('/clear-demo-data', authenticate, (req: AuthRequest, res: Response) 
     db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
     // Reset paycheck settings so calendar/budget don't show stale numbers
     db.prepare('UPDATE users SET pay_frequency = NULL, next_payday = NULL, take_home_pay = NULL WHERE id = ?').run(userId);
+    // Invalidate ALL cached data for this user so pages get fresh results
+    invalidateUserCache(userId);
     res.json({ success: true, message: 'Demo data cleared. Add your own accounts to get started!' });
   } catch (err: any) {
     console.error('Clear demo data error:', err);
@@ -127,7 +130,10 @@ router.post('/clear-demo-data', authenticate, (req: AuthRequest, res: Response) 
 // Load demo/sample data for the logged-in user
 router.post('/demo-data', authenticate, (req: AuthRequest, res: Response) => {
   try {
-    const result = loadDemoData(req.userId!);
+    const userId = req.userId!;
+    const result = loadDemoData(userId);
+    // Invalidate ALL cached data so pages get fresh results on reload
+    invalidateUserCache(userId);
     res.json({ success: true, ...result, message: 'Sample data loaded! Explore the app to see all features in action.' });
   } catch (err: any) {
     console.error('Demo data error:', err);

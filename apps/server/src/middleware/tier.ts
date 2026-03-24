@@ -15,7 +15,7 @@ export const TIER_LIMITS = {
     csvAccounts: 3,
     advisorRefreshDays: 14, // biweekly refresh
     calendarMonthsForward: 2,
-    canUsePlaid: false,
+    canUseTeller: false,
     canExport: false,
     canEditTransactions: true,
     canDismissSubscriptions: false,
@@ -30,7 +30,7 @@ export const TIER_LIMITS = {
     csvAccounts: 999,
     advisorRefreshDays: 7, // weekly refresh
     calendarMonthsForward: 6,
-    canUsePlaid: true,
+    canUseTeller: true,
     canExport: true,
     canEditTransactions: true,
     canDismissSubscriptions: true,

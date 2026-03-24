@@ -14,6 +14,7 @@ interface Account {
   interest_rate: number | null;
   minimum_payment: number | null;
   plaid_account_id: string | null;
+  teller_account_id: string | null;
   last_synced_at: string | null;
 }
 
@@ -461,7 +462,7 @@ export default function Settings() {
   async function addAccount() {
     if (!newAccount.name) return;
     const { data: acct } = await api.post('/settings/accounts', newAccount);
-    setData(d => d ? { ...d, accounts: [...d.accounts, { ...acct, plaid_account_id: null, last_synced_at: null }] } : null);
+    setData(d => d ? { ...d, accounts: [...d.accounts, { ...acct, plaid_account_id: null, teller_account_id: null, last_synced_at: null }] } : null);
     setNewAccount({ name: '', type: 'checking', balance: '', purpose: 'general', income_allocation: '', interest_rate: '', minimum_payment: '' });
     setShowAddAccount(false);
   }
@@ -1050,7 +1051,7 @@ export default function Settings() {
               </p>
               <ul className="text-xs text-white/80 space-y-1.5 mb-4">
                 <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> 50 AI chat messages/day (vs 15 free)</li>
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Bank sync via Plaid</li>
+                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Bank sync via Teller</li>
                 <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Weekly advisor refresh (vs biweekly)</li>
                 <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> 6-month calendar projections (vs 2)</li>
                 <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Transaction export (CSV)</li>
