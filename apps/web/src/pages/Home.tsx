@@ -396,8 +396,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Critical alerts only — these deserve top-level attention */}
-      {criticalAlerts.slice(0, 2).map(alert => (
+      {/* Critical alerts only — these deserve top-level attention (hide when no data) */}
+      {accounts.length > 0 && criticalAlerts.slice(0, 2).map(alert => (
         <div key={alert.id} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
@@ -462,8 +462,8 @@ export default function Home() {
         <MerchantReview merchants={unclassified} onDone={() => setShowReview(false)} />
       )}
 
-      {/* Non-critical alerts — collapsed */}
-      {otherAlerts.length > 0 && (
+      {/* Non-critical alerts — collapsed (hide when no data) */}
+      {accounts.length > 0 && otherAlerts.length > 0 && (
         <Section title="Alerts" badge={`${otherAlerts.length}`} defaultOpen={false} icon={AlertTriangle}>
           <div className="space-y-2">
             {otherAlerts.slice(0, 5).map(alert => {
