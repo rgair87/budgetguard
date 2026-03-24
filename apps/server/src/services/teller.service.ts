@@ -4,6 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import db from '../config/db';
 import { env } from '../config/env';
+import { guessCategoryFromMerchant } from './csv.service';
+import { classifyMerchantsWithAI } from './ai-categorize.service';
 
 // ─── mTLS Agent ──────────────────────────────────────────────
 // Teller requires mutual TLS for all API calls.
@@ -169,6 +171,45 @@ interface TellerTransaction {
   type: string; // ach, card_payment, etc.
 }
 
+// ─── Category mapping ────────────────────────────────────────
+
+// Teller provides its own categories — map to our app's categories
+const TELLER_CATEGORY_MAP: Record<string, string> = {
+  'accommodation': 'Travel',
+  'advertising': 'Services',
+  'bar': 'Food & Dining',
+  'charity': 'Other',
+  'clothing': 'Shopping',
+  'dining': 'Food & Dining',
+  'education': 'Education',
+  'electronics': 'Shopping',
+  'entertainment': 'Entertainment',
+  'fuel': 'Gas',
+  'general': 'Other',
+  'groceries': 'Groceries',
+  'health': 'Healthcare',
+  'home': 'Housing',
+  'income': 'Other',
+  'insurance': 'Insurance',
+  'investment': 'Other',
+  'loan': 'Debt Payments',
+  'office': 'Services',
+  'phone': 'Utilities',
+  'service': 'Services',
+  'shopping': 'Shopping',
+  'software': 'Services',
+  'sport': 'Entertainment',
+  'tax': 'Other',
+  'transport': 'Transportation',
+  'transportation': 'Transportation',
+  'utilities': 'Utilities',
+};
+
+function mapTellerCategory(tellerCat: string | null): string | null {
+  if (!tellerCat) return null;
+  return TELLER_CATEGORY_MAP[tellerCat.toLowerCase()] || null;
+}
+
 // ─── Service functions ───────────────────────────────────────
 
 /**
@@ -230,11 +271,23 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
     );
   }
 
+  // ── Load existing merchant→category mappings for this user ──
+  const knownMerchants = new Map<string, { category: string; isBill: boolean }>();
+  const mcRows = db.prepare(
+    'SELECT merchant_pattern, category, is_bill FROM merchant_categories WHERE user_id = ?'
+  ).all(userId) as any[];
+  for (const mc of mcRows) {
+    knownMerchants.set(mc.merchant_pattern, { category: mc.category, isBill: !!mc.is_bill });
+  }
+
   // ── Fetch transactions for each account ──
   const insertTxn = db.prepare(
     `INSERT OR IGNORE INTO transactions (id, user_id, account_id, amount, date, merchant_name, category, is_recurring)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
+
+  const unclassifiedMerchants = new Set<string>();
+  let totalInserted = 0;
 
   for (const acct of accounts) {
     const acctRow = db.prepare(
@@ -256,20 +309,79 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       for (const txn of transactions) {
         const rawAmount = parseFloat(txn.amount);
         // Teller amounts: negative = money out (debits), positive = money in (credits)
-        // Our DB convention: negative = spending, positive = income — same as Teller
         const amount = rawAmount;
         const merchantName = txn.details?.counterparty?.name || txn.description;
-        const category = txn.details?.category || null;
+        const tellerCategory = txn.details?.category || null;
+
+        // Classify: 1) existing mapping, 2) keyword match, 3) Teller's category, 4) leave for AI
+        const normalized = merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
+        const known = knownMerchants.get(normalized);
+        let category: string | null = null;
+        let isRecurring = 0;
+
+        if (known) {
+          category = known.category;
+          isRecurring = known.isBill ? 1 : 0;
+        } else {
+          // Try keyword-based guess
+          category = guessCategoryFromMerchant(merchantName);
+          if (!category) {
+            // Try Teller's own category
+            category = mapTellerCategory(tellerCategory);
+          }
+          if (!category) {
+            unclassifiedMerchants.add(merchantName);
+          }
+        }
 
         insertTxn.run(
-          `teller_${txn.id}`, // Use Teller's ID to prevent duplicates on re-sync
+          `teller_${txn.id}`,
           userId, acctRow.id,
           amount,
           txn.date, merchantName, category,
+          isRecurring,
         );
+        totalInserted++;
       }
     } catch (err) {
       console.warn(`Failed to fetch transactions for account ${acct.id}:`, err);
+    }
+  }
+
+  console.log(`Teller sync: ${totalInserted} transactions imported, ${unclassifiedMerchants.size} unclassified merchants`);
+
+  // ── AI-classify unknown merchants ──
+  if (unclassifiedMerchants.size > 0) {
+    try {
+      console.log(`Teller: AI-classifying ${unclassifiedMerchants.size} unknown merchants...`);
+      const classifications = await classifyMerchantsWithAI([...unclassifiedMerchants]);
+
+      const upsertMerchant = db.prepare(
+        `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
+      );
+      const updateTxns = db.prepare(
+        `UPDATE transactions SET category = ?
+         WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) = ?`
+      );
+      const markRecurring = db.prepare(
+        `UPDATE transactions SET is_recurring = 1
+         WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) = ?`
+      );
+
+      let classified = 0;
+      for (const c of classifications) {
+        if (c.category === 'Other') continue;
+        const norm = c.merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
+        upsertMerchant.run(crypto.randomUUID(), userId, norm, c.category, c.isBill ? 1 : 0);
+        updateTxns.run(c.category, userId, norm);
+        if (c.isBill) markRecurring.run(userId, norm);
+        classified++;
+      }
+      console.log(`Teller: AI classified ${classified} merchants`);
+    } catch (err) {
+      console.warn('Teller: AI classification failed, transactions saved without categories:', err);
     }
   }
 }

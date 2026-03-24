@@ -1,8 +1,11 @@
+import crypto from 'crypto';
 import { Router, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { attachTier, TieredRequest, requirePro } from '../middleware/tier';
-import { invalidateCache } from '../utils/cache';
+import { invalidateCache, invalidateUserCache } from '../utils/cache';
 import db from '../config/db';
+import { guessCategoryFromMerchant } from '../services/csv.service';
+import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
 
 const router = Router();
 
@@ -109,6 +112,89 @@ router.get('/categories', authenticate, (req: TieredRequest, res: Response) => {
   ).all(req.userId) as unknown as { category: string }[];
 
   res.json(rows.map(r => r.category));
+});
+
+// POST /transactions/auto-classify — bulk classify uncategorized transactions
+router.post('/auto-classify', authenticate, async (req: TieredRequest, res: Response) => {
+  try {
+    // Get all uncategorized unique merchants
+    const rows = db.prepare(
+      `SELECT DISTINCT merchant_name FROM transactions
+       WHERE user_id = ? AND (category IS NULL OR category = '' OR category = 'Other')
+         AND merchant_name IS NOT NULL AND merchant_name != ''`
+    ).all(req.userId) as any[];
+
+    const merchants = rows.map((r: any) => r.merchant_name as string);
+    if (merchants.length === 0) {
+      res.json({ classified: 0, message: 'All transactions are already classified' });
+      return;
+    }
+
+    // Load existing mappings
+    const knownRows = db.prepare(
+      'SELECT merchant_pattern, category, is_bill FROM merchant_categories WHERE user_id = ?'
+    ).all(req.userId) as any[];
+    const knownMap = new Map<string, { category: string; isBill: boolean }>();
+    for (const mc of knownRows) {
+      knownMap.set(mc.merchant_pattern, { category: mc.category, isBill: !!mc.is_bill });
+    }
+
+    const updateTxns = db.prepare(
+      `UPDATE transactions SET category = ?
+       WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) = ?`
+    );
+    const markRecurring = db.prepare(
+      `UPDATE transactions SET is_recurring = 1
+       WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) = ?`
+    );
+    const upsertMerchant = db.prepare(
+      `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
+    );
+
+    let classified = 0;
+    const needsAI: string[] = [];
+
+    // Pass 1: keyword + known mappings
+    for (const name of merchants) {
+      const norm = name.toLowerCase().replace(/\s+/g, ' ').trim();
+      const known = knownMap.get(norm);
+      if (known) {
+        updateTxns.run(known.category, req.userId, norm);
+        if (known.isBill) markRecurring.run(req.userId, norm);
+        classified++;
+      } else {
+        const guess = guessCategoryFromMerchant(name);
+        if (guess) {
+          updateTxns.run(guess, req.userId, norm);
+          upsertMerchant.run(crypto.randomUUID(), req.userId, norm, guess, 0);
+          classified++;
+        } else {
+          needsAI.push(name);
+        }
+      }
+    }
+
+    // Pass 2: AI classification
+    if (needsAI.length > 0) {
+      const aiResults = await classifyMerchantsWithAI(needsAI);
+      for (const c of aiResults) {
+        if (c.category === 'Other') continue;
+        const norm = c.merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
+        upsertMerchant.run(crypto.randomUUID(), req.userId, norm, c.category, c.isBill ? 1 : 0);
+        updateTxns.run(c.category, req.userId, norm);
+        if (c.isBill) markRecurring.run(req.userId, norm);
+        classified++;
+      }
+    }
+
+    invalidateUserCache(req.userId!);
+    res.json({ classified, total: merchants.length, message: `Classified ${classified} of ${merchants.length} merchants` });
+  } catch (err: any) {
+    console.error('Auto-classify error:', err);
+    res.status(500).json({ error: 'classify_error', message: err.message });
+  }
 });
 
 export default router;

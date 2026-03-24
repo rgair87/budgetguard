@@ -13,9 +13,10 @@ interface Transaction {
 }
 
 const CATEGORY_OPTIONS = [
-  'Groceries', 'Restaurants', 'Shopping', 'Entertainment', 'Transportation',
-  'Utilities', 'Healthcare', 'Housing', 'Insurance', 'Phone', 'Internet',
-  'Debt Payments', 'Education', 'Personal', 'Travel', 'Services', 'Other',
+  'Food & Dining', 'Groceries', 'Entertainment', 'Shopping',
+  'Transportation', 'Gas', 'Utilities', 'Healthcare', 'Insurance',
+  'Housing', 'Home Improvement', 'Services', 'Debt Payments',
+  'Travel', 'Personal', 'Education', 'Transfers', 'Fees', 'Bills', 'Other',
 ];
 
 export default function Transactions() {
@@ -30,6 +31,8 @@ export default function Transactions() {
   const [offset, setOffset] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCategory, setEditCategory] = useState('');
+  const [classifying, setClassifying] = useState(false);
+  const [classifyMsg, setClassifyMsg] = useState('');
   const limit = 50;
 
   useEffect(() => {
@@ -62,6 +65,27 @@ export default function Transactions() {
     setEditingId(null);
   }
 
+  async function autoClassify() {
+    setClassifying(true);
+    setClassifyMsg('');
+    try {
+      const { data } = await api.post('/transactions/auto-classify');
+      setClassifyMsg(data.message || `Classified ${data.classified} transactions`);
+      // Refresh
+      setOffset(0);
+      setSearch('');
+      setCategoryFilter('');
+      const r = await api.get(`/transactions?limit=${limit}&offset=0`);
+      setTransactions(r.data.transactions);
+      setTotal(r.data.total);
+      api.get('/transactions/categories').then(r => setCategories(r.data)).catch(() => {});
+    } catch (err: any) {
+      setClassifyMsg(err.response?.data?.message || 'Classification failed');
+    } finally {
+      setClassifying(false);
+    }
+  }
+
   async function handleExport() {
     try {
       const response = await api.get('/transactions/export', { responseType: 'blob' });
@@ -88,12 +112,22 @@ export default function Transactions() {
           <h1 className="text-xl font-semibold text-gray-900">Transactions</h1>
           <p className="text-sm text-gray-500">{total} total</p>
         </div>
-        <button
-          onClick={handleExport}
-          className="text-sm bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-        >
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          {classifyMsg && <span className="text-xs text-emerald-600">{classifyMsg}</span>}
+          <button
+            onClick={autoClassify}
+            disabled={classifying}
+            className="text-sm bg-gradient-to-b from-indigo-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 shadow-sm transition-all"
+          >
+            {classifying ? 'Classifying...' : 'Auto-Classify'}
+          </button>
+          <button
+            onClick={handleExport}
+            className="text-sm bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Search & filters */}
