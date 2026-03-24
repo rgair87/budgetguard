@@ -279,7 +279,16 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
   }
 
   // ── Fetch accounts ──
-  const accounts = await tellerRequest<TellerAccount[]>('/accounts', accessToken);
+  let accounts: TellerAccount[];
+  try {
+    accounts = await tellerRequest<TellerAccount[]>('/accounts', accessToken);
+  } catch (err: any) {
+    const msg = err.message || '';
+    if (msg.includes('enrollment.disconnected') || msg.includes('not healthy')) {
+      throw new Error('Bank connection expired. Please re-connect your bank through Settings.');
+    }
+    throw err;
+  }
 
   const upsertAcct = db.prepare(
     `INSERT INTO accounts (id, user_id, teller_account_id, name, type, current_balance, available_balance, last_synced_at)
@@ -300,20 +309,34 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
     }
 
     // Fetch balances for this account
-    let balance = 0;
+    let balance: number | null = null;
     let available: number | null = null;
     try {
       const bal = await tellerRequest<TellerBalance>(`/accounts/${acct.id}/balances`, accessToken!);
       balance = parseFloat(bal.ledger || '0');
       available = bal.available ? parseFloat(bal.available) : null;
-    } catch {
-      // Balance fetch can fail for some account types; continue with 0
+    } catch (err) {
+      console.warn(`Failed to fetch balance for ${acct.id}, keeping existing balance:`, (err as Error).message);
     }
 
-    upsertAcct.run(
-      crypto.randomUUID(), userId, acct.id, acct.name, type,
-      balance, available,
-    );
+    if (balance !== null) {
+      // Got fresh balances — upsert with new values
+      upsertAcct.run(
+        crypto.randomUUID(), userId, acct.id, acct.name, type,
+        balance, available,
+      );
+    } else {
+      // Balance fetch failed — insert if new, but don't overwrite existing balances
+      const existing = db.prepare(
+        'SELECT id FROM accounts WHERE user_id = ? AND teller_account_id = ?'
+      ).get(userId, acct.id);
+      if (!existing) {
+        upsertAcct.run(
+          crypto.randomUUID(), userId, acct.id, acct.name, type,
+          0, null,
+        );
+      }
+    }
   }
 
   // ── Load existing merchant→category mappings for this user ──
