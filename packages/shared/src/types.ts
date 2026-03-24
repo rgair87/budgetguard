@@ -265,7 +265,8 @@ export type InsightCategory =
   | 'behavioral_pattern'
   | 'what_if'
   | 'progress'
-  | 'action_plan';
+  | 'action_plan'
+  | 'savings';
 
 export interface AdvisorInsight {
   id: string;

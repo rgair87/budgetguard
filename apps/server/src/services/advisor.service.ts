@@ -333,6 +333,7 @@ INSIGHT CATEGORIES — generate 6-10 insights covering DIFFERENT categories:
 - what_if: Scenario analysis using real data
 - progress: What improved or got worse since last report
 - action_plan: The single most important thing to do right now
+- savings: Emergency fund, savings, and investment recommendations (NOTE: savings insights are generated server-side, so you do NOT need to generate them — skip this category)
 
 WHAT-IF SCENARIOS — generate exactly 3 REALISTIC scenarios using real data:
 - Only include scenarios the user can actually do (no "stop paying your mortgage")
@@ -344,6 +345,140 @@ PRIORITY ACTIONS — generate exactly 3, ranked by impact:
 - These must be REALISTIC actions the user can take RIGHT NOW.
 - NEVER suggest stopping loan payments, defaulting on debt, or skipping legal obligations.
 - Good actions: call lender to negotiate rate, cancel a subscription, refinance, apply for balance transfer, reduce a discretionary category, sell something, pick up overtime.`;
+
+// ============================================================
+// SAVINGS & INVESTMENT INSIGHTS — deterministic, always included
+// ============================================================
+
+function generateSavingsInsights(
+  runway: ReturnType<typeof calculateRunway>,
+  spendingContext: ReturnType<typeof getSpendingContext>,
+  paycheckPlan: ReturnType<typeof getPaycheckPlan>,
+): AdvisorInsight[] {
+  const insights: AdvisorInsight[] = [];
+  const monthlyExpenses = runway.dailyBurnRate * 30;
+  const cashBalance = runway.spendableBalance;
+  const totalDebt = runway.totalDebt;
+  const monthlyIncome = spendingContext.totalMonthlyIncome || (paycheckPlan?.monthlyIncome ?? 0);
+  const monthlySurplus = monthlyIncome - monthlyExpenses;
+  const emergencyFundTarget = monthlyExpenses * 3;
+  const hasEmergencyFund = cashBalance >= emergencyFundTarget;
+
+  // Find high-interest and low-interest debt
+  const debtAccounts = spendingContext.debtAccounts || [];
+  const highInterestDebts = debtAccounts.filter(d => (d.interest_rate || 0) > 7);
+  const lowInterestDebts = debtAccounts.filter(d => (d.interest_rate || 0) > 0 && (d.interest_rate || 0) <= 7);
+  const hasHighInterestDebt = highInterestDebts.length > 0;
+  const hasAnyDebt = debtAccounts.some(d => d.current_balance > 0);
+  const hasOnlyLowInterestDebt = !hasHighInterestDebt && lowInterestDebts.length > 0;
+
+  // (a) Emergency fund check
+  if (monthlyExpenses > 0 && !hasEmergencyFund) {
+    const shortfall = emergencyFundTarget - cashBalance;
+    insights.push({
+      id: crypto.randomUUID(),
+      category: 'savings',
+      severity: cashBalance < monthlyExpenses ? 'critical' : 'warning',
+      title: `Build your emergency fund to $${Math.round(emergencyFundTarget).toLocaleString()}`,
+      body: `You have $${Math.round(cashBalance).toLocaleString()} in cash but need $${Math.round(emergencyFundTarget).toLocaleString()} (3 months of expenses) as a safety net. You're $${Math.round(shortfall).toLocaleString()} short. Put this in a High-Yield Savings Account (HYSA) earning 4-5% APY — that's $${Math.round(emergencyFundTarget * 0.045 / 12)}/mo in free interest once fully funded.`,
+      action: 'Open a HYSA at Ally, Marcus, or Wealthfront (all offer 4-5% APY, no minimums, FDIC insured). Set up auto-transfer of $' + Math.round(Math.min(shortfall, monthlySurplus > 0 ? monthlySurplus * 0.5 : 100)).toLocaleString() + '/mo from checking — takes 10 minutes online.',
+      estimatedImpact: `Build $${Math.round(emergencyFundTarget).toLocaleString()} safety net`,
+      timeToComplete: '10 min to open account',
+      difficulty: 'easy',
+      relatedPage: null,
+    });
+  }
+
+  // (b) Debt vs invest decision
+  if (hasHighInterestDebt) {
+    const worstDebt = highInterestDebts.sort((a, b) => (b.interest_rate || 0) - (a.interest_rate || 0))[0];
+    const rate = worstDebt.interest_rate || 0;
+    const monthlyInterestCost = Math.round((worstDebt.current_balance * (rate / 100)) / 12);
+    insights.push({
+      id: crypto.randomUUID(),
+      category: 'savings',
+      severity: 'warning',
+      title: `Pay off high-interest debt before investing`,
+      body: `Your ${worstDebt.name} charges ${rate}% APR — that's $${monthlyInterestCost}/mo in interest on a $${Math.round(worstDebt.current_balance).toLocaleString()} balance. No investment reliably beats ${rate}% returns. Every dollar toward this debt is a guaranteed ${rate}% return.`,
+      action: `Focus all extra cash on ${worstDebt.name} first. Set up autopay for more than the minimum. Even $${Math.round(Math.max(50, monthlyInterestCost * 0.5))}/mo extra cuts months off the payoff timeline.`,
+      estimatedImpact: `Save $${monthlyInterestCost}/mo in interest`,
+      timeToComplete: '5 min to adjust autopay',
+      difficulty: 'easy',
+      relatedPage: '/debt',
+    });
+  } else if (hasOnlyLowInterestDebt) {
+    const avgRate = lowInterestDebts.reduce((s, d) => s + (d.interest_rate || 0), 0) / lowInterestDebts.length;
+    insights.push({
+      id: crypto.randomUUID(),
+      category: 'savings',
+      severity: 'info',
+      title: 'Your debt interest is low — invest alongside payments',
+      body: `Your remaining debt averages ${avgRate.toFixed(1)}% APR, which is below typical investment returns of 7-10%. It makes sense to keep making regular payments while also investing extra cash for long-term growth.`,
+      action: 'Split extra cash: keep paying debt minimums on schedule, and put additional savings into investments. A simple S&P 500 index fund has averaged ~10% annually over the long term.',
+      estimatedImpact: 'Long-term wealth building while managing debt',
+      timeToComplete: '15 min to set up',
+      difficulty: 'medium',
+      relatedPage: '/debt',
+    });
+  }
+
+  // (c) Where to save/invest — based on situation
+  if (!hasEmergencyFund && monthlyExpenses > 0) {
+    // Already covered by emergency fund insight above — skip to avoid duplication
+  } else if (hasEmergencyFund && hasAnyDebt) {
+    // Has emergency fund + debt: prioritize debt paydown
+    const focusDebt = [...debtAccounts]
+      .filter(d => d.current_balance > 0)
+      .sort((a, b) => (b.interest_rate || 0) - (a.interest_rate || 0))[0];
+    if (focusDebt && !hasHighInterestDebt) {
+      // Only add if we didn't already cover high-interest debt above
+      insights.push({
+        id: crypto.randomUUID(),
+        category: 'savings',
+        severity: 'info',
+        title: 'Emergency fund set — now accelerate debt payoff',
+        body: `With $${Math.round(cashBalance).toLocaleString()} in cash (3+ months covered), your safety net is solid. Now direct extra cash at ${focusDebt.name} ($${Math.round(focusDebt.current_balance).toLocaleString()} at ${focusDebt.interest_rate || 0}% APR) to eliminate it faster.`,
+        action: `Increase your ${focusDebt.name} payment above the minimum. Use the debt avalanche method — highest interest rate first. Check /debt for your optimal payoff plan.`,
+        estimatedImpact: 'Faster debt freedom',
+        timeToComplete: '5 min to adjust payment',
+        difficulty: 'easy',
+        relatedPage: '/debt',
+      });
+    }
+  } else if (hasEmergencyFund && !hasAnyDebt) {
+    // Has emergency fund + no debt: recommend investing
+    insights.push({
+      id: crypto.randomUUID(),
+      category: 'savings',
+      severity: 'win',
+      title: 'No debt + emergency fund = time to invest',
+      body: `You're in an excellent position: $${Math.round(cashBalance).toLocaleString()} in cash, no debt, and 3+ months of expenses covered. Now make your money grow. A broad index fund (S&P 500) has averaged ~10% annually over decades.`,
+      action: 'Open a brokerage account (Fidelity, Schwab, or Vanguard — all free). Start with a Roth IRA if eligible ($7,000/year limit, tax-free growth). Then consider I-Bonds for inflation protection and a taxable index fund for anything beyond.',
+      estimatedImpact: 'Long-term wealth accumulation',
+      timeToComplete: '20 min to open account',
+      difficulty: 'medium',
+      relatedPage: null,
+    });
+  }
+
+  // (d) High income surplus recommendation
+  if (monthlySurplus > 500 && hasEmergencyFund) {
+    insights.push({
+      id: crypto.randomUUID(),
+      category: 'savings',
+      severity: 'info',
+      title: `You're saving $${Math.round(monthlySurplus).toLocaleString()}/mo — maximize it`,
+      body: `After all expenses, you have $${Math.round(monthlySurplus).toLocaleString()}/mo in surplus. ${hasAnyDebt ? 'After debt payments, put' : 'Put'} this to work: max out tax-advantaged accounts before taxable investing. A 401(k) saves you taxes now ($23,500/year limit), a Roth IRA grows tax-free ($7,000/year limit).`,
+      action: `${hasAnyDebt ? 'After accelerating debt payoff, increase' : 'Increase'} your 401(k) contribution to at least the employer match (free money). Then fund a Roth IRA. Only after maxing both should you open a taxable brokerage account.`,
+      estimatedImpact: `$${Math.round(monthlySurplus * 12).toLocaleString()}/year invested`,
+      timeToComplete: '30 min to adjust contributions',
+      difficulty: 'medium',
+      relatedPage: null,
+    });
+  }
+
+  return insights;
+}
 
 // ============================================================
 // MAIN FUNCTION
@@ -483,7 +618,7 @@ Respond with a JSON object matching this EXACT structure:
   "healthSummary": "<1-2 sentence summary of their situation>",
   "insights": [
     {
-      "category": "<health_score|spending_trend|cash_flow|debt_intelligence|quick_win|bill_negotiation|behavioral_pattern|what_if|progress|action_plan>",
+      "category": "<health_score|spending_trend|cash_flow|debt_intelligence|quick_win|bill_negotiation|behavioral_pattern|what_if|progress|action_plan|savings>",
       "severity": "<critical|warning|info|win>",
       "title": "<under 80 chars>",
       "body": "<2-4 sentences with specific numbers>",
@@ -547,10 +682,14 @@ Generate 6-10 insights covering different categories. Include exactly 3 what-if 
     }
 
     // Add IDs to insights
-    const insights: AdvisorInsight[] = (parsed.insights || []).map((ins: any) => ({
+    const aiInsights: AdvisorInsight[] = (parsed.insights || []).map((ins: any) => ({
       ...ins,
       id: crypto.randomUUID(),
     }));
+
+    // Generate deterministic savings & investment insights
+    const savingsInsights = generateSavingsInsights(runway, spendingContext, paycheckPlan);
+    const insights: AdvisorInsight[] = [...aiInsights, ...savingsInsights];
 
     const report: AdvisorReport = {
       healthScore: healthScore.score, // Always use server-side score

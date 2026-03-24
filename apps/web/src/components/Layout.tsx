@@ -222,69 +222,106 @@ export default function Layout() {
   ];
 
   const mobileBottomNav = (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200/60 z-50">
-      <div className="flex items-center justify-around h-16 px-2">
-        {MOBILE_TABS.map(({ key, icon: Icon, label }) => {
-          const isActive = activeGroup === key;
-          const entry = NAV_GROUPS[key];
-          const to = isGroup(entry) ? entry.items[0].to : entry.to;
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+      {/* Top edge: gradient blur border */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+      <div className="absolute inset-x-0 -top-3 h-3 bg-gradient-to-t from-white/80 to-transparent pointer-events-none" />
 
-          return (
-            <button
-              key={key}
-              onClick={() => {
-                if (!isActive || !isGroup(entry)) {
-                  navigate(to);
-                }
-              }}
-              className="relative flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl transition-colors"
-            >
-              {/* Active indicator bar */}
-              {isActive && (
-                <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-[3px] rounded-full bg-indigo-500" />
-              )}
-              <Icon
-                className={`w-[22px] h-[22px] transition-colors duration-150 ${
-                  isActive ? 'text-indigo-600' : 'text-slate-400'
-                }`}
-                strokeWidth={isActive ? 2 : 1.75}
-              />
-              <span
-                className={`text-[10px] font-semibold transition-colors duration-150 ${
-                  isActive ? 'text-indigo-600' : 'text-slate-400'
-                }`}
+      <div className="bg-white/[0.97] backdrop-blur-xl">
+        <div className="flex items-center justify-around h-[68px] px-1">
+          {MOBILE_TABS.map(({ key, icon: Icon, label }) => {
+            const isActive = activeGroup === key;
+            const entry = NAV_GROUPS[key];
+            const to = isGroup(entry) ? entry.items[0].to : entry.to;
+
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  if (!isActive || !isGroup(entry)) {
+                    navigate(to);
+                  }
+                }}
+                className="relative flex flex-col items-center gap-[3px] py-2 px-5 transition-all duration-200 ease-out"
               >
-                {label}
-              </span>
-            </button>
-          );
-        })}
+                {/* Active pill indicator at top */}
+                <span
+                  className={`absolute -top-[1px] left-1/2 -translate-x-1/2 h-[3.5px] rounded-full bg-indigo-500 transition-all duration-300 ease-out ${
+                    isActive ? 'w-8 opacity-100' : 'w-0 opacity-0'
+                  }`}
+                />
+
+                {/* Icon with glow */}
+                <span className="relative">
+                  {isActive && (
+                    <span className="absolute inset-0 blur-[10px] bg-indigo-400/30 rounded-full scale-150" />
+                  )}
+                  <Icon
+                    className={`relative w-[23px] h-[23px] transition-all duration-200 ${
+                      isActive ? 'text-indigo-600' : 'text-slate-400'
+                    }`}
+                    strokeWidth={isActive ? 2.25 : 1.5}
+                    fill={isActive ? 'currentColor' : 'none'}
+                    fillOpacity={isActive ? 0.12 : 0}
+                  />
+                </span>
+
+                <span
+                  className={`text-[10px] uppercase tracking-wider transition-all duration-200 ${
+                    isActive
+                      ? 'text-indigo-600 font-bold'
+                      : 'text-slate-400 font-medium'
+                  }`}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Safe area padding for notched phones */}
+      <div className="bg-white/[0.97] pb-[env(safe-area-inset-bottom)]" />
     </nav>
   );
 
-  /* ---- Mobile sub-nav pills ---- */
+  /* ---- Mobile sub-nav pills (segmented control) ---- */
+  const [pillScrolled, setPillScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setPillScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const mobileSubNav = subItems && (
-    <div className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-2.5 flex gap-2 overflow-x-auto scrollbar-hide">
-      {subItems.map(item => {
-        const Icon = item.icon;
-        return (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all duration-150 ${
-                isActive
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-              }`
-            }
-          >
-            <Icon className="w-3.5 h-3.5" strokeWidth={2} />
-            {item.label}
-          </NavLink>
-        );
-      })}
+    <div
+      className={`md:hidden sticky top-0 z-40 px-3 py-2 transition-shadow duration-300 ${
+        pillScrolled ? 'shadow-sm shadow-slate-200/60' : ''
+      }`}
+    >
+      <div className="bg-slate-100/80 backdrop-blur-sm rounded-2xl p-1 flex gap-1 overflow-x-auto scrollbar-hide">
+        {subItems.map(item => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-[7px] rounded-xl whitespace-nowrap transition-all duration-200 ease-out ${
+                  isActive
+                    ? 'bg-white text-indigo-600 shadow-md shadow-slate-200/70 scale-[1.02]'
+                    : 'bg-transparent text-slate-500 hover:bg-white/50'
+                }`
+              }
+            >
+              <Icon className="w-[14px] h-[14px] shrink-0 align-middle" strokeWidth={2} />
+              {item.label}
+            </NavLink>
+          );
+        })}
+      </div>
     </div>
   );
 

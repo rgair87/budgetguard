@@ -92,34 +92,23 @@ export default function RunwayScore({ score, plan }: Props) {
             <p className="text-sm font-medium text-white/80 uppercase tracking-wider">Your Runway</p>
           </div>
 
-          {isGood ? (
-            <>
-              <p className="text-5xl font-extrabold text-white tracking-tight">You're set</p>
-              <p className="text-sm text-white/75 mt-2 max-w-sm leading-relaxed">
-                Your income covers your spending, bills, and upcoming events. Keep it up.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-6xl font-extrabold text-white tracking-tight leading-none">
-                {score.runwayDays >= 365 ? '365+' : score.runwayDays}
-              </p>
-              <p className="text-lg font-medium text-white/80 mt-1">
-                {score.runwayDays >= 365
-                  ? 'days'
-                  : `day${score.runwayDays !== 1 ? 's' : ''} of runway`}
-              </p>
-              <p className="text-sm text-white/65 mt-2 max-w-sm leading-relaxed">
-                {score.runwayDays >= 365 ? (
-                  "You have savings, but you're spending more than you earn."
-                ) : score.runoutDate ? (
-                  <>Covered through <span className="font-semibold text-white/90">{formatDate(score.runoutDate)}</span></>
-                ) : (
-                  'of breathing room'
-                )}
-              </p>
-            </>
-          )}
+          <p className="text-6xl font-extrabold text-white tracking-tight leading-none">
+            {score.runwayDays >= 365 ? '365+' : score.runwayDays}
+          </p>
+          <p className="text-lg font-medium text-white/80 mt-1">
+            {`day${score.runwayDays !== 1 ? 's' : ''} of runway`}
+          </p>
+          <p className="text-sm text-white/65 mt-2 max-w-sm leading-relaxed">
+            {isGood ? (
+              "You're in great shape — income covers spending, bills, and upcoming events. Keep it up!"
+            ) : score.runwayDays >= 365 ? (
+              "You have savings, but you're spending more than you earn."
+            ) : score.runoutDate ? (
+              <>Covered through <span className="font-semibold text-white/90">{formatDate(score.runoutDate)}</span></>
+            ) : (
+              'of breathing room'
+            )}
+          </p>
 
           <div className="flex flex-wrap gap-2 mt-4">
             <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm ${badgeBg}`}>

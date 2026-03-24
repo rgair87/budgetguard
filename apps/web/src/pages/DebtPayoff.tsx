@@ -6,11 +6,16 @@ import {
   CreditCard,
   Zap,
   Target,
-  ArrowRight,
   DollarSign,
   Calendar,
   Award,
   Info,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  ArrowRight,
+  CircleDollarSign,
+  PartyPopper,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -157,14 +162,92 @@ function rateColor(rate: number): string {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Smart recommendation engine                                        */
+/* ------------------------------------------------------------------ */
+
+interface Recommendation {
+  strategy: 'avalanche' | 'snowball';
+  headline: string;
+  explanation: string;
+  icon: 'dollar' | 'target';
+}
+
+function getRecommendation(
+  debts: DebtAccount[],
+  avalanche: SimResult,
+  snowball: SimResult,
+): Recommendation {
+  if (debts.length <= 1) {
+    return {
+      strategy: 'avalanche',
+      headline: 'Focus all extra payments here',
+      explanation: 'You have one debt — no strategy comparison needed. Every extra dollar goes straight to paying it down faster.',
+      icon: 'target',
+    };
+  }
+
+  const rates = debts.map(d => d.interestRate);
+  const maxRate = Math.max(...rates);
+  const minRate = Math.min(...rates);
+  const rateSpread = maxRate - minRate;
+
+  const sorted = [...debts].sort((a, b) => a.balance - b.balance);
+  const smallest = sorted[0];
+  const smallestPayoffMonths = Math.ceil(smallest.balance / (smallest.minimumPayment || 50));
+  const hasQuickWin = smallestPayoffMonths <= 6 && sorted.length > 1;
+
+  const interestDiff = Math.round(snowball.totalInterest - avalanche.totalInterest);
+  const highestRateDebt = [...debts].sort((a, b) => b.interestRate - a.interestRate)[0];
+  const monthlyInterestOnHighest = highestRateDebt.balance * (highestRateDebt.interestRate / 100 / 12);
+
+  // Strong rate spread -> avalanche
+  if (rateSpread > 5 && interestDiff > 50) {
+    return {
+      strategy: 'avalanche',
+      headline: 'Avalanche — tackle high interest first',
+      explanation: `Your ${highestRateDebt.name} at ${highestRateDebt.interestRate}% APR costs you $${Math.round(monthlyInterestOnHighest)}/mo in interest alone. Paying it first saves you $${interestDiff.toLocaleString()} overall.`,
+      icon: 'dollar',
+    };
+  }
+
+  // Quick win available and interest difference is small
+  if (hasQuickWin && interestDiff < 100) {
+    return {
+      strategy: 'snowball',
+      headline: 'Snowball — build momentum fast',
+      explanation: `Pay off ${smallest.name} ($${smallest.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}) in just ${smallestPayoffMonths} months for a quick win, then roll that payment into the next debt.`,
+      icon: 'target',
+    };
+  }
+
+  // Default to avalanche if there's any meaningful difference
+  if (interestDiff > 10) {
+    return {
+      strategy: 'avalanche',
+      headline: 'Avalanche — save the most on interest',
+      explanation: `Targeting your highest-rate debt first saves $${interestDiff.toLocaleString()} in interest compared to the snowball approach.`,
+      icon: 'dollar',
+    };
+  }
+
+  // Strategies are essentially identical
+  return {
+    strategy: 'snowball',
+    headline: 'Snowball — quick wins keep you motivated',
+    explanation: 'Both strategies cost about the same in interest. Snowball gives you faster visible progress by eliminating smaller debts first.',
+    icon: 'target',
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function DebtPayoff() {
   const [plan, setPlan] = useState<DebtPlan | null>(null);
   const [loading, setLoading] = useState(true);
-  const [extraPayment, setExtraPayment] = useState(0);
-  const [selectedStrategy, setSelectedStrategy] = useState<'avalanche' | 'snowball'>('avalanche');
+  const [extraPayment, setExtraPayment] = useState(100);
+  const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
     api.get('/debt?extra=0')
@@ -173,7 +256,7 @@ export default function DebtPayoff() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Compute both strategies client-side for real-time slider updates
+  // Extract debt accounts from plan
   const debts: DebtAccount[] = useMemo(() => {
     if (!plan) return [];
     return plan.debts.map(d => ({
@@ -182,6 +265,7 @@ export default function DebtPayoff() {
       balance: d.balance,
       interestRate: d.interestRate,
       minimumPayment: d.minimumPayment,
+      type: (d as any).type,
     }));
   }, [plan]);
 
@@ -213,16 +297,19 @@ export default function DebtPayoff() {
     [debts, avalancheIds, totalMinimum],
   );
 
-  const activeResult = selectedStrategy === 'avalanche' ? avalanche : snowball;
-  const activeOrder = selectedStrategy === 'avalanche' ? avalancheIds : snowballIds;
+  // Smart recommendation
+  const recommendation = useMemo(
+    () => getRecommendation(debts, avalanche, snowball),
+    [debts, avalanche, snowball],
+  );
 
-  // Quick win calculations
-  const smallestDebt = useMemo(() => {
-    if (debts.length === 0) return null;
-    return [...debts].sort((a, b) => a.balance - b.balance)[0];
-  }, [debts]);
+  const activeResult = recommendation.strategy === 'avalanche' ? avalanche : snowball;
+  const activeIds = recommendation.strategy === 'avalanche' ? avalancheIds : snowballIds;
+  const debtMap = useMemo(() => new Map(debts.map(d => [d.id, d])), [debts]);
 
-  const interestSavedByAvalanche = Math.max(0, Math.round(snowball.totalInterest - avalanche.totalInterest));
+  // Impact sentence values
+  const monthsSaved = Math.max(0, minimumOnly.months - activeResult.months);
+  const interestSaved = Math.max(0, Math.round(minimumOnly.totalInterest - activeResult.totalInterest));
 
   /* ---------------------------------------------------------------- */
   /*  Loading / Empty states                                           */
@@ -233,10 +320,8 @@ export default function DebtPayoff() {
       <div className="space-y-6">
         <div className="h-8 bg-gray-200 rounded-lg w-48 animate-pulse" />
         <div className="h-32 bg-gray-100 rounded-2xl animate-pulse" />
-        <div className="grid grid-cols-2 gap-4">
-          <div className="h-48 bg-gray-100 rounded-2xl animate-pulse" />
-          <div className="h-48 bg-gray-100 rounded-2xl animate-pulse" />
-        </div>
+        <div className="h-48 bg-gray-100 rounded-2xl animate-pulse" />
+        <div className="h-64 bg-gray-100 rounded-2xl animate-pulse" />
       </div>
     );
   }
@@ -256,11 +341,56 @@ export default function DebtPayoff() {
   }
 
   /* ---------------------------------------------------------------- */
+  /*  Build payoff roadmap steps                                       */
+  /* ---------------------------------------------------------------- */
+
+  const roadmapSteps: { title: string; subtitle: string; accent: string }[] = [];
+  let rolledPayment = extraPayment;
+
+  activeResult.payoffOrder.forEach((item, idx) => {
+    const debt = debtMap.get(item.id);
+    if (!debt) return;
+
+    const paymentOnThis = debt.minimumPayment + (idx === 0 ? extraPayment : rolledPayment);
+    const prevItem = idx > 0 ? activeResult.payoffOrder[idx - 1] : null;
+    const prevDebt = prevItem ? debtMap.get(prevItem.id) : null;
+
+    if (idx === 0) {
+      roadmapSteps.push({
+        title: `Focus on ${debt.name}`,
+        subtitle: `Pay $${Math.round(paymentOnThis)}/mo (minimum + extra)`,
+        accent: 'bg-indigo-600',
+      });
+    } else {
+      const prevName = prevDebt?.name ?? 'previous debt';
+      roadmapSteps.push({
+        title: `Roll into ${debt.name}`,
+        subtitle: `When ${prevName} is paid off in ${payoffDate(prevItem!.payoffMonth)}, redirect $${Math.round(prevDebt?.minimumPayment ?? 0)} here`,
+        accent: 'bg-slate-400',
+      });
+    }
+
+    // Accumulate freed-up payments for cascade
+    if (idx < activeResult.payoffOrder.length - 1) {
+      rolledPayment += debt.minimumPayment;
+    }
+  });
+
+  // Final "debt free" step
+  if (activeResult.payoffOrder.length > 0) {
+    roadmapSteps.push({
+      title: `Debt free by ${payoffDate(activeResult.months)}!`,
+      subtitle: `${formatMonths(activeResult.months)} from now`,
+      accent: 'bg-emerald-500',
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
   /*  Main render                                                      */
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-5 pb-8">
       {/* ---- Header ---- */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-2 mb-1">
@@ -269,14 +399,18 @@ export default function DebtPayoff() {
         </div>
         <p className="text-slate-300 text-sm mb-4">Your personalized path to debt freedom</p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Debt</p>
-            <p className="text-2xl font-bold mt-0.5">${totalDebt.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <p className="text-xl font-bold mt-0.5">${totalDebt.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </div>
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Accounts</p>
-            <p className="text-2xl font-bold mt-0.5">{debts.length}</p>
+            <p className="text-xl font-bold mt-0.5">{debts.length}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Min / mo</p>
+            <p className="text-xl font-bold mt-0.5">${totalMinimum.toFixed(0)}</p>
           </div>
         </div>
       </div>
@@ -298,138 +432,120 @@ export default function DebtPayoff() {
         </div>
       )}
 
-      {/* ---- Current Debts ---- */}
+      {/* ---- Your Best Strategy (recommendation) ---- */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-          <CreditCard className="w-4 h-4 text-slate-500" />
-          <h2 className="text-sm font-semibold text-gray-900">Current Debts</h2>
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Your Best Strategy</h2>
+          </div>
         </div>
 
-        <div className="divide-y divide-gray-100">
-          {plan.debts.map(debt => {
-            const monthlyInterest = debt.balance * (debt.interestRate / 100 / 12);
-            const aprSeverity = debt.interestRate >= 20 ? 'text-red-600 bg-red-50 ring-red-200' :
-              debt.interestRate >= 15 ? 'text-orange-600 bg-orange-50 ring-orange-200' :
-              debt.interestRate >= 10 ? 'text-amber-600 bg-amber-50 ring-amber-200' :
-              'text-emerald-600 bg-emerald-50 ring-emerald-200';
-            return (
-              <div key={debt.id} className="px-5 py-4">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900 text-sm">{debt.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{debtTypeLabel((debt as any).type)}</p>
+        <div className="px-5 py-4">
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              recommendation.icon === 'dollar'
+                ? 'bg-indigo-100'
+                : 'bg-purple-100'
+            }`}>
+              {recommendation.icon === 'dollar'
+                ? <CircleDollarSign className="w-5 h-5 text-indigo-600" />
+                : <Target className="w-5 h-5 text-purple-600" />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold text-gray-900">{recommendation.headline}</p>
+              <p className="text-sm text-gray-600 mt-1 leading-relaxed">{recommendation.explanation}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Compare strategies toggle (power users) */}
+        {debts.length > 1 && (
+          <div className="border-t border-gray-100">
+            <button
+              onClick={() => setShowComparison(!showComparison)}
+              className="w-full flex items-center justify-center gap-1.5 py-3 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              {showComparison ? 'Hide' : 'Compare strategies'}
+              {showComparison
+                ? <ChevronUp className="w-3.5 h-3.5" />
+                : <ChevronDown className="w-3.5 h-3.5" />
+              }
+            </button>
+
+            {showComparison && (
+              <div className="px-5 pb-5">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Avalanche column */}
+                  <div className={`rounded-xl p-4 ${
+                    recommendation.strategy === 'avalanche'
+                      ? 'bg-indigo-50 ring-2 ring-indigo-200'
+                      : 'bg-gray-50'
+                  }`}>
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <DollarSign className="w-3.5 h-3.5 text-indigo-600" />
+                      <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">Avalanche</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Total Interest</p>
+                        <p className="text-sm font-bold text-gray-900">
+                          ${Math.round(avalanche.totalInterest).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Payoff</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {payoffDate(avalanche.months)} ({formatMonths(avalanche.months)})
+                        </p>
+                      </div>
+                    </div>
+                    {recommendation.strategy === 'avalanche' && (
+                      <span className="inline-block mt-3 text-[10px] font-bold text-indigo-700 bg-indigo-100 rounded-full px-2 py-0.5 uppercase tracking-wide">
+                        Recommended
+                      </span>
+                    )}
                   </div>
-                  <p className="font-bold text-gray-900 text-lg shrink-0">
-                    ${debt.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </p>
+
+                  {/* Snowball column */}
+                  <div className={`rounded-xl p-4 ${
+                    recommendation.strategy === 'snowball'
+                      ? 'bg-purple-50 ring-2 ring-purple-200'
+                      : 'bg-gray-50'
+                  }`}>
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <Target className="w-3.5 h-3.5 text-purple-600" />
+                      <span className="text-xs font-bold text-purple-600 uppercase tracking-wide">Snowball</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Total Interest</p>
+                        <p className="text-sm font-bold text-gray-900">
+                          ${Math.round(snowball.totalInterest).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Payoff</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {payoffDate(snowball.months)} ({formatMonths(snowball.months)})
+                        </p>
+                      </div>
+                    </div>
+                    {recommendation.strategy === 'snowball' && (
+                      <span className="inline-block mt-3 text-[10px] font-bold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 uppercase tracking-wide">
+                        Recommended
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {/* Stats row instead of confusing bar */}
-                <div className="flex items-center gap-3 mt-3">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ring-1 ${aprSeverity}`}>
-                    {debt.interestRate}% APR
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    ${debt.minimumPayment.toFixed(0)}/mo minimum
-                  </span>
-                  <span className="text-xs text-red-500 font-medium ml-auto">
-                    ${monthlyInterest.toFixed(0)}/mo in interest
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ---- Strategy Comparison ---- */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Zap className="w-4 h-4 text-indigo-600" />
-          <h2 className="text-sm font-semibold text-gray-900">Strategy Comparison</h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {/* Avalanche */}
-          <button
-            onClick={() => setSelectedStrategy('avalanche')}
-            className={`text-left rounded-2xl border-2 p-4 transition-all duration-200 ${
-              selectedStrategy === 'avalanche'
-                ? 'border-indigo-500 bg-indigo-50/60 shadow-sm'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 mb-2">
-              <DollarSign className="w-4 h-4 text-indigo-600" />
-              <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">Avalanche</span>
-            </div>
-            <p className="text-[11px] text-gray-500 mb-3">Highest interest first</p>
-
-            <div className="space-y-2">
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Interest Paid</p>
-                <p className="text-base font-bold text-gray-900">
-                  ${Math.round(avalanche.totalInterest).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Payoff Date</p>
-                <p className="text-sm font-semibold text-gray-900">{payoffDate(avalanche.months)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Time</p>
-                <p className="text-sm font-semibold text-gray-900">{formatMonths(avalanche.months)}</p>
-              </div>
-            </div>
-
-            {avalanche.totalInterest <= snowball.totalInterest && (
-              <div className="mt-3 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full px-2 py-0.5 inline-block uppercase tracking-wide">
-                Saves the most
               </div>
             )}
-          </button>
-
-          {/* Snowball */}
-          <button
-            onClick={() => setSelectedStrategy('snowball')}
-            className={`text-left rounded-2xl border-2 p-4 transition-all duration-200 ${
-              selectedStrategy === 'snowball'
-                ? 'border-indigo-500 bg-indigo-50/60 shadow-sm'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 mb-2">
-              <Target className="w-4 h-4 text-purple-600" />
-              <span className="text-xs font-bold text-purple-600 uppercase tracking-wide">Snowball</span>
-            </div>
-            <p className="text-[11px] text-gray-500 mb-3">Smallest balance first</p>
-
-            <div className="space-y-2">
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Interest Paid</p>
-                <p className="text-base font-bold text-gray-900">
-                  ${Math.round(snowball.totalInterest).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Payoff Date</p>
-                <p className="text-sm font-semibold text-gray-900">{payoffDate(snowball.months)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Time</p>
-                <p className="text-sm font-semibold text-gray-900">{formatMonths(snowball.months)}</p>
-              </div>
-            </div>
-
-            {snowball.months <= avalanche.months && snowball.months < avalanche.months && (
-              <div className="mt-3 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full px-2 py-0.5 inline-block uppercase tracking-wide">
-                Fastest wins
-              </div>
-            )}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* ---- "What If" Slider ---- */}
+      {/* ---- What If Slider ---- */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-amber-500" />
@@ -458,223 +574,153 @@ export default function DebtPayoff() {
           <span>$500</span>
         </div>
 
-        {/* Real-time impact */}
-        {extraPayment > 0 && (
-          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-gray-100">
-            <div className="text-center">
-              <p className="text-xs text-gray-400">New payoff</p>
-              <p className="text-sm font-bold text-gray-900">{payoffDate(activeResult.months)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-400">Interest saved</p>
-              <p className="text-sm font-bold text-emerald-600">
-                ${Math.max(0, Math.round(minimumOnly.totalInterest - activeResult.totalInterest)).toLocaleString()}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-400">Months saved</p>
-              <p className="text-sm font-bold text-indigo-600">
-                {Math.max(0, minimumOnly.months - activeResult.months)}
-              </p>
-            </div>
+        {/* Impact sentence */}
+        {extraPayment > 0 && monthsSaved > 0 ? (
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-100">
+            <p className="text-sm text-gray-800 leading-relaxed">
+              Adding <span className="font-bold text-indigo-700">${extraPayment}/mo</span> pays off all debt{' '}
+              <span className="font-bold text-emerald-700">{monthsSaved} months sooner</span> and saves{' '}
+              <span className="font-bold text-emerald-700">${interestSaved.toLocaleString()}</span> in interest.
+            </p>
           </div>
-        )}
-
-        {extraPayment === 0 && (
+        ) : extraPayment > 0 ? (
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-100">
+            <p className="text-sm text-gray-800 leading-relaxed">
+              Adding <span className="font-bold text-indigo-700">${extraPayment}/mo</span> saves{' '}
+              <span className="font-bold text-emerald-700">${interestSaved.toLocaleString()}</span> in interest.
+              Debt free by <span className="font-bold text-emerald-700">{payoffDate(activeResult.months)}</span>.
+            </p>
+          </div>
+        ) : (
           <p className="text-xs text-gray-400 text-center pt-2">
             Drag the slider to see how extra payments accelerate your payoff
           </p>
         )}
       </div>
 
-      {/* ---- Payoff Order Timeline ---- */}
+      {/* ---- Current Debts ---- */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-slate-500" />
+          <h2 className="text-sm font-semibold text-gray-900">Your Debts</h2>
+        </div>
+
+        <div className="divide-y divide-gray-100">
+          {plan.debts.map(debt => {
+            const monthlyInterest = debt.balance * (debt.interestRate / 100 / 12);
+            const aprSeverity = debt.interestRate >= 20 ? 'text-red-600 bg-red-50 ring-red-200' :
+              debt.interestRate >= 15 ? 'text-orange-600 bg-orange-50 ring-orange-200' :
+              debt.interestRate >= 10 ? 'text-amber-600 bg-amber-50 ring-amber-200' :
+              'text-emerald-600 bg-emerald-50 ring-emerald-200';
+            return (
+              <div key={debt.id} className="px-5 py-4">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 text-sm">{debt.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{debtTypeLabel((debt as any).type)}</p>
+                  </div>
+                  <p className="font-bold text-gray-900 text-lg shrink-0">
+                    ${debt.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 mt-3">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ring-1 ${aprSeverity}`}>
+                    {debt.interestRate}% APR
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    ${debt.minimumPayment.toFixed(0)}/mo minimum
+                  </span>
+                  <span className="text-xs text-red-500 font-medium ml-auto">
+                    ${monthlyInterest.toFixed(0)}/mo interest
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ---- Payoff Roadmap ---- */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-4 h-4 text-slate-500" />
-          <h2 className="text-sm font-semibold text-gray-900">
-            Payoff Order
-            <span className="text-xs font-normal text-gray-400 ml-2 capitalize">
-              ({selectedStrategy} strategy)
-            </span>
-          </h2>
-        </div>
-
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-4 top-3 bottom-3 w-px bg-gray-200" />
-
-          <div className="space-y-0">
-            {activeResult.payoffOrder.map((item, idx) => {
-              const isLast = idx === activeResult.payoffOrder.length - 1;
-              return (
-                <div key={item.id} className="relative flex items-start gap-4 py-3">
-                  {/* Dot */}
-                  <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                    idx === 0
-                      ? 'bg-indigo-600 text-white'
-                      : isLast
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {idx + 1}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                      <p className="text-xs font-semibold text-gray-500 shrink-0 ml-2">
-                        {payoffDate(item.payoffMonth)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-gray-500">
-                        ${item.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {formatMonths(item.payoffMonth)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {activeResult.payoffOrder.length > 0 && (
-            <div className="relative flex items-start gap-4 py-3">
-              <div className="relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-emerald-100">
-                <Award className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-emerald-700">Debt Free!</p>
-                <p className="text-xs text-gray-500">{payoffDate(activeResult.months)}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ---- Quick Wins ---- */}
-      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Award className="w-4 h-4 text-emerald-600" />
-          <h2 className="text-sm font-semibold text-gray-900">Quick Wins</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Payoff Roadmap</h2>
         </div>
 
         <div className="space-y-3">
-          {/* Smallest debt quick win */}
-          {smallestDebt && (
-            <div className="flex items-start gap-3 bg-white/70 rounded-xl p-3.5">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                <Target className="w-4 h-4 text-emerald-600" />
+          {roadmapSteps.map((step, idx) => {
+            const isLast = idx === roadmapSteps.length - 1;
+            return (
+              <div
+                key={idx}
+                className={`rounded-xl p-4 border ${
+                  isLast
+                    ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200'
+                    : idx === 0
+                      ? 'bg-gradient-to-r from-indigo-50 to-slate-50 border-indigo-200'
+                      : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold ${step.accent}`}>
+                    {isLast
+                      ? <PartyPopper className="w-3.5 h-3.5" />
+                      : idx + 1
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${isLast ? 'text-emerald-800' : 'text-gray-900'}`}>
+                      {step.title}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">{step.subtitle}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900">
-                  <span className="font-semibold">Pay off {smallestDebt.name}</span> in{' '}
-                  {(() => {
-                    const monthsAtDouble = Math.ceil(
-                      smallestDebt.balance / (smallestDebt.minimumPayment * 2),
-                    );
-                    const extra = smallestDebt.minimumPayment;
-                    return (
-                      <>
-                        <span className="font-semibold text-emerald-700">{monthsAtDouble} months</span> by
-                        adding <span className="font-semibold text-emerald-700">${extra.toFixed(0)}/mo</span>
-                      </>
-                    );
-                  })()}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Balance: ${smallestDebt.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                </p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 mt-2 shrink-0" />
-            </div>
-          )}
-
-          {/* Avalanche savings insight */}
-          {interestSavedByAvalanche > 10 && debts.length > 1 && (
-            <div className="flex items-start gap-3 bg-white/70 rounded-xl p-3.5">
-              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                <DollarSign className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900">
-                  Save{' '}
-                  <span className="font-semibold text-indigo-700">
-                    ${interestSavedByAvalanche.toLocaleString()}
-                  </span>{' '}
-                  in interest by using the avalanche method
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Targets high-interest debt first
-                </p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 mt-2 shrink-0" />
-            </div>
-          )}
-
-          {/* Extra payment insight */}
-          {extraPayment === 0 && (
-            <div className="flex items-start gap-3 bg-white/70 rounded-xl p-3.5">
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <Zap className="w-4 h-4 text-amber-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                {(() => {
-                  const extra100 = simulatePayoff(debts, avalancheIds, totalMinimum + 100);
-                  const monthsSaved = minimumOnly.months - extra100.months;
-                  const interestSaved = Math.round(minimumOnly.totalInterest - extra100.totalInterest);
-                  return (
-                    <>
-                      <p className="text-sm text-gray-900">
-                        An extra{' '}
-                        <span className="font-semibold text-amber-700">$100/mo</span>{' '}
-                        saves{' '}
-                        <span className="font-semibold text-amber-700">
-                          ${interestSaved.toLocaleString()}
-                        </span>{' '}
-                        and cuts{' '}
-                        <span className="font-semibold text-amber-700">
-                          {monthsSaved} months
-                        </span>{' '}
-                        off your payoff
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Use the slider above to explore different amounts
-                      </p>
-                    </>
-                  );
-                })()}
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 mt-2 shrink-0" />
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
 
-      {/* ---- Monthly Summary ---- */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Monthly Minimums</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">
-            ${totalMinimum.toFixed(0)}
-          </p>
-          {extraPayment > 0 && (
-            <p className="text-xs text-indigo-600 font-medium mt-0.5">
-              +${extraPayment} extra
+      {/* ---- Bottom Insight Card ---- */}
+      <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Award className="w-4 h-4 text-emerald-600" />
+          <h2 className="text-sm font-semibold text-gray-900">Summary</h2>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Total Interest</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">
+              ${Math.round(activeResult.totalInterest).toLocaleString()}
             </p>
-          )}
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Debt-Free By</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">
+              {payoffDate(activeResult.months)}
+            </p>
+          </div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Debt-Free By</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">
-            {payoffDate(activeResult.months)}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {formatMonths(activeResult.months)}
-          </p>
-        </div>
+
+        {interestSaved > 0 && extraPayment > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center gap-2">
+              <ArrowRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <p className="text-sm text-gray-700">
+                Saving <span className="font-bold text-emerald-700">${interestSaved.toLocaleString()}</span> vs. minimums only
+              </p>
+            </div>
+          </div>
+        )}
+
+        {extraPayment === 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              Tip: Even a small extra payment each month can save you hundreds in interest. Use the slider above to explore.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

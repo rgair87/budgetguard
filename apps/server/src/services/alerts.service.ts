@@ -3,7 +3,7 @@ import { calculateRunway } from './runway.service';
 
 export interface Alert {
   id: string;
-  type: 'runway_low' | 'budget_exceeded' | 'bill_due' | 'unusual_spending' | 'debt_milestone';
+  type: 'runway_low' | 'budget_exceeded' | 'bill_due' | 'unusual_spending' | 'debt_milestone' | 'debt_payoff_opportunity';
   severity: 'critical' | 'warning' | 'info' | 'win';
   title: string;
   body: string;
@@ -138,6 +138,72 @@ export function getAlerts(userId: string): Alert[] {
       action: null,
       actionLink: null,
     });
+  }
+
+  // 6. Smart debt payoff opportunity — when user has excess cash and outstanding debt
+  const monthlyExpenses = runway.dailyBurnRate * 30;
+  const safetyNet = monthlyExpenses * 2; // Keep 2 months as safety net
+  const excessCash = runway.spendableBalance - safetyNet;
+
+  if (excessCash > 0 && monthlyExpenses > 0) {
+    // Fetch debt accounts to find payoff targets
+    const debtAccounts = db.prepare(
+      `SELECT name, type, current_balance, interest_rate, minimum_payment
+       FROM accounts
+       WHERE user_id = ? AND type IN ('credit', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan')
+         AND current_balance > 0
+       ORDER BY interest_rate DESC`
+    ).all(userId) as unknown as {
+      name: string; type: string; current_balance: number;
+      interest_rate: number | null; minimum_payment: number | null;
+    }[];
+
+    if (debtAccounts.length > 0) {
+      // Find highest-interest debt
+      const highestInterest = debtAccounts[0];
+      // Find smallest balance debt (for quick wins)
+      const smallestBalance = [...debtAccounts].sort((a, b) => a.current_balance - b.current_balance)[0];
+
+      // Pick the best target: if smallest balance can be fully paid off with excess cash, suggest that;
+      // otherwise suggest highest-interest debt
+      const target = (smallestBalance.current_balance <= excessCash)
+        ? smallestBalance
+        : highestInterest;
+
+      const canPayInFull = target.current_balance <= excessCash;
+      const minPayment = target.minimum_payment || 0;
+      const interestRate = target.interest_rate || 0;
+      const monthlyInterestCost = Math.round((target.current_balance * (interestRate / 100)) / 12);
+
+      let body: string;
+      let title: string;
+
+      if (canPayInFull) {
+        title = `Extra cash could wipe out ${target.name}`;
+        body = `You have $${Math.round(excessCash).toLocaleString()} beyond your 2-month safety net. Paying off ${target.name} ($${Math.round(target.current_balance).toLocaleString()} balance) would free up $${Math.round(minPayment).toLocaleString()}/mo in payments`;
+        if (monthlyInterestCost > 0) {
+          body += ` and save ~$${monthlyInterestCost}/mo in interest`;
+        }
+        body += '.';
+      } else {
+        title = `Excess cash? Attack your ${target.name} balance`;
+        body = `You have $${Math.round(excessCash).toLocaleString()} above your 2-month safety net. A lump payment on ${target.name} (${interestRate > 0 ? interestRate + '% APR, ' : ''}$${Math.round(target.current_balance).toLocaleString()} balance) would cut interest costs`;
+        if (monthlyInterestCost > 0) {
+          body += ` — currently ~$${monthlyInterestCost}/mo in interest charges`;
+        }
+        body += '.';
+      }
+
+      alerts.push({
+        id: 'debt_payoff_opportunity',
+        type: 'debt_payoff_opportunity',
+        severity: 'info',
+        title,
+        body,
+        action: canPayInFull ? `Pay off ${target.name} in full` : `Make extra payment on ${target.name}`,
+        actionLink: '/debt',
+      });
+    }
   }
 
   // Sort: critical first, then warning, info, win
