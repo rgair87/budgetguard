@@ -302,17 +302,27 @@ export default function Calendar() {
 
       {/* ---- Month Summary Stat Cards ---- */}
       <div className="grid grid-cols-3 gap-3">
-        {/* Available to spend */}
+        {/* Left to spend */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-sm">
           <div className="absolute top-2 right-2 opacity-20">
             <Wallet className="w-8 h-8" />
           </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-100">Available</p>
-          <p className="text-xl font-bold mt-1">${fmt(data.monthlyBudget - data.spentSoFar)}</p>
-          <p className="text-[10px] text-emerald-200 mt-0.5">of ${fmt(data.monthlyBudget)} budget</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-100">Left to Spend</p>
+          <p className="text-xl font-bold mt-1">${fmt(Math.max(0, data.monthlyBudget - data.spentSoFar))}</p>
+          <p className="text-[10px] text-emerald-200 mt-0.5">of ${fmt(data.monthlyBudget)}/mo</p>
         </div>
 
-        {/* Projected total */}
+        {/* Spent so far */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 p-4 text-white shadow-sm">
+          <div className="absolute top-2 right-2 opacity-20">
+            <Receipt className="w-8 h-8" />
+          </div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-300">Spent So Far</p>
+          <p className="text-xl font-bold mt-1">${fmt(data.spentSoFar)}</p>
+          <p className="text-[10px] text-slate-300 mt-0.5">this month</p>
+        </div>
+
+        {/* On track or over */}
         <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-sm ${
           data.monthStatus === 'red'
             ? 'bg-gradient-to-br from-red-500 to-red-600'
@@ -323,21 +333,11 @@ export default function Calendar() {
           <div className="absolute top-2 right-2 opacity-20">
             <TrendingUp className="w-8 h-8" />
           </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider opacity-80">Projected</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider opacity-80">On Pace For</p>
           <p className="text-xl font-bold mt-1">${fmt(data.projectedMonthlySpend)}</p>
           {data.overBudget && (
-            <p className="text-[10px] opacity-80 mt-0.5">Over by ${fmt(data.projectedMonthlySpend - data.monthlyBudget)}</p>
+            <p className="text-[10px] opacity-80 mt-0.5">${fmt(data.projectedMonthlySpend - data.monthlyBudget)} over</p>
           )}
-        </div>
-
-        {/* Spent so far */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 p-4 text-white shadow-sm">
-          <div className="absolute top-2 right-2 opacity-20">
-            <Receipt className="w-8 h-8" />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-300">Spent</p>
-          <p className="text-xl font-bold mt-1">${fmt(data.spentSoFar)}</p>
-          <p className="text-[10px] text-slate-300 mt-0.5">this month</p>
         </div>
       </div>
 
@@ -583,9 +583,9 @@ function SidePanelContent({
         </button>
       </div>
 
-      {/* Projected Balance */}
+      {/* What you'll have */}
       <div className="bg-slate-50 rounded-xl p-4">
-        <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Projected Balance</p>
+        <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">You'll Have</p>
         <p className={`text-2xl font-bold mt-1 ${balanceColor}`}>
           ${fmt(day.projectedBalance)}
         </p>
