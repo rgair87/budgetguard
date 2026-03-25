@@ -1,9 +1,9 @@
 import rateLimit from 'express-rate-limit';
 
-/** 100 requests per 15 minutes — applied globally */
+/** 500 requests per 15 minutes — applied globally */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later' },
