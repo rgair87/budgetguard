@@ -464,12 +464,20 @@ export default function Settings() {
     setSyncing(true);
     setSyncMsg('');
     try {
-      await api.post('/teller/sync');
-      setSyncMsg('Synced!');
+      const { data: result } = await api.post('/teller/sync');
+      setSyncMsg(result.message || 'Synced!');
       // Refresh accounts
       const r = await api.get('/settings');
       setData(r.data);
-      setTimeout(() => setSyncMsg(''), 3000);
+      // Auto-retry if bank is still processing
+      if (result.pendingTransactions) {
+        setTimeout(() => {
+          setSyncMsg(prev => prev ? prev + ' Retrying...' : 'Retrying...');
+          syncBank();
+        }, 30000); // retry in 30s
+      } else {
+        setTimeout(() => setSyncMsg(''), 5000);
+      }
     } catch (err: any) {
       setSyncMsg(err.response?.data?.message || 'Sync failed');
     } finally {

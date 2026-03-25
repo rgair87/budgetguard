@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
-import { enrollBank, syncAccounts, recleanMerchantNames } from '../services/teller.service';
+import { enrollBank, syncAccounts, recleanMerchantNames, type SyncResult } from '../services/teller.service';
 
 const router = Router();
 
@@ -16,8 +16,8 @@ router.post('/enroll', authenticate, async (req: AuthRequest, res: Response) => 
       res.status(400).json({ error: 'validation', message: 'accessToken is required' });
       return;
     }
-    await enrollBank(req.userId!, accessToken);
-    res.json({ success: true });
+    const result = await enrollBank(req.userId!, accessToken);
+    res.json({ success: true, ...result });
   } catch (err: any) {
     console.error('Teller enroll error:', err);
     res.status(500).json({ error: 'enroll_error', message: err.message || 'Failed to connect bank' });
@@ -30,8 +30,8 @@ router.post('/enroll', authenticate, async (req: AuthRequest, res: Response) => 
  */
 router.post('/sync', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    await syncAccounts(req.userId!);
-    res.json({ success: true });
+    const result = await syncAccounts(req.userId!);
+    res.json({ success: true, ...result });
   } catch (err: any) {
     console.error('Teller sync error:', err);
     res.status(500).json({ error: 'sync_error', message: err.message || 'Failed to sync' });

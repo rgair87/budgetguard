@@ -260,18 +260,25 @@ function titleCase(s: string): string {
 /**
  * Store the access token from Teller Connect and sync accounts + transactions.
  */
-export async function enrollBank(userId: string, accessToken: string): Promise<void> {
+export async function enrollBank(userId: string, accessToken: string): Promise<SyncResult> {
   // Store access token
   db.prepare('UPDATE users SET teller_access_token = ? WHERE id = ?').run(accessToken, userId);
 
   // Sync immediately
-  await syncAccounts(userId, accessToken);
+  return await syncAccounts(userId, accessToken);
+}
+
+export interface SyncResult {
+  accounts: number;
+  transactions: number;
+  pendingTransactions: boolean; // true if bank timed out (still processing)
+  message: string;
 }
 
 /**
  * Fetch accounts and transactions from Teller and store in our DB.
  */
-export async function syncAccounts(userId: string, accessToken?: string): Promise<void> {
+export async function syncAccounts(userId: string, accessToken?: string): Promise<SyncResult> {
   if (!accessToken) {
     const row = db.prepare('SELECT teller_access_token FROM users WHERE id = ?').get(userId) as any;
     accessToken = row?.teller_access_token;
@@ -356,6 +363,7 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
 
   const unclassifiedMerchants = new Set<string>();
   let totalInserted = 0;
+  let pendingTransactions = false;
 
   for (const acct of accounts) {
     const acctRow = db.prepare(
@@ -412,12 +420,18 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
         );
         totalInserted++;
       }
-    } catch (err) {
-      console.warn(`Failed to fetch transactions for account ${acct.id}:`, err);
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('504') || msg.includes('gateway_timeout') || msg.includes('taking too long')) {
+        pendingTransactions = true;
+        console.warn(`Transactions still processing for account ${acct.id} (bank is slow)`);
+      } else {
+        console.warn(`Failed to fetch transactions for account ${acct.id}:`, err);
+      }
     }
   }
 
-  console.log(`Teller sync: ${totalInserted} transactions imported, ${unclassifiedMerchants.size} unclassified merchants`);
+  console.log(`Teller sync: ${totalInserted} transactions imported, ${unclassifiedMerchants.size} unclassified merchants, pending=${pendingTransactions}`);
 
   // ── AI-classify unknown merchants ──
   if (unclassifiedMerchants.size > 0) {
@@ -453,6 +467,19 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       console.warn('Teller: AI classification failed, transactions saved without categories:', err);
     }
   }
+
+  const message = pendingTransactions && totalInserted === 0
+    ? 'Your bank is still processing. Transactions will appear shortly — try syncing again in a minute.'
+    : pendingTransactions
+      ? `Synced ${totalInserted} transactions so far. Your bank is still processing more — try syncing again shortly.`
+      : `Synced ${accounts.length} accounts and ${totalInserted} transactions.`;
+
+  return {
+    accounts: accounts.length,
+    transactions: totalInserted,
+    pendingTransactions,
+    message,
+  };
 }
 
 /**

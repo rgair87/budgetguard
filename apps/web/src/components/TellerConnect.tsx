@@ -26,9 +26,10 @@ declare global {
 }
 
 export default function TellerConnectButton({ onSuccess, className }: TellerConnectButtonProps) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'connecting' | 'syncing' | 'done' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'connecting' | 'syncing' | 'done' | 'pending' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [bankName, setBankName] = useState('');
+  const [syncMessage, setSyncMessage] = useState('');
   const scriptLoaded = useRef(false);
 
   // Load Teller Connect script
@@ -60,10 +61,15 @@ export default function TellerConnectButton({ onSuccess, className }: TellerConn
         setStatus('syncing');
         setBankName(enrollment.enrollment?.institution?.name || 'your bank');
         try {
-          await api.post('/teller/enroll', {
+          const { data: result } = await api.post('/teller/enroll', {
             accessToken: enrollment.accessToken,
           });
-          setStatus('done');
+          if (result.pendingTransactions) {
+            setStatus('pending');
+            setSyncMessage(result.message);
+          } else {
+            setStatus('done');
+          }
           onSuccess?.();
         } catch (err: any) {
           console.error('Failed to enroll:', err);
@@ -89,6 +95,18 @@ export default function TellerConnectButton({ onSuccess, className }: TellerConn
       <div className="flex items-center gap-2.5 text-emerald-600 font-medium text-sm">
         <CheckCircle2 className="w-5 h-5" />
         <span>{bankName ? `${bankName} connected!` : 'Bank connected!'}</span>
+      </div>
+    );
+  }
+
+  if (status === 'pending') {
+    return (
+      <div className="space-y-2 text-center">
+        <div className="flex items-center gap-2.5 text-amber-600 font-medium text-sm">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>{bankName ? `${bankName} connected!` : 'Bank connected!'}</span>
+        </div>
+        <p className="text-xs text-slate-500">{syncMessage || 'Your bank is still processing transactions. Use "Sync Bank Accounts" in a minute to pull them in.'}</p>
       </div>
     );
   }
