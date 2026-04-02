@@ -1,4 +1,5 @@
 import db from '../config/db';
+import { cleanMerchantName, titleCase, normalizeMerchantName } from './merchant-utils';
 
 export interface NegotiationSuggestion {
   id: string;
@@ -35,9 +36,29 @@ const PHONE_NUMBERS: Record<string, string> = {
   verizon: '1-800-922-0204',
   tmobile: '1-800-937-8997',
   't-mobile': '1-800-937-8997',
+  cox: '1-800-234-3993',
+  centurylink: '1-800-244-1111',
+  frontier: '1-800-921-8101',
+  optimum: '1-866-200-7273',
   geico: '1-800-207-7847',
   'state farm': '1-800-782-8332',
   progressive: '1-800-776-4737',
+  allstate: '1-800-255-7828',
+  usaa: '1-800-531-8722',
+  'liberty mutual': '1-800-290-8711',
+  farmers: '1-888-327-6335',
+  nationwide: '1-877-669-6877',
+  chase: '1-800-935-9935',
+  'capital one': '1-800-227-4825',
+  citi: '1-800-950-5114',
+  amex: '1-800-528-4800',
+  'american express': '1-800-528-4800',
+  discover: '1-800-347-2683',
+  'wells fargo': '1-800-869-3557',
+  'bank of america': '1-800-732-9194',
+  'planet fitness': '1-844-880-7180',
+  'la fitness': '1-949-255-7200',
+  'anytime fitness': '1-800-704-5004',
 };
 
 const ONLINE_ONLY = new Set(['netflix', 'spotify', 'hulu', 'disney', 'hbo', 'max', 'paramount', 'apple tv', 'peacock', 'amazon prime', 'youtube']);
@@ -121,6 +142,105 @@ const NEGOTIABLE_BILLS: NegotiableCategory[] = [
   },
 ];
 
+// Merchant-specific overrides for scripts, tips, success rates
+const MERCHANT_OVERRIDES: Record<string, Partial<Pick<NegotiableCategory, 'script' | 'tips' | 'successRate' | 'bestTimeToCall'>>> = {
+  comcast: {
+    script: "Hi, I'm calling about my Comcast/Xfinity account. My bill has increased and I'd like to explore options to lower it. I've been a loyal customer and I've seen Spectrum and AT&T offering promotional rates. Could you check what retention offers or promotions are available for my account?",
+    bestTimeToCall: 'Tuesday-Thursday, 7-9 AM EST',
+    successRate: '73% success rate',
+  },
+  xfinity: {
+    script: "Hi, I'm calling about my Xfinity account. My bill has increased and I'd like to explore options to lower it. I've been a loyal customer and I've seen Spectrum and AT&T offering promotional rates. Could you check what retention offers or promotions are available for my account?",
+    bestTimeToCall: 'Tuesday-Thursday, 7-9 AM EST',
+    successRate: '73% success rate',
+  },
+  spectrum: {
+    script: "Hi, I'm calling about my Spectrum bill. I've noticed the price went up after my promotional period ended. I'd like to see if there are any current promotions I can switch to. I've been comparing prices with AT&T Fiber and they have a competitive offer.",
+    successRate: '70% success rate',
+  },
+  'at&t': {
+    script: "Hi, I'm calling about my AT&T bill. I've been a customer for a while and my rate has gone up. I'd like to explore loyalty discounts or any current promotions. I've seen offers from competing providers that are significantly lower.",
+    successRate: '68% success rate',
+  },
+  att: {
+    script: "Hi, I'm calling about my AT&T bill. I've been a customer for a while and my rate has gone up. I'd like to explore loyalty discounts or any current promotions. I've seen offers from competing providers that are significantly lower.",
+    successRate: '68% success rate',
+  },
+  geico: {
+    script: "Hi, I'd like to review my GEICO policy. I've gotten quotes from Progressive and State Farm that are lower. Can we go through my coverage and see if there are any discounts I'm missing — like multi-policy, safe driver, or low mileage?",
+    tips: [
+      'Get 2-3 competitor quotes before calling (Progressive, State Farm, USAA)',
+      'Ask about bundling auto + renters/home insurance',
+      'Mention safe driver record and low annual mileage',
+      'Ask about paying in full for a 6-month or annual discount',
+      'Consider raising deductible from $500 to $1000 to save 15-25%',
+    ],
+    successRate: '65% success rate',
+  },
+  'state farm': {
+    script: "Hi, I'd like to review my State Farm policy. I've been shopping around and found lower rates. Can you help me find any discounts — bundling, drive safe & save, or a higher deductible option?",
+    successRate: '62% success rate',
+  },
+  progressive: {
+    script: "Hi, I'd like to review my Progressive policy. I've been getting quotes from competitors and I'm seeing lower rates. Can we review my coverage for any savings opportunities?",
+    successRate: '60% success rate',
+  },
+  netflix: {
+    script: "Go to netflix.com/account → Change Plan. Consider downgrading from Premium to Standard (saves ~$7/mo). If you want to cancel, Netflix will often offer 1-2 months at a reduced rate during the cancellation flow.",
+    tips: [
+      'Downgrade plan tier before cancelling — Standard with ads is $7.99/mo',
+      'If cancelling, complete the process — Netflix often sends 50% off win-back emails within 2 weeks',
+      'Check if your phone carrier includes Netflix (T-Mobile does)',
+      'Consider rotating: cancel for 2 months, re-subscribe for 1 month',
+    ],
+    successRate: '85% success rate',
+  },
+  spotify: {
+    script: "Go to spotify.com/account → Cancel subscription. Spotify almost always offers a discounted rate (usually 3 months at $9.99 or 1 month free) when you initiate cancellation. If they don't, cancel and wait for a win-back email.",
+    tips: [
+      'Start the cancellation flow — Spotify frequently offers retention deals',
+      'Check if you qualify for Student ($5.99) or Duo ($16.99) plans',
+      'If you have a family, the Family plan at $17.99 covers 6 accounts',
+      'Free tier with ads is available if you mainly listen to playlists',
+    ],
+    successRate: '90% success rate',
+  },
+  chase: {
+    script: "Hi, I'd like to request a lower APR on my Chase credit card. I've been a Chase customer for several years with a strong payment history. I've received balance transfer offers from other cards at 0% for 15 months. Would you be able to reduce my current rate?",
+    tips: [
+      'Call the number on the back of your card for best results',
+      'Mention your account tenure and on-time payment history',
+      'Reference specific competitor offers (Citi 0% BT, Discover)',
+      'If first agent declines, ask to speak with a retention specialist',
+      'Try again in 90 days if declined — each review is independent',
+    ],
+    successRate: '52% success rate',
+    bestTimeToCall: 'Monday-Wednesday, 8-10 AM EST',
+  },
+  'capital one': {
+    script: "Hi, I'd like to discuss lowering the APR on my Capital One card. I've been making consistent on-time payments and I've seen balance transfer offers from other issuers at much lower rates. Is there anything you can do to reduce my interest rate?",
+    tips: [
+      'Capital One is known for being less flexible on APR — be persistent',
+      'Ask about product changes to a lower-rate card instead',
+      'Mention specific competitor BT offers you received',
+      'If APR reduction fails, ask about waiving the annual fee (if applicable)',
+    ],
+    successRate: '45% success rate',
+    bestTimeToCall: 'Tuesday-Thursday morning',
+  },
+  discover: {
+    script: "Hi, I'd like to request an APR reduction on my Discover card. I've been a loyal cardholder with a solid payment track record. I've been offered lower rates elsewhere and I'd like to keep my Discover account but the rate needs to be competitive.",
+    tips: [
+      'Discover is generally more receptive to APR negotiations',
+      'Mention your credit score improvement if applicable',
+      'Ask about their hardship programs if carrying a large balance',
+      'Request a temporary rate reduction if permanent isn\'t available',
+    ],
+    successRate: '60% success rate',
+    bestTimeToCall: 'Monday-Wednesday morning',
+  },
+};
+
 function findMatchingCategory(name: string): { category: NegotiableCategory; matchedPattern: string } | null {
   const lower = name.toLowerCase();
   for (const category of NEGOTIABLE_BILLS) {
@@ -163,22 +283,23 @@ export function getNegotiationSuggestions(userId: string): NegotiationSuggestion
     seen.add(key);
 
     const { category, matchedPattern } = match;
+    const override = MERCHANT_OVERRIDES[matchedPattern] || {};
     const monthlySavingsLow = round2(txn.amount * (category.savingsPercent.low / 100));
     const monthlySavingsHigh = round2(txn.amount * (category.savingsPercent.high / 100));
 
     suggestions.push({
       id: `neg-txn-${key.replace(/[^a-z0-9]/g, '')}`,
-      billName: txn.merchant_name,
+      billName: normalizeMerchantName(titleCase(cleanMerchantName(txn.merchant_name))),
       currentAmount: round2(txn.amount),
       estimatedSavings: { low: monthlySavingsLow, high: monthlySavingsHigh },
       annualSavings: { low: round2(monthlySavingsLow * 12), high: round2(monthlySavingsHigh * 12) },
       difficulty: category.difficulty,
       type: category.type,
-      script: category.script,
-      tips: category.tips,
+      script: override.script || category.script,
+      tips: override.tips || category.tips,
       phoneNumber: lookupPhoneNumber(matchedPattern),
-      bestTimeToCall: category.bestTimeToCall,
-      successRate: category.successRate,
+      bestTimeToCall: override.bestTimeToCall ?? category.bestTimeToCall,
+      successRate: override.successRate || category.successRate,
     });
   }
 
@@ -197,6 +318,7 @@ export function getNegotiationSuggestions(userId: string): NegotiationSuggestion
     seen.add(key);
 
     const { category, matchedPattern } = match;
+    const override = MERCHANT_OVERRIDES[matchedPattern] || {};
     // Normalize to monthly amount
     let monthlyAmount = exp.amount;
     if (exp.frequency === 'weekly') monthlyAmount = exp.amount * (52 / 12);
@@ -215,11 +337,11 @@ export function getNegotiationSuggestions(userId: string): NegotiationSuggestion
       annualSavings: { low: round2(monthlySavingsLow * 12), high: round2(monthlySavingsHigh * 12) },
       difficulty: category.difficulty,
       type: category.type,
-      script: category.script,
-      tips: category.tips,
+      script: override.script || category.script,
+      tips: override.tips || category.tips,
       phoneNumber: lookupPhoneNumber(matchedPattern),
-      bestTimeToCall: category.bestTimeToCall,
-      successRate: category.successRate,
+      bestTimeToCall: override.bestTimeToCall ?? category.bestTimeToCall,
+      successRate: override.successRate || category.successRate,
     });
   }
 
@@ -227,7 +349,7 @@ export function getNegotiationSuggestions(userId: string): NegotiationSuggestion
   const creditCards = db.prepare(`
     SELECT id, name, current_balance, interest_rate, minimum_payment
     FROM accounts
-    WHERE user_id = ? AND type = 'credit' AND current_balance < 0 AND interest_rate > 0
+    WHERE user_id = ? AND type = 'credit' AND current_balance > 0 AND interest_rate > 0
   `).all(userId) as unknown as { id: string; name: string; current_balance: number; interest_rate: number; minimum_payment: number }[];
 
   const ccCategory = NEGOTIABLE_BILLS.find(c => c.type === 'rate_reduction')!;
@@ -236,6 +358,8 @@ export function getNegotiationSuggestions(userId: string): NegotiationSuggestion
     const key = match ? match.matchedPattern : `cc-${card.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
+
+    const override = match ? (MERCHANT_OVERRIDES[match.matchedPattern] || {}) : {};
 
     // Estimate monthly interest: balance * APR / 12
     const balance = Math.abs(card.current_balance);
@@ -251,11 +375,11 @@ export function getNegotiationSuggestions(userId: string): NegotiationSuggestion
       annualSavings: { low: round2(monthlySavingsLow * 12), high: round2(monthlySavingsHigh * 12) },
       difficulty: ccCategory.difficulty,
       type: 'rate_reduction',
-      script: ccCategory.script,
-      tips: ccCategory.tips,
+      script: override.script || ccCategory.script,
+      tips: override.tips || ccCategory.tips,
       phoneNumber: match ? lookupPhoneNumber(match.matchedPattern) : null,
-      bestTimeToCall: ccCategory.bestTimeToCall,
-      successRate: ccCategory.successRate,
+      bestTimeToCall: override.bestTimeToCall ?? ccCategory.bestTimeToCall,
+      successRate: override.successRate || ccCategory.successRate,
     });
   }
 

@@ -10,7 +10,7 @@ import type { AdvisorReport, AdvisorInsight } from '@runway/shared';
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 const CACHE_KEY = 'advisor_report';
-const CACHE_DAYS = 7;
+const CACHE_DAYS = 3;
 
 // ============================================================
 // DATA GATHERING — new queries not covered by existing services
@@ -224,7 +224,8 @@ function getSpendingContext(userId: string) {
 
   // Calculate ACTUAL income from deposits — filter out outliers (bonuses, tax refunds, etc.)
   const NON_PAY_KEYWORDS = ['refund', 'cashback', 'cash back', 'venmo', 'zelle', 'paypal',
-    'transfer', 'atm', 'reversal', 'adjustment', 'interest', 'dividend', 'rebate',
+    'int trnsfr', 'acct xfer', 'inst xfer', 'ext trnsfr',
+    'atm', 'reversal', 'adjustment', 'interest', 'dividend', 'rebate',
     'irs', 'tax ref', 'treas 310'];
 
   const incomeRows = db.prepare(
@@ -268,9 +269,30 @@ function getSpendingContext(userId: string) {
     })
     .filter(s => s.estimatedMonthly > 0);
 
-  const totalMonthlyIncome = incomeSources.reduce((s, src) => s + src.estimatedMonthly, 0);
+  let totalMonthlyIncome = incomeSources.reduce((s, src) => s + src.estimatedMonthly, 0);
 
-  return { spending, debtAccounts, incomeSources, totalMonthlyIncome };
+  // Fallback: if no income detected from transactions, use user-configured pay settings
+  let incomeSource: 'transactions' | 'settings' = 'transactions';
+  if (totalMonthlyIncome === 0) {
+    const user = db.prepare('SELECT take_home_pay, pay_frequency FROM users WHERE id = ?').get(userId) as any;
+    if (user?.take_home_pay && user.take_home_pay > 0) {
+      const freq = user.pay_frequency || 'monthly';
+      const multiplier = freq === 'weekly' ? 4.33 : freq === 'biweekly' ? 2.167 : freq === 'twice_monthly' ? 2 : 1;
+      totalMonthlyIncome = Math.round(user.take_home_pay * multiplier);
+      incomeSource = 'settings';
+      incomeSources.push({
+        source: `Configured income (${freq})`,
+        avgRegularAmount: user.take_home_pay,
+        occurrences: 0,
+        totalRegularLast90d: 0,
+        estimatedMonthly: totalMonthlyIncome,
+        excludedOutliers: 0,
+        outlierTotal: 0,
+      });
+    }
+  }
+
+  return { spending, debtAccounts, incomeSources, totalMonthlyIncome, incomeSource };
 }
 
 function getLatestTransactionDate(userId: string): string | null {
@@ -312,15 +334,7 @@ SEVERITY GUIDE:
 - "info": Useful observation, not urgent
 - "win": Something positive to celebrate — momentum matters
 
-HEALTH SCORE (0-100):
-Calculate based on these weighted factors:
-- Runway days (30%): 365+ = 30pts, 90-364 = 20pts, 30-89 = 10pts, <30 = 0pts
-- Income vs spending (25%): monthly surplus > 20% = 25pts, surplus > 0 = 15pts, breakeven = 10pts, deficit = 0pts
-- Debt burden (20%): no debt = 20pts, debt < 3x monthly income = 12pts, debt > 3x = 5pts, no income data = 8pts
-- Savings rate (15%): 20%+ = 15pts, 10-19% = 10pts, 1-9% = 5pts, 0% = 0pts
-- Behavioral trends (10%): spending decreasing = 10pts, stable = 5pts, increasing = 0pts
-
-healthLabel: 0-20 "Critical", 21-40 "Struggling", 41-60 "Stable", 61-80 "Strong", 81-100 "Excellent"
+HEALTH SCORE: The healthScore and healthLabel are calculated server-side and provided in the data. Use them exactly as given — do NOT recalculate.
 
 INSIGHT CATEGORIES — generate 6-10 insights covering DIFFERENT categories:
 - health_score: Overall financial health observation
@@ -366,8 +380,8 @@ function generateSavingsInsights(
 
   // Find high-interest and low-interest debt
   const debtAccounts = spendingContext.debtAccounts || [];
-  const highInterestDebts = debtAccounts.filter(d => (d.interest_rate || 0) > 7);
-  const lowInterestDebts = debtAccounts.filter(d => (d.interest_rate || 0) > 0 && (d.interest_rate || 0) <= 7);
+  const highInterestDebts = debtAccounts.filter(d => (d.interest_rate || 0) > 8);
+  const lowInterestDebts = debtAccounts.filter(d => (d.interest_rate || 0) > 0 && (d.interest_rate || 0) <= 8);
   const hasHighInterestDebt = highInterestDebts.length > 0;
   const hasAnyDebt = debtAccounts.some(d => d.current_balance > 0);
   const hasOnlyLowInterestDebt = !hasHighInterestDebt && lowInterestDebts.length > 0;
@@ -461,7 +475,63 @@ function generateSavingsInsights(
     });
   }
 
-  // (d) High income surplus recommendation
+  // (d) EXCESS CASH vs DEBT DECISION TREE
+  // This is the core logic that decides: hold cash, pay debt, or invest
+  if (monthlySurplus > 0 && hasAnyDebt) {
+    const excessCash = cashBalance - emergencyFundTarget;
+    const monthsOfRunway = monthlyExpenses > 0 ? cashBalance / monthlyExpenses : 999;
+
+    // Decision tree:
+    // 1. If no emergency fund → build emergency fund first
+    // 2. If high-interest debt (>8%) AND excess cash > 3 months runway → pay it down
+    // 3. If high-interest debt AND excess cash > 1 month but < 3 → partial paydown
+    // 4. If only low-interest debt (<8%) AND excess > 6 months → split invest + paydown
+    // 5. If tight on cash (<3 months) → hold cash regardless of debt
+
+    if (!hasEmergencyFund) {
+      // Already handled by emergency fund insight above
+    } else if (hasHighInterestDebt && excessCash > 0) {
+      const worstDebt = highInterestDebts.sort((a, b) => (b.interest_rate || 0) - (a.interest_rate || 0))[0];
+      const rate = worstDebt.interest_rate || 0;
+      const debtBalance = worstDebt.current_balance;
+      const paydownAmount = Math.min(excessCash, debtBalance);
+      const monthlyInterestSaved = Math.round((paydownAmount * (rate / 100)) / 12);
+
+      if (monthsOfRunway > 4) {
+        // Plenty of cash — aggressively pay down high-interest debt
+        insights.push({
+          id: crypto.randomUUID(),
+          category: 'savings',
+          severity: 'critical',
+          title: `Use $${Math.round(paydownAmount).toLocaleString()} to pay down ${worstDebt.name} now`,
+          body: `You have $${Math.round(cashBalance).toLocaleString()} in cash (${Math.round(monthsOfRunway)} months of expenses) but ${worstDebt.name} charges ${rate}% APR. Every month you hold excess cash instead of paying this debt costs you $${monthlyInterestSaved} in interest. After paying $${Math.round(paydownAmount).toLocaleString()}, you'd still have $${Math.round(cashBalance - paydownAmount).toLocaleString()} (${Math.round((cashBalance - paydownAmount) / monthlyExpenses)} months of expenses).`,
+          action: `Log into your ${worstDebt.name} account and make a one-time payment of $${Math.round(paydownAmount).toLocaleString()} today. This saves you $${monthlyInterestSaved}/mo in interest — that's a guaranteed ${rate}% return on your money. Keep your 3-month emergency fund intact.`,
+          estimatedImpact: `Save $${monthlyInterestSaved}/mo ($${Math.round(monthlyInterestSaved * 12)}/yr) in interest`,
+          timeToComplete: '5 min to make payment',
+          difficulty: 'easy',
+          relatedPage: '/debt',
+        });
+      } else if (monthsOfRunway > 2) {
+        // Some breathing room — moderate paydown
+        const safePay = Math.round(excessCash * 0.5);
+        insights.push({
+          id: crypto.randomUUID(),
+          category: 'savings',
+          severity: 'warning',
+          title: `Put $${safePay.toLocaleString()} toward ${worstDebt.name}`,
+          body: `You have ${Math.round(monthsOfRunway)} months of cash runway — tight but workable. Put half your excess ($${safePay.toLocaleString()}) toward ${worstDebt.name} at ${rate}% APR while keeping a buffer. This saves ~$${Math.round((safePay * (rate / 100)) / 12)}/mo in interest.`,
+          action: `Make a $${safePay.toLocaleString()} payment to ${worstDebt.name}. Then set up autopay for $${Math.round(monthlySurplus * 0.5)}/mo extra (half your surplus) to accelerate payoff.`,
+          estimatedImpact: `Save ~$${Math.round((safePay * (rate / 100)) / 12)}/mo in interest`,
+          timeToComplete: '5 min',
+          difficulty: 'easy',
+          relatedPage: '/debt',
+        });
+      }
+      // If monthsOfRunway <= 2: too tight, don't recommend lump sum (emergency fund insight handles this)
+    }
+  }
+
+  // (e) High income surplus recommendation
   if (monthlySurplus > 500 && hasEmergencyFund) {
     insights.push({
       id: crypto.randomUUID(),
@@ -494,7 +564,21 @@ export async function generateAdvisorReport(userId: string, forceRefresh = false
     ).get(userId, CACHE_KEY) as unknown as any;
     if (cached) {
       const report = JSON.parse(cached.result) as AdvisorReport;
-      return { ...report, cached: true, cachedAt: cached.created_at };
+      // Overlay fresh runway numbers on cached qualitative advice
+      const freshRunway = calculateRunway(userId);
+      return {
+        ...report,
+        cached: true,
+        cachedAt: cached.created_at,
+        // Attach live data so frontend can show fresh numbers alongside cached insights
+        freshRunway: {
+          runwayDays: freshRunway.runwayDays,
+          dailyBurnRate: freshRunway.dailyBurnRate,
+          spendableBalance: freshRunway.spendableBalance,
+          totalDebt: freshRunway.totalDebt,
+          spentThisMonth: freshRunway.spentThisMonth,
+        },
+      } as AdvisorReport & { freshRunway: any };
     }
   }
 
@@ -543,6 +627,8 @@ export async function generateAdvisorReport(userId: string, forceRefresh = false
       spentThisMonth: runway.spentThisMonth,
       remainingBudget: runway.remainingBudget,
       cuttableMerchants: runway.cuttableMerchants,
+      spendBreakdown: (runway as any).spendBreakdown || null,
+      note: 'dailyBurnRate now EXCLUDES outlier transactions and accounts for refunds. spendBreakdown.rawDailyBurn is the unfiltered rate. spendBreakdown.outlierTransactions lists the large one-time purchases that were excluded.',
     },
     paycheck: paycheckPlan ? {
       monthlyIncome: paycheckPlan.monthlyIncome,
@@ -658,7 +744,7 @@ Generate 6-10 insights covering different categories. Include exactly 3 what-if 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
+      max_tokens: 6000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
     });

@@ -49,7 +49,15 @@ export function calculateHealthScore(userId: string): HealthScoreResult {
 
   const spendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total, MIN(date) as earliest
-     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')`
+     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
+     AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer', 'Debt Payments', 'Loan Payment', 'Credit Card Payment', 'Income', 'Payroll', 'Direct Deposit', 'Credit')
+     AND (merchant_name IS NULL OR (
+       LOWER(merchant_name) NOT LIKE '%transfer%'
+       AND LOWER(merchant_name) NOT LIKE '%payment to%'
+       AND LOWER(merchant_name) NOT LIKE '%credit card%'
+       AND LOWER(merchant_name) NOT LIKE '%direct dep%'
+       AND LOWER(merchant_name) NOT LIKE '%payroll%'
+     ))`
   ).get(userId) as unknown as any;
 
   let calendarDays = 90;
@@ -139,10 +147,12 @@ export function calculateHealthScore(userId: string): HealthScoreResult {
   }
 
   // 5. Spending trends (10 points) — is spending going up or down?
+  // Exclude current partial month to avoid comparing 10 days vs 30 days
   const monthlyTotals = db.prepare(
     `SELECT strftime('%Y-%m', date) as month, SUM(ABS(amount)) as total
      FROM transactions
      WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
+     AND date < date('now', 'start of month')
      GROUP BY month ORDER BY month`
   ).all(userId) as unknown as { month: string; total: number }[];
 

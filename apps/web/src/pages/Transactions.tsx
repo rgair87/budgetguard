@@ -12,6 +12,12 @@ interface Transaction {
   account_name: string;
 }
 
+interface UnclassifiedMerchant {
+  merchantName: string;
+  sampleAmount: number;
+  currentCategory: string | null;
+}
+
 const CATEGORY_OPTIONS = [
   'Food & Dining', 'Groceries', 'Entertainment', 'Shopping',
   'Transportation', 'Gas', 'Utilities', 'Healthcare', 'Insurance',
@@ -34,6 +40,12 @@ export default function Transactions() {
   const [classifying, setClassifying] = useState(false);
   const [classifyMsg, setClassifyMsg] = useState('');
   const limit = 50;
+
+  // Bulk review state
+  const [showBulkReview, setShowBulkReview] = useState(false);
+  const [unclassified, setUnclassified] = useState<UnclassifiedMerchant[]>([]);
+  const [bulkSelections, setBulkSelections] = useState<Record<string, { category: string; isBill: boolean }>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   useEffect(() => {
     api.get('/transactions/categories').then(r => setCategories(r.data)).catch(() => {});
@@ -63,6 +75,41 @@ export default function Transactions() {
     await api.patch(`/transactions/${id}`, { category: editCategory });
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, category: editCategory } : t));
     setEditingId(null);
+  }
+
+  async function loadUnclassified() {
+    try {
+      const { data } = await api.get('/runway/review-merchants');
+      setUnclassified(data.merchants);
+      setBulkSelections({});
+      setShowBulkReview(true);
+    } catch { /* ignore */ }
+  }
+
+  async function saveBulkClassifications() {
+    const entries = Object.entries(bulkSelections).filter(([, v]) => v.category);
+    if (entries.length === 0) return;
+    setBulkSaving(true);
+    try {
+      const classifications = entries.map(([merchantName, { category, isBill }]) => ({
+        merchantName, category, isBill,
+      }));
+      const { data } = await api.post('/runway/classify-merchants-batch', { classifications });
+      setClassifyMsg(`Classified ${data.classified} merchants`);
+      setShowBulkReview(false);
+      // Refresh transactions
+      setOffset(0);
+      setSearch('');
+      setCategoryFilter('');
+      const r = await api.get(`/transactions?limit=${limit}&offset=0`);
+      setTransactions(r.data.transactions);
+      setTotal(r.data.total);
+      api.get('/transactions/categories').then(r => setCategories(r.data)).catch(() => {});
+    } catch (err: any) {
+      setClassifyMsg(err.response?.data?.message || 'Batch classification failed');
+    } finally {
+      setBulkSaving(false);
+    }
   }
 
   async function autoClassify() {
@@ -115,6 +162,12 @@ export default function Transactions() {
         <div className="flex items-center gap-2">
           {classifyMsg && <span className="text-xs text-emerald-600">{classifyMsg}</span>}
           <button
+            onClick={loadUnclassified}
+            className="text-sm bg-gradient-to-b from-amber-500 to-amber-600 text-white px-3 py-1.5 rounded-lg hover:from-amber-600 hover:to-amber-700 shadow-sm transition-all"
+          >
+            Bulk Review
+          </button>
+          <button
             onClick={autoClassify}
             disabled={classifying}
             className="text-sm bg-gradient-to-b from-indigo-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 shadow-sm transition-all"
@@ -129,6 +182,85 @@ export default function Transactions() {
           </button>
         </div>
       </div>
+
+      {/* Bulk Review Panel */}
+      {showBulkReview && (
+        <div className="bg-white rounded-lg border border-amber-200 shadow-sm">
+          <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center justify-between rounded-t-lg">
+            <div>
+              <h2 className="text-sm font-semibold text-amber-900">Bulk Review — {unclassified.length} unclassified merchants</h2>
+              <p className="text-xs text-amber-700 mt-0.5">Select a category for each merchant, then save all at once.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-amber-600">{Object.keys(bulkSelections).length} selected</span>
+              <button
+                onClick={saveBulkClassifications}
+                disabled={bulkSaving || Object.keys(bulkSelections).length === 0}
+                className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all"
+              >
+                {bulkSaving ? 'Saving...' : `Save ${Object.keys(bulkSelections).length}`}
+              </button>
+              <button onClick={() => setShowBulkReview(false)} className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1.5">
+                Close
+              </button>
+            </div>
+          </div>
+          <div className="max-h-[400px] overflow-y-auto divide-y divide-gray-100">
+            {unclassified.length === 0 ? (
+              <div className="text-center text-gray-500 py-6 text-sm">All merchants are classified!</div>
+            ) : (
+              unclassified.map(m => (
+                <div key={m.merchantName} className="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-gray-50">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{m.merchantName}</p>
+                    <p className="text-xs text-gray-400">
+                      {m.currentCategory || 'No category'} · ${Math.abs(m.sampleAmount).toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={bulkSelections[m.merchantName]?.category || ''}
+                      onChange={e => {
+                        const cat = e.target.value;
+                        if (!cat) {
+                          setBulkSelections(prev => { const n = { ...prev }; delete n[m.merchantName]; return n; });
+                        } else {
+                          setBulkSelections(prev => ({
+                            ...prev,
+                            [m.merchantName]: { category: cat, isBill: prev[m.merchantName]?.isBill || false },
+                          }));
+                        }
+                      }}
+                      className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 w-40"
+                    >
+                      <option value="">Select category...</option>
+                      {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bulkSelections[m.merchantName]?.isBill || false}
+                        onChange={e => {
+                          const isBill = e.target.checked;
+                          setBulkSelections(prev => ({
+                            ...prev,
+                            [m.merchantName]: {
+                              category: prev[m.merchantName]?.category || '',
+                              isBill,
+                            },
+                          }));
+                        }}
+                        className="rounded border-gray-300"
+                      />
+                      Bill
+                    </label>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Search & filters */}
       <div className="flex gap-2">
@@ -164,7 +296,12 @@ export default function Transactions() {
       {loading ? (
         <div className="text-center text-gray-500 py-8">Loading...</div>
       ) : transactions.length === 0 ? (
-        <div className="text-center text-gray-500 py-8">No transactions found</div>
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-sm">{search || categoryFilter ? 'No transactions match your filters.' : 'No transactions yet.'}</p>
+          {!search && !categoryFilter && (
+            <p className="text-gray-400 text-xs mt-2">Import a CSV or link your bank account to get started.</p>
+          )}
+        </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
           {transactions.map(tx => (

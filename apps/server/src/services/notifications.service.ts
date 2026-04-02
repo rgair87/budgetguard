@@ -57,7 +57,7 @@ export function syncNotifications(userId: string): void {
   const checkStmt = db.prepare(
     `SELECT COUNT(*) as cnt FROM notifications
      WHERE user_id = ? AND type = ? AND title = ?
-     AND created_at > datetime('now', '-1 day')`
+     AND created_at > datetime('now', '-7 days')`
   );
 
   const insertStmt = db.prepare(

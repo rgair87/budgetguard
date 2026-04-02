@@ -15,7 +15,11 @@ import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType }
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  const now = new Date();
+  // Include year if different from current year
+  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric' };
+  if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString('en-US', opts);
 }
 
 function fmt(n: number): string {
@@ -133,6 +137,20 @@ export default function RunwayScore({ score, plan }: Props) {
         </div>
       </div>
 
+      {/* ── No income warning ── */}
+      {score.noIncomeConfigured && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-amber-800 font-medium">Your runway doesn't include income.</p>
+            <p className="text-xs text-amber-600 mt-0.5">Set up your paycheck in Settings for accurate projections.</p>
+          </div>
+          <Link to="/settings" className="text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+            Set up
+          </Link>
+        </div>
+      )}
+
       {/* ── Key Numbers Grid ── */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md">
@@ -143,7 +161,7 @@ export default function RunwayScore({ score, plan }: Props) {
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide flex items-center gap-1">Available Cash <InfoTip text="Total money in your checking and savings accounts right now." /></p>
           </div>
           <p className="text-2xl font-bold text-gray-900">
-            ${score.spendableBalance.toLocaleString()}
+            ${score.spendableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md">
@@ -154,7 +172,7 @@ export default function RunwayScore({ score, plan }: Props) {
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide flex items-center gap-1">Total Debt <InfoTip text="Total owed across all your credit cards and loans." /></p>
           </div>
           <p className={`text-2xl font-bold ${score.totalDebt > 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
-            {score.totalDebt > 0 ? `$${score.totalDebt.toLocaleString()}` : '$0'}
+            {score.totalDebt > 0 ? `$${score.totalDebt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0'}
           </p>
         </div>
       </div>

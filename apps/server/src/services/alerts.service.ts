@@ -98,7 +98,7 @@ export function getAlerts(userId: string): Alert[] {
     });
   }
 
-  // 4. Unusual spending (category 50%+ above 3-month average)
+  // 4. Unusual spending (category projected to exceed 50%+ above 3-month average)
   const avgCategorySpend = db.prepare(
     `SELECT category, AVG(monthly_total) as avg_monthly FROM (
        SELECT category, strftime('%Y-%m', date) as month, SUM(ABS(amount)) as monthly_total
@@ -111,19 +111,29 @@ export function getAlerts(userId: string): Alert[] {
 
   const avgMap = new Map(avgCategorySpend.map(c => [c.category, c.avg_monthly]));
 
+  // Pro-rate current month spending to project full month
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const monthProgressRatio = dayOfMonth / daysInCurrentMonth;
+
   for (const [category, spent] of spendMap) {
     const avg = avgMap.get(category);
-    if (avg && avg > 50 && spent > avg * 1.5) {
-      const pctAbove = Math.round(((spent - avg) / avg) * 100);
-      alerts.push({
-        id: `unusual_${category}`,
-        type: 'unusual_spending',
-        severity: 'warning',
-        title: `${category} spending is ${pctAbove}% above normal`,
-        body: `You've spent $${spent.toFixed(0)} on ${category} this month vs your $${avg.toFixed(0)} average.`,
-        action: null,
-        actionLink: null,
-      });
+    if (avg && avg > 50) {
+      // Project current spending to full month
+      const projectedMonthly = monthProgressRatio > 0 ? spent / monthProgressRatio : spent;
+      if (projectedMonthly > avg * 1.5) {
+        const pctAbove = Math.round(((projectedMonthly - avg) / avg) * 100);
+        alerts.push({
+          id: `unusual_${category}`,
+          type: 'unusual_spending',
+          severity: 'warning',
+          title: `${category} spending is on pace to be ${pctAbove}% above normal`,
+          body: `You've spent $${spent.toFixed(0)} on ${category} so far this month (on pace for $${Math.round(projectedMonthly)}) vs your $${avg.toFixed(0)} monthly average.`,
+          action: null,
+          actionLink: null,
+        });
+      }
     }
   }
 
@@ -142,7 +152,7 @@ export function getAlerts(userId: string): Alert[] {
 
   // 6. Smart debt payoff opportunity — when user has excess cash and outstanding debt
   const monthlyExpenses = runway.dailyBurnRate * 30;
-  const safetyNet = monthlyExpenses * 2; // Keep 2 months as safety net
+  const safetyNet = monthlyExpenses * 3; // Keep 3 months as safety net (consistent with advisor emergency fund target)
   const excessCash = runway.spendableBalance - safetyNet;
 
   if (excessCash > 0 && monthlyExpenses > 0) {
@@ -180,14 +190,14 @@ export function getAlerts(userId: string): Alert[] {
 
       if (canPayInFull) {
         title = `Extra cash could wipe out ${target.name}`;
-        body = `You have $${Math.round(excessCash).toLocaleString()} beyond your 2-month safety net. Paying off ${target.name} ($${Math.round(target.current_balance).toLocaleString()} balance) would free up $${Math.round(minPayment).toLocaleString()}/mo in payments`;
+        body = `You have $${Math.round(excessCash).toLocaleString()} beyond your 3-month safety net. Paying off ${target.name} ($${Math.round(target.current_balance).toLocaleString()} balance) would free up $${Math.round(minPayment).toLocaleString()}/mo in payments`;
         if (monthlyInterestCost > 0) {
           body += ` and save ~$${monthlyInterestCost}/mo in interest`;
         }
         body += '.';
       } else {
         title = `Excess cash? Attack your ${target.name} balance`;
-        body = `You have $${Math.round(excessCash).toLocaleString()} above your 2-month safety net. A lump payment on ${target.name} (${interestRate > 0 ? interestRate + '% APR, ' : ''}$${Math.round(target.current_balance).toLocaleString()} balance) would cut interest costs`;
+        body = `You have $${Math.round(excessCash).toLocaleString()} above your 3-month safety net. A lump payment on ${target.name} (${interestRate > 0 ? interestRate + '% APR, ' : ''}$${Math.round(target.current_balance).toLocaleString()} balance) would cut interest costs`;
         if (monthlyInterestCost > 0) {
           body += ` — currently ~$${monthlyInterestCost}/mo in interest charges`;
         }

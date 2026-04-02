@@ -130,8 +130,13 @@ function SpendingByCategory() {
       .finally(() => setDrillLoading(false));
   };
 
-  if (loading && !data) return null;
-  if (!data || data.categories.length === 0) return null;
+  if (loading && !data) return <div className="py-4 text-center text-xs text-gray-400 animate-pulse">Loading spending data...</div>;
+  if (!data || data.categories.length === 0) return (
+    <div className="py-6 text-center">
+      <p className="text-sm text-gray-500">No categorized spending yet.</p>
+      <p className="text-xs text-gray-400 mt-1">Import transactions or <Link to="/transactions" className="text-indigo-500 hover:underline">classify your merchants</Link> to see your breakdown.</p>
+    </div>
+  );
 
   const maxTotal = data.categories[0]?.total || 1;
   const visible = showAll ? data.categories : data.categories.slice(0, 5);
@@ -277,6 +282,8 @@ export default function Home() {
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
   const [clearingDemo, setClearingDemo] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Detect demo data by checking for the exact set of demo account names
   const DEMO_ACCOUNT_NAMES = ['Main Checking', 'Emergency Savings', 'Chase Visa', 'Car Loan'];
@@ -296,22 +303,27 @@ export default function Home() {
 
   async function loadData() {
     setLoading(true);
+    setLoadError(null);
+    let errorCount = 0;
     await Promise.all([
-      api.get('/runway').then((r) => setScore(r.data)).catch((e) => console.error('Runway load failed:', e?.response?.status, e?.message)),
+      api.get('/runway').then((r) => setScore(r.data)).catch(() => { errorCount++; }),
       api.get('/runway/paycheck-plan').then((r) => setPlan(r.data)).catch(() => {}),
       api.get('/accounts').then((r) => {
         setAccounts(r.data.accounts);
         setHasLinkedBank(r.data.hasLinkedBank);
         setLatestTransactionDate(r.data.latestTransactionDate);
-      }).catch(() => {}),
+      }).catch(() => { errorCount++; }),
       api.get('/events').then((r) => setEvents(r.data)).catch(() => {}),
       api.get('/runway/review-merchants').then((r) => setUnclassified(r.data.merchants)).catch(() => {}),
       api.get('/advisor/summary').then((r) => setAdvisorSummary(r.data)).catch(() => {}),
       api.get('/alerts').then((r) => setAlerts(r.data.alerts || [])).catch(() => {}),
-    ]).finally(() => setLoading(false));
+    ]).finally(() => {
+      setLoading(false);
+      if (errorCount > 0) setLoadError('Some data failed to load.');
+    });
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [refreshKey]);
 
   async function loadDemoData() {
     setLoadingDemo(true);
@@ -341,6 +353,18 @@ export default function Home() {
 
   return (
     <div className="space-y-4">
+      {/* Error banner */}
+      {loadError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-red-700">{loadError}</p>
+          <button
+            onClick={() => { setLoadError(null); setRefreshKey(k => k + 1); }}
+            className="text-xs font-semibold text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* Demo data banner */}
       {isDemoData && !demoBannerDismissed && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">
@@ -378,7 +402,7 @@ export default function Home() {
               <p className="text-sm font-semibold text-slate-800 mb-0.5">Connect Bank</p>
               <p className="text-xs text-slate-400 mb-3">Securely link via Teller</p>
               <TellerConnectButton
-                onSuccess={() => window.location.reload()}
+                onSuccess={() => setRefreshKey(k => k + 1)}
                 className="inline-flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-sm hover:from-indigo-700 hover:to-indigo-800 transition"
               />
               <Link to="/settings" className="text-[11px] text-slate-400 hover:text-indigo-500 mt-2 transition-colors">

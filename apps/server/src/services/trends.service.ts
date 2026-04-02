@@ -1,4 +1,22 @@
 import db from '../config/db';
+import { cleanMerchantName, titleCase, normalizeMerchantName } from './merchant-utils';
+
+// Exclude transfers, debt payments, and income from spending trends (consistent with runway service)
+const TRENDS_EXCLUSION_CATEGORIES = `('Transfers', 'Transfer', 'Debt Payments', 'Income', 'Payroll', 'Direct Deposit', 'Credit', 'Loans', 'Loan Payment', 'Loan Payments', 'Credit Card Payments', 'Credit Card Payment', 'Mortgage', 'Mortgages')`;
+const TRENDS_EXCLUSION_MERCHANTS = `
+  AND (merchant_name IS NULL OR (
+    LOWER(merchant_name) NOT LIKE '%transfer%'
+    AND LOWER(merchant_name) NOT LIKE '%payment to%'
+    AND LOWER(merchant_name) NOT LIKE '%credit card%'
+    AND LOWER(merchant_name) NOT LIKE '%credit crd%'
+    AND LOWER(merchant_name) NOT LIKE '%direct dep%'
+    AND LOWER(merchant_name) NOT LIKE '%payroll%'
+    AND LOWER(merchant_name) NOT LIKE '%mortgage%'
+    AND LOWER(merchant_name) NOT LIKE '%loan paymt%'
+    AND LOWER(merchant_name) NOT LIKE '%loan payment%'
+    AND LOWER(merchant_name) NOT LIKE '%acct xfer%'
+    AND LOWER(merchant_name) NOT LIKE '%inst xfer%'
+  ))`;
 
 interface MonthAmount {
   month: string;
@@ -77,6 +95,8 @@ export function getSpendingTrends(userId: string): SpendingTrends {
       AND amount < 0
       AND merchant_name IS NOT NULL
       AND substr(date, 1, 7) >= ?
+      AND COALESCE(category, '') NOT IN ${TRENDS_EXCLUSION_CATEGORIES}
+      ${TRENDS_EXCLUSION_MERCHANTS}
     GROUP BY merchant_name, month
     ORDER BY merchant_name, month
   `).all(userId, oldest) as unknown as {
@@ -92,18 +112,21 @@ export function getSpendingTrends(userId: string): SpendingTrends {
   const merchantMonthly = new Map<string, Map<string, number>>();
 
   for (const row of merchantRows) {
-    const name = row.merchant_name;
+    const name = normalizeMerchantName(titleCase(cleanMerchantName(row.merchant_name)));
+    if (!name) continue;
 
     if (!merchantMonthly.has(name)) {
       merchantMonthly.set(name, buildMonthMap(last6));
     }
-    merchantMonthly.get(name)!.set(row.month, row.total);
+    // Merge amounts for normalized names
+    const prevAmount = merchantMonthly.get(name)!.get(row.month) || 0;
+    merchantMonthly.get(name)!.set(row.month, prevAmount + row.total);
 
-    const existing = merchantMeta.get(name);
-    if (!existing) {
+    const meta = merchantMeta.get(name);
+    if (!meta) {
       merchantMeta.set(name, { category: row.category, isRecurring: row.is_recurring === 1 });
     } else if (row.is_recurring === 1) {
-      existing.isRecurring = true;
+      meta.isRecurring = true;
     }
   }
 
@@ -188,6 +211,8 @@ export function getSpendingTrends(userId: string): SpendingTrends {
     WHERE user_id = ?
       AND amount < 0
       AND substr(date, 1, 7) >= ?
+      AND COALESCE(category, '') NOT IN ${TRENDS_EXCLUSION_CATEGORIES}
+      ${TRENDS_EXCLUSION_MERCHANTS}
     GROUP BY category, month
     ORDER BY category, month
   `).all(userId, oldest) as unknown as {
@@ -242,6 +267,8 @@ export function getSpendingTrends(userId: string): SpendingTrends {
     WHERE user_id = ?
       AND amount < 0
       AND substr(date, 1, 7) >= ?
+      AND COALESCE(category, '') NOT IN ${TRENDS_EXCLUSION_CATEGORIES}
+      ${TRENDS_EXCLUSION_MERCHANTS}
     GROUP BY month
     ORDER BY month ASC
   `).all(userId, oldest) as unknown as { month: string; total: number }[];

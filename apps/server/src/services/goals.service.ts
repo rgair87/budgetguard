@@ -56,7 +56,21 @@ function enrich(row: GoalRow): Goal {
     const msLeft = deadline.getTime() - now.getTime();
     daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
     dailyNeeded = daysLeft > 0 ? remaining / daysLeft : remaining > 0 ? Infinity : 0;
-    onTrack = remaining === 0 || (daysLeft > 0 && dailyNeeded < Infinity);
+    // Check if the required daily savings rate is realistic:
+    // Compare progress so far against where they should be by now
+    const totalDuration = deadline.getTime() - new Date(row.created_at).getTime();
+    const elapsed = now.getTime() - new Date(row.created_at).getTime();
+    if (remaining === 0) {
+      onTrack = true;
+    } else if (daysLeft <= 0) {
+      onTrack = false; // deadline passed and not complete
+    } else if (totalDuration > 0 && elapsed > 0) {
+      const expectedProgress = (elapsed / totalDuration) * row.target_amount;
+      // On track if actual progress is at least 80% of expected progress
+      onTrack = row.current_amount >= expectedProgress * 0.8;
+    } else {
+      onTrack = true; // just created, give benefit of the doubt
+    }
   }
 
   return { ...row, percent, remaining, onTrack, dailyNeeded, daysLeft };
@@ -358,11 +372,17 @@ export function generateGoalInsights(userId: string, goal: Goal): GoalInsight[] 
 
   // ── Behind pace warning with action ──
   if (goal.onTrack === false && daysLeft && daysLeft > 0) {
-    const behindBy = remaining - (dailyNeeded ?? 0) * daysLeft;
+    // Calculate how far behind: compare where they should be vs where they are
+    const totalDuration = new Date(goal.deadline!).getTime() - new Date(goal.created_at).getTime();
+    const elapsed = Date.now() - new Date(goal.created_at).getTime();
+    const expectedSaved = totalDuration > 0 ? (elapsed / totalDuration) * goal.target_amount : 0;
+    const behindBy = Math.round(Math.max(0, expectedSaved - goal.current_amount));
+    const catchUpWeekly = Math.round((dailyNeeded ?? 0) * 7);
+    const extraDaysNeeded = monthlySurplus > 0 ? Math.round((remaining / monthlySurplus) * 30) - daysLeft : 0;
     insights.push({
       type: 'strategy',
       title: 'Getting back on track',
-      body: `You're behind pace. To catch up, try saving $${Math.round((dailyNeeded ?? 0) * 7)}/wk, or extend your deadline by ${Math.round(remaining / (monthlySurplus > 0 ? monthlySurplus : monthlyNeeded) * 30 - daysLeft)} days.`,
+      body: `You're about $${behindBy.toLocaleString()} behind where you should be. To catch up, try saving $${catchUpWeekly}/wk${extraDaysNeeded > 0 ? `, or extend your deadline by about ${extraDaysNeeded} days` : ''}.`,
     });
   }
 

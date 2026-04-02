@@ -77,7 +77,17 @@ export interface RunwayScore {
   dailyBurnRate: number;
   totalDebt: number;
   spendableBalance: number;
-  cuttableMerchants: { name: string; monthlyAmount: number; category: string }[];
+  cuttableMerchants: { name: string; monthlyAmount: number; category: string; occurrences?: number }[];
+  noIncomeConfigured?: boolean;
+  spendBreakdown?: {
+    recurringMonthly: number;
+    variableMonthly: number;
+    oneOffTotal: number;
+    refundOffset: number;
+    outlierCount: number;
+    outlierTransactions: { merchant: string; amount: number; date: string }[];
+    rawDailyBurn: number;
+  };
 }
 
 // === Spending Category ===

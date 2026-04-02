@@ -1,6 +1,116 @@
 import db from '../config/db';
 import type { RunwayScore } from '@runway/shared';
 
+// Shared WHERE clause fragments for excluding non-spend transactions
+const SPEND_EXCLUSION_CATEGORIES = `('Transfers', 'Transfer', 'Debt Payments', 'Income', 'Payroll', 'Direct Deposit', 'Credit', 'Loans', 'Loan Payment', 'Loan Payments', 'Credit Card Payments', 'Credit Card Payment', 'Mortgage', 'Mortgages')`;
+const SPEND_EXCLUSION_MERCHANTS = `
+  AND merchant_name NOT LIKE '%transfer%'
+  AND merchant_name NOT LIKE '%payment to%'
+  AND merchant_name NOT LIKE '%CREDIT CARD%'
+  AND merchant_name NOT LIKE '%CREDIT CRD%'
+  AND merchant_name NOT LIKE '%CRCARDPMT%'
+  AND merchant_name NOT LIKE '%AUTOPAY%'
+  AND merchant_name NOT LIKE '%DIRECT DEP%'
+  AND merchant_name NOT LIKE '%PAYROLL%'
+  AND merchant_name NOT LIKE '%DEPOSIT%'
+  AND merchant_name NOT LIKE '%BONUS%'
+  AND merchant_name NOT LIKE '%TAX REFUND%'
+  AND merchant_name NOT LIKE '%VENMO CASHOUT%'
+  AND merchant_name NOT LIKE '%ZELLE FROM%'
+  AND merchant_name NOT LIKE '%ACH CREDIT%'
+  AND merchant_name NOT LIKE '%TAX REF%'
+  AND merchant_name NOT LIKE '%MORTGAGE%'
+  AND merchant_name NOT LIKE '%LOAN PAYMT%'
+  AND merchant_name NOT LIKE '%LOAN PAYMENT%'
+  AND merchant_name NOT LIKE '%E-PAYMENT%'
+  AND merchant_name NOT LIKE '%ONLINE PMT%'
+  AND merchant_name NOT LIKE '%ONLINE PAYMENT%'
+  AND merchant_name NOT LIKE '%ACCT XFER%'
+  AND merchant_name NOT LIKE '%INST XFER%'
+  AND merchant_name NOT LIKE '%PL PYMT%'
+  AND merchant_name NOT LIKE '%DIRECTPAY%'
+  AND merchant_name NOT LIKE '%BANKERS HEALTHCA%'
+  AND merchant_name NOT LIKE '%SOFI BANK%'`;
+
+// Detect outlier transactions using IQR method on the user's own spending distribution
+function detectOutlierThreshold(amounts: number[]): number {
+  if (amounts.length < 10) return Infinity; // not enough data to detect outliers
+  const sorted = [...amounts].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  // Upper fence: Q3 + 2.5 * IQR (slightly more permissive than classic 1.5x to avoid flagging normal large purchases)
+  return q3 + 2.5 * iqr;
+}
+
+export interface SpendBreakdown {
+  recurring: number;    // subscriptions, bills, regular merchants
+  variable: number;     // normal day-to-day spending (non-outlier, non-recurring)
+  oneOff: number;       // outlier large purchases
+  refundOffset: number; // refunds that offset spending
+  outlierTransactions: Array<{ merchant: string; amount: number; date: string }>;
+}
+
+export function getSpendBreakdown(userId: string, days: number = 90): SpendBreakdown & { calendarDays: number } {
+  // Get all spend transactions in the window
+  const txns = db.prepare(
+    `SELECT ABS(amount) as amt, merchant_name, date, is_recurring, category
+     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-${days} days')
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}`
+  ).all(userId) as any[];
+
+  // Get refunds (positive amounts from merchants that also have negative amounts)
+  const refunds = db.prepare(
+    `SELECT COALESCE(SUM(amount), 0) as total
+     FROM transactions WHERE user_id = ? AND amount > 0 AND date >= date('now', '-${days} days')
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       AND COALESCE(category, '') NOT IN ('Income', 'Payroll', 'Direct Deposit')
+       ${SPEND_EXCLUSION_MERCHANTS}
+       AND (LOWER(merchant_name) LIKE '%refund%' OR LOWER(merchant_name) LIKE '%return%'
+            OR LOWER(category) LIKE '%refund%' OR LOWER(category) LIKE '%return%')`
+  ).get(userId) as any;
+
+  // Calculate calendar days from earliest transaction
+  let calendarDays = days;
+  if (txns.length > 0) {
+    const dates = txns.map(t => t.date).sort();
+    const earliest = new Date(dates[0] + 'T00:00:00');
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    calendarDays = Math.max(1, Math.round((now.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  }
+
+  const amounts = txns.map(t => t.amt);
+  const outlierThreshold = detectOutlierThreshold(amounts);
+
+  let recurring = 0;
+  let variable = 0;
+  let oneOff = 0;
+  const outlierTransactions: SpendBreakdown['outlierTransactions'] = [];
+
+  for (const t of txns) {
+    if (t.is_recurring) {
+      // Recurring bills are never outliers — a $1,200 mortgage is expected every month
+      recurring += t.amt;
+    } else if (t.amt >= outlierThreshold) {
+      oneOff += t.amt;
+      outlierTransactions.push({ merchant: t.merchant_name, amount: t.amt, date: t.date });
+    } else {
+      variable += t.amt;
+    }
+  }
+
+  return {
+    recurring,
+    variable,
+    oneOff,
+    refundOffset: refunds.total || 0,
+    outlierTransactions,
+    calendarDays,
+  };
+}
+
 export function calculateRunway(userId: string): RunwayScore {
   const user = db.prepare(
     'SELECT pay_frequency, next_payday, take_home_pay FROM users WHERE id = ?'
@@ -18,35 +128,25 @@ export function calculateRunway(userId: string): RunwayScore {
   const debtAccounts = accounts.filter(a => DEBT_TYPES.includes(a.type));
   const totalDebt = debtAccounts.reduce((sum, a) => sum + a.current_balance, 0);
 
-  // Daily burn rate from last 90 days — use actual calendar days, not just days with spending
-  // Exclude transfers and internal movements (credit card payments, account transfers)
-  const EXCLUDED_CATEGORIES = ['Transfers', 'Transfer', 'Debt Payments'];
-  const spendRow = db.prepare(
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total,
-            MIN(date) as earliest_date
-     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
-       AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer', 'Debt Payments')
-       AND merchant_name NOT LIKE '%transfer%'
-       AND merchant_name NOT LIKE '%payment to%'
-       AND merchant_name NOT LIKE '%CREDIT CARD%'`
-  ).get(userId) as unknown as any;
-  let calendarDays = 90; // default to full window
-  if (spendRow.earliest_date) {
-    const earliest = new Date(spendRow.earliest_date + 'T00:00:00');
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    calendarDays = Math.max(1, Math.round((now.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-  }
-  const dailyBurnRate = spendRow.total / calendarDays;
+  // Get spend breakdown with outlier detection
+  const breakdown = getSpendBreakdown(userId, 90);
+  const calendarDays = breakdown.calendarDays;
 
-  // Spent this month (exclude transfers)
+  // Daily burn rate EXCLUDING outliers and offset by refunds
+  // Recurring + variable spend represents the true ongoing burn rate
+  const ongoingSpend = breakdown.recurring + breakdown.variable;
+  const refundAdjusted = Math.max(0, ongoingSpend - breakdown.refundOffset);
+  const dailyBurnRate = refundAdjusted / calendarDays;
+
+  // Raw total (including outliers) for context — the advisor uses this
+  const rawTotalSpend = breakdown.recurring + breakdown.variable + breakdown.oneOff;
+
+  // Spent this month (exclude transfers and income) — keep raw for budget tracking
   const monthSpendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions
      WHERE user_id = ? AND amount < 0 AND date >= date('now', 'start of month')
-       AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer', 'Debt Payments')
-       AND merchant_name NOT LIKE '%transfer%'
-       AND merchant_name NOT LIKE '%payment to%'
-       AND merchant_name NOT LIKE '%CREDIT CARD%'`
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}`
   ).get(userId) as unknown as any;
   const spentThisMonth = monthSpendRow.total;
 
@@ -142,6 +242,10 @@ export function calculateRunway(userId: string): RunwayScore {
         nextPayday.setDate(nextPayday.getDate() + paycheckIntervalDays);
       }
     }
+  } else if (paycheckIntervalDays && spendableIncome > 0) {
+    // No next_payday set but pay_frequency exists — estimate next payday
+    nextPayday = new Date(today);
+    nextPayday.setDate(nextPayday.getDate() + 1);
   }
 
   // Simulate forward
@@ -207,9 +311,10 @@ export function calculateRunway(userId: string): RunwayScore {
     'Groceries', 'Transportation', 'Housing', 'Utilities',
     'Insurance', 'Healthcare', 'Phone', 'Internet',
     'Childcare', 'Medical', 'Pharmacy', 'Rent',
+    'Debt Payments', 'Loans', 'Loan Payment', 'Mortgage',
   ]);
 
-  // Merchant name patterns that are essential even if miscategorized as "Other"
+  // Merchant name patterns that are essential or debt-related (shouldn't suggest cutting)
   const ESSENTIAL_PATTERNS = [
     /grocery/i, /walmart/i, /kroger/i, /safeway/i, /publix/i, /aldi/i, /costco/i,
     /electric/i, /power/i, /energy/i, /water\s/i, /gas\s/i, /sewer/i,
@@ -217,6 +322,12 @@ export function calculateRunway(userId: string): RunwayScore {
     /insurance/i, /geico/i, /state\s*farm/i, /allstate/i,
     /mortgage/i, /rent/i, /lease/i,
     /pharmacy/i, /cvs/i, /walgreens/i,
+    // Debt/loan payments — never suggest cutting these
+    /sofi/i, /navient/i, /sallie\s*mae/i, /nelnet/i, /great\s*lakes/i, /fedloan/i,
+    /capital\s*one/i, /discover/i, /synchrony/i, /barclays/i, /citi\s*card/i,
+    /loan/i, /lending/i, /pymt/i, /payment/i,
+    /bankers\s*healthcare/i, /prosper/i, /upstart/i, /lightstream/i,
+    /cmg\s*mortgage/i, /bank\s*of\s*america/i,
   ];
 
   function isEssentialMerchant(name: string): boolean {
@@ -230,6 +341,8 @@ export function calculateRunway(userId: string): RunwayScore {
      FROM transactions
      WHERE user_id = ? AND amount < 0 AND is_recurring = 0
        AND date >= date('now', '-90 days')
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}
        AND merchant_name IS NOT NULL AND merchant_name != ''
      GROUP BY merchant_key
      ORDER BY total DESC
@@ -241,12 +354,18 @@ export function calculateRunway(userId: string): RunwayScore {
   }
 
   const cuttableMerchants = merchantRows
-    .filter(m => !NECESSITY_CATEGORIES.has(m.category || '') && !isEssentialMerchant(m.merchant_name))
+    .filter(m =>
+      !NECESSITY_CATEGORIES.has(m.category || '') &&
+      !isEssentialMerchant(m.merchant_name) &&
+      m.count >= 2 // Only recommend cutting truly recurring discretionary spending, not one-time purchases
+    )
     .slice(0, 5)
     .map(m => ({
       name: titleCase(m.merchant_name as string),
+      // Use per-occurrence average * estimated monthly frequency instead of raw total projection
       monthlyAmount: Math.round((m.total / calendarDays) * 30 * 100) / 100,
       category: (m.category || 'Other') as string,
+      occurrences: m.count as number,
     }))
     .filter(m => m.monthlyAmount >= 5);
 
@@ -264,6 +383,21 @@ export function calculateRunway(userId: string): RunwayScore {
     totalDebt: Math.round(totalDebt * 100) / 100,
     spendableBalance: Math.round(spendableBalance * 100) / 100,
     cuttableMerchants,
+    // Spend breakdown for advisor and debugging
+    spendBreakdown: {
+      recurringMonthly: Math.round((breakdown.recurring / calendarDays) * 30 * 100) / 100,
+      variableMonthly: Math.round((breakdown.variable / calendarDays) * 30 * 100) / 100,
+      oneOffTotal: Math.round(breakdown.oneOff * 100) / 100,
+      refundOffset: Math.round(breakdown.refundOffset * 100) / 100,
+      outlierCount: breakdown.outlierTransactions.length,
+      outlierTransactions: breakdown.outlierTransactions.map(t => ({
+        merchant: t.merchant,
+        amount: Math.round(t.amount * 100) / 100,
+        date: t.date,
+      })),
+      rawDailyBurn: Math.round((rawTotalSpend / calendarDays) * 100) / 100,
+    },
+    noIncomeConfigured: spendableIncome === 0 && !user.take_home_pay,
   };
 }
 

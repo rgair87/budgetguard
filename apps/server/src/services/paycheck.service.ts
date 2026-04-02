@@ -287,6 +287,20 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
      ORDER BY ABS(amount) DESC`
   ).all(userId) as any[];
 
+  // Figure out actual data span for non-recurring transactions
+  const nonRecSpanRow = db.prepare(
+    `SELECT MIN(date) as earliest FROM transactions
+     WHERE user_id = ? AND amount < 0 AND is_recurring = 0 AND date >= date('now', '-90 days')`
+  ).get(userId) as any;
+  let nonRecurringMonths = 3; // default
+  if (nonRecSpanRow?.earliest) {
+    const nrEarliest = new Date(nonRecSpanRow.earliest + 'T00:00:00');
+    const nrNow = new Date();
+    nrNow.setHours(0, 0, 0, 0);
+    const nrDaySpan = Math.max(1, Math.round((nrNow.getTime() - nrEarliest.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    nonRecurringMonths = Math.max(1, nrDaySpan / 30);
+  }
+
   // Classify each transaction and group by category
   const categoryTotals = new Map<string, number>();
   for (const row of nonRecurringRows) {
@@ -311,7 +325,7 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
   let totalDiscretionary = 0;
 
   for (const [catName, total90] of categoryTotals) {
-    const monthlyAmount = Math.round((total90 / 3) * 100) / 100;
+    const monthlyAmount = Math.round((total90 / nonRecurringMonths) * 100) / 100;
     if (monthlyAmount < 5) continue; // skip noise
 
     const budget = budgetMap.get(catName) || null;

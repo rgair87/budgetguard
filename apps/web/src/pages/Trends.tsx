@@ -221,7 +221,7 @@ export default function Trends() {
       {tab === 'categories' && (
         <div className="space-y-3 animate-fade-in">
           {data.categoryTrends.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-8">Not enough data yet.</p>
+            <p className="text-sm text-gray-500 text-center py-8">Not enough data yet. Category trends appear after 2+ months of categorized transactions.</p>
           )}
           {data.categoryTrends.map(ct => {
             const maxAmt = Math.max(...ct.months.map(m => m.amount), 1);

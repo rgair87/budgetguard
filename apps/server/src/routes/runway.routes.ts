@@ -30,6 +30,7 @@ router.get('/paycheck-plan', authenticate, (req: AuthRequest, res: Response) => 
 });
 
 router.put('/paycheck', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
   const { pay_frequency, next_payday, take_home_pay } = req.body;
   if (!pay_frequency || !next_payday || !take_home_pay) {
     res.status(400).json({ error: 'validation', message: 'pay_frequency, next_payday, and take_home_pay required' });
@@ -38,15 +39,16 @@ router.put('/paycheck', authenticate, (req: AuthRequest, res: Response) => {
 
   db.prepare(
     'UPDATE users SET pay_frequency = ?, next_payday = ?, take_home_pay = ? WHERE id = ?'
-  ).run(pay_frequency, next_payday, take_home_pay, req.userId);
-  invalidateCache(`runway:${req.userId}`);
-  invalidateCache(`trends:${req.userId}`);
-  invalidateCache(`predictions:${req.userId}`);
+  ).run(pay_frequency, next_payday, take_home_pay, userId);
+  invalidateCache(`runway:${userId}`);
+  invalidateCache(`trends:${userId}`);
+  invalidateCache(`predictions:${userId}`);
   res.json({ success: true });
 });
 
 // === Merchant Review: which merchants need user classification? ===
 router.get('/review-merchants', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
   // Find distinct merchants from last 90 days that have no user classification
   // and no default classification
   const merchants = db.prepare(
@@ -56,7 +58,7 @@ router.get('/review-merchants', authenticate, (req: AuthRequest, res: Response) 
      AND date >= date('now', '-90 days')
      AND is_recurring = 0
      ORDER BY ABS(amount) DESC`
-  ).all(req.userId) as unknown as any[];
+  ).all(userId) as unknown as any[];
 
   // Default merchant map keys (simplified check)
   const DEFAULT_MERCHANTS = new Set([
@@ -73,7 +75,7 @@ router.get('/review-merchants', authenticate, (req: AuthRequest, res: Response) 
   // Get user's existing classifications
   const userClassifications = db.prepare(
     'SELECT merchant_pattern FROM merchant_categories WHERE user_id = ?'
-  ).all(req.userId) as unknown as any[];
+  ).all(userId) as unknown as any[];
   const classifiedSet = new Set(userClassifications.map((r: any) => r.merchant_pattern));
 
   // Filter to unclassified merchants
@@ -110,6 +112,7 @@ router.get('/review-merchants', authenticate, (req: AuthRequest, res: Response) 
 
 // === Classify a merchant ===
 router.post('/classify-merchant', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
   const { merchantName, category, isBill } = req.body;
   if (!merchantName || !category) {
     res.status(400).json({ error: 'validation', message: 'merchantName and category required' });
@@ -123,26 +126,64 @@ router.post('/classify-merchant', authenticate, (req: AuthRequest, res: Response
     `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
-  ).run(crypto.randomUUID(), req.userId, normalized, category, isBill ? 1 : 0);
+  ).run(crypto.randomUUID(), userId, normalized, category, isBill ? 1 : 0);
 
   // Also update existing transactions with this merchant
   db.prepare(
     `UPDATE transactions SET category = ?
      WHERE user_id = ? AND LOWER(merchant_name) = ?`
-  ).run(category, req.userId, normalized);
+  ).run(category, userId, normalized);
 
   // If it's a bill, mark those transactions as recurring
   if (isBill) {
     db.prepare(
       `UPDATE transactions SET is_recurring = 1
        WHERE user_id = ? AND LOWER(merchant_name) = ?`
-    ).run(req.userId, normalized);
+    ).run(userId, normalized);
   }
 
-  invalidateCache(`runway:${req.userId}`);
-  invalidateCache(`trends:${req.userId}`);
-  invalidateCache(`predictions:${req.userId}`);
+  invalidateCache(`runway:${userId}`);
+  invalidateCache(`trends:${userId}`);
+  invalidateCache(`predictions:${userId}`);
   res.json({ success: true, message: `${merchantName} classified as ${category}` });
+});
+
+// === Batch classify multiple merchants at once ===
+router.post('/classify-merchants-batch', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const { classifications } = req.body;
+  if (!Array.isArray(classifications) || classifications.length === 0) {
+    res.status(400).json({ error: 'validation', message: 'classifications array required' });
+    return;
+  }
+
+  let classified = 0;
+  const upsertMerchant = db.prepare(
+    `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
+  );
+  const updateTxns = db.prepare(
+    `UPDATE transactions SET category = ?
+     WHERE user_id = ? AND LOWER(merchant_name) = ?`
+  );
+  const markRecurring = db.prepare(
+    `UPDATE transactions SET is_recurring = 1
+     WHERE user_id = ? AND LOWER(merchant_name) = ?`
+  );
+
+  for (const { merchantName, category, isBill } of classifications) {
+    if (!merchantName || !category) continue;
+    const normalized = merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
+    upsertMerchant.run(crypto.randomUUID(), userId, normalized, category, isBill ? 1 : 0);
+    updateTxns.run(category, userId, normalized);
+    if (isBill) markRecurring.run(userId, normalized);
+    classified++;
+  }
+  invalidateCache(`runway:${userId}`);
+  invalidateCache(`trends:${userId}`);
+  invalidateCache(`predictions:${userId}`);
+  res.json({ success: true, classified });
 });
 
 router.get('/subscriptions', authenticate, (req: AuthRequest, res: Response) => {
@@ -191,6 +232,7 @@ router.get('/spending-by-category/transactions', authenticate, (req: AuthRequest
 
 // Dismiss a subscription from the recurring list
 router.post('/subscriptions/dismiss', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
   const { merchantName } = req.body;
   if (!merchantName) {
     res.status(400).json({ error: 'validation', message: 'merchantName required' });
@@ -204,19 +246,20 @@ router.post('/subscriptions/dismiss', authenticate, (req: AuthRequest, res: Resp
     `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill, hide_recurring)
      VALUES (?, ?, ?, 'Other', 0, 1)
      ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET hide_recurring = 1`
-  ).run(crypto.randomUUID(), req.userId, key);
+  ).run(crypto.randomUUID(), userId, key);
 
   // Also unflag those transactions as recurring
   db.prepare(
     `UPDATE transactions SET is_recurring = 0
      WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) LIKE ?`
-  ).run(req.userId, `%${key}%`);
+  ).run(userId, `%${key}%`);
 
   res.json({ success: true, message: `${merchantName} removed from recurring list` });
 });
 
 // Restore a dismissed subscription
 router.post('/subscriptions/restore', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
   const { merchantName } = req.body;
   if (!merchantName) {
     res.status(400).json({ error: 'validation', message: 'merchantName required' });
@@ -228,13 +271,20 @@ router.post('/subscriptions/restore', authenticate, (req: AuthRequest, res: Resp
   db.prepare(
     `UPDATE merchant_categories SET hide_recurring = 0
      WHERE user_id = ? AND merchant_pattern = ?`
-  ).run(req.userId, key);
+  ).run(userId, key);
+
+  // Re-flag matching transactions as recurring
+  db.prepare(
+    `UPDATE transactions SET is_recurring = 1
+     WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) LIKE ?`
+  ).run(userId, `%${key}%`);
 
   res.json({ success: true, message: `${merchantName} restored to recurring list` });
 });
 
 // Reclassify a subscription (change its category: subscription, bill, or debt)
 router.post('/subscriptions/reclassify', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
   const { merchantName, category } = req.body;
   if (!merchantName || !category) {
     res.status(400).json({ error: 'validation', message: 'merchantName and category required' });
@@ -248,16 +298,21 @@ router.post('/subscriptions/reclassify', authenticate, (req: AuthRequest, res: R
   const key = normalizeMerchantKey(merchantName);
 
   // Map subscription category to a transaction category for consistency
+  // Look up existing category from transactions first; fall back to defaults
+  const existingCatRow = db.prepare(
+    `SELECT category FROM transactions WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) LIKE ? AND category IS NOT NULL LIMIT 1`
+  ).get(userId, `%${key}%`) as any;
+
   const txnCategory = category === 'subscription' ? 'Entertainment'
-    : category === 'debt' ? 'Debt Payment'
-    : 'Utilities';
+    : category === 'debt' ? 'Debt Payments'
+    : existingCatRow?.category || 'Bills';
 
   // Upsert merchant classification
   db.prepare(
     `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
-  ).run(crypto.randomUUID(), req.userId, key, txnCategory, category === 'bill' ? 1 : 0);
+  ).run(crypto.randomUUID(), userId, key, txnCategory, category === 'bill' ? 1 : 0);
 
   res.json({ success: true, message: `${merchantName} reclassified as ${category}` });
 });

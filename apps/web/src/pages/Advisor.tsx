@@ -90,7 +90,7 @@ const CATEGORY_GROUPS: CategoryGroup[] = [
     key: 'cashflow',
     label: 'Cash Flow',
     icon: <TrendingUp className="w-5 h-5" />,
-    categories: ['cash_flow', 'what_if'],
+    categories: ['cash_flow', 'what_if', 'health_score'],
   },
   {
     key: 'debt',
@@ -100,9 +100,9 @@ const CATEGORY_GROUPS: CategoryGroup[] = [
   },
   {
     key: 'savings',
-    label: 'Savings & Goals',
+    label: 'Savings & Growth',
     icon: <PiggyBank className="w-5 h-5" />,
-    categories: ['progress', 'action_plan'],
+    categories: ['savings', 'progress', 'action_plan'],
   },
 ];
 
@@ -174,8 +174,31 @@ function TakeawayCard({ insight }: { insight: AdvisorInsight }) {
               <p className="text-xs text-slate-600 leading-relaxed">{insight.action}</p>
             </div>
           )}
-          {expanded && insight.estimatedImpact && (
-            <p className="text-xs text-emerald-600 font-medium mt-2">{insight.estimatedImpact}</p>
+          {expanded && (insight.estimatedImpact || insight.timeToComplete || insight.difficulty) && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {insight.estimatedImpact && (
+                <span className="text-xs text-emerald-600 font-medium">{insight.estimatedImpact}</span>
+              )}
+              {insight.timeToComplete && (
+                <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{insight.timeToComplete}</span>
+              )}
+              {insight.difficulty && (
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                  insight.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700'
+                    : insight.difficulty === 'medium' ? 'bg-amber-100 text-amber-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>{insight.difficulty}</span>
+              )}
+            </div>
+          )}
+          {expanded && insight.relatedPage && (
+            <Link
+              to={insight.relatedPage}
+              onClick={e => e.stopPropagation()}
+              className="inline-block text-xs text-indigo-500 hover:text-indigo-600 mt-2"
+            >
+              View details &rarr;
+            </Link>
           )}
         </div>
         <div className="shrink-0 mt-0.5">
@@ -247,8 +270,22 @@ function InsightRow({ insight }: { insight: AdvisorInsight }) {
               <p className="text-[11px] text-slate-500 leading-relaxed">{insight.action}</p>
             </div>
           )}
-          {expanded && insight.estimatedImpact && (
-            <p className="text-[11px] text-emerald-600 font-medium mt-1.5">{insight.estimatedImpact}</p>
+          {expanded && (insight.estimatedImpact || insight.timeToComplete || insight.difficulty) && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              {insight.estimatedImpact && (
+                <span className="text-[11px] text-emerald-600 font-medium">{insight.estimatedImpact}</span>
+              )}
+              {insight.timeToComplete && (
+                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{insight.timeToComplete}</span>
+              )}
+              {insight.difficulty && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                  insight.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700'
+                    : insight.difficulty === 'medium' ? 'bg-amber-100 text-amber-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>{insight.difficulty}</span>
+              )}
+            </div>
           )}
           {expanded && insight.relatedPage && (
             <Link
@@ -268,6 +305,36 @@ function InsightRow({ insight }: { insight: AdvisorInsight }) {
         </div>
       </div>
     </button>
+  );
+}
+
+/* ── Loading Progress ───────────────────────────────────────── */
+
+const LOADING_STEPS = [
+  { delay: 0, text: 'Analyzing your transactions...' },
+  { delay: 5000, text: 'Calculating spending patterns...' },
+  { delay: 12000, text: 'Generating personalized insights...' },
+  { delay: 22000, text: 'Almost done — first reports take a bit longer...' },
+];
+
+function AdvisorLoadingProgress() {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const timers = LOADING_STEPS.slice(1).map((s, i) =>
+      setTimeout(() => setStep(i + 1), s.delay)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, []);
+  return (
+    <div className="text-center py-20">
+      <div className="inline-block w-10 h-10 border-[3px] border-slate-300 border-t-emerald-500 rounded-full animate-spin mb-4" />
+      <p className="text-slate-600 font-medium">{LOADING_STEPS[step].text}</p>
+      <div className="flex justify-center gap-1.5 mt-3">
+        {LOADING_STEPS.map((_, i) => (
+          <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i <= step ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -312,13 +379,7 @@ export default function Advisor() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {/* Loading */}
-      {loading && (
-        <div className="text-center py-20">
-          <div className="inline-block w-10 h-10 border-[3px] border-slate-300 border-t-emerald-500 rounded-full animate-spin mb-4" />
-          <p className="text-slate-600 font-medium">Analyzing your finances...</p>
-          <p className="text-xs text-slate-400 mt-1">This may take a few seconds</p>
-        </div>
-      )}
+      {loading && <AdvisorLoadingProgress />}
 
       {/* Error */}
       {error && (
@@ -414,6 +475,79 @@ export default function Advisor() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Priority Actions ─────────────────────────── */}
+          {report.priorityActions && report.priorityActions.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <Shield className="w-4 h-4 text-slate-400" />
+                <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Your Top 3 Moves</h2>
+              </div>
+              <div className="space-y-2">
+                {report.priorityActions.map((pa, i) => (
+                  <div key={i} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-white">{pa.rank}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 text-sm">{pa.action}</p>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">{pa.reason}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          {pa.impact && (
+                            <span className="text-xs text-emerald-600 font-medium">{pa.impact}</span>
+                          )}
+                          {pa.timeToComplete && (
+                            <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{pa.timeToComplete}</span>
+                          )}
+                          {pa.difficulty && (
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                              pa.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700'
+                                : pa.difficulty === 'medium' ? 'bg-amber-100 text-amber-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>{pa.difficulty}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Changes Since Last Report ─────────────────── */}
+          {report.changes?.hasLastReport && report.changes.summary && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="w-4 h-4 text-slate-400" />
+                <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Since Last Report</h2>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3">
+                <p className="text-sm text-slate-600">{report.changes.summary}</p>
+                {report.changes.improved.length > 0 && (
+                  <div className="space-y-1">
+                    {report.changes.improved.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-slate-600">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {report.changes.regressed.length > 0 && (
+                  <div className="space-y-1">
+                    {report.changes.regressed.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="text-slate-600">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
           )}
