@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import { CATEGORY_NAMES } from '@runway/shared';
 import useTrack from '../hooks/useTrack';
 
 interface Transaction {
@@ -18,12 +19,7 @@ interface UnclassifiedMerchant {
   currentCategory: string | null;
 }
 
-const CATEGORY_OPTIONS = [
-  'Food & Dining', 'Groceries', 'Entertainment', 'Shopping',
-  'Transportation', 'Gas', 'Utilities', 'Healthcare', 'Insurance',
-  'Housing', 'Home Improvement', 'Services', 'Debt Payments',
-  'Travel', 'Personal', 'Education', 'Transfers', 'Fees', 'Bills', 'Other',
-];
+const CATEGORY_OPTIONS = CATEGORY_NAMES;
 
 export default function Transactions() {
   const track = useTrack('transactions');

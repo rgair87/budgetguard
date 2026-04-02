@@ -1,5 +1,6 @@
 import db from '../config/db';
 import { calculateRunway } from './runway.service';
+import { NECESSITY_NAMES, DISCRETIONARY_NAMES } from '@runway/shared';
 import type { PaycheckPlan, SpendingCategory } from '@runway/shared';
 
 function getPaychecksPerMonth(freq: string | null): number {
@@ -28,16 +29,16 @@ function getFrequencyLabel(freq: string | null): string {
 // ========================================================
 const DEFAULT_MERCHANT_MAP: Record<string, string> = {
   // Restaurants & Dining
-  'chipotle': 'Restaurants', 'mcdonald': 'Restaurants', "mcdonald's": 'Restaurants',
-  'chick-fil-a': 'Restaurants', 'taco bell': 'Restaurants', 'wendy': 'Restaurants',
-  'burger king': 'Restaurants', 'subway': 'Restaurants', 'panera': 'Restaurants',
-  'starbucks': 'Restaurants', 'dunkin': 'Restaurants', 'doordash': 'Restaurants',
-  'uber eats': 'Restaurants', 'grubhub': 'Restaurants', 'pizza hut': 'Restaurants',
-  'domino': 'Restaurants', 'olive garden': 'Restaurants', 'applebee': 'Restaurants',
-  'panda express': 'Restaurants', 'popeye': 'Restaurants', 'five guys': 'Restaurants',
-  'wingstop': 'Restaurants', 'chili': 'Restaurants', 'ihop': 'Restaurants',
-  'waffle house': 'Restaurants', 'sonic': 'Restaurants', 'jack in the box': 'Restaurants',
-  'raising cane': 'Restaurants', 'zaxby': 'Restaurants', 'cracker barrel': 'Restaurants',
+  'chipotle': 'Food & Dining', 'mcdonald': 'Food & Dining', "mcdonald's": 'Food & Dining',
+  'chick-fil-a': 'Food & Dining', 'taco bell': 'Food & Dining', 'wendy': 'Food & Dining',
+  'burger king': 'Food & Dining', 'subway': 'Food & Dining', 'panera': 'Food & Dining',
+  'starbucks': 'Food & Dining', 'dunkin': 'Food & Dining', 'doordash': 'Food & Dining',
+  'uber eats': 'Food & Dining', 'grubhub': 'Food & Dining', 'pizza hut': 'Food & Dining',
+  'domino': 'Food & Dining', 'olive garden': 'Food & Dining', 'applebee': 'Food & Dining',
+  'panda express': 'Food & Dining', 'popeye': 'Food & Dining', 'five guys': 'Food & Dining',
+  'wingstop': 'Food & Dining', 'chili': 'Food & Dining', 'ihop': 'Food & Dining',
+  'waffle house': 'Food & Dining', 'sonic': 'Food & Dining', 'jack in the box': 'Food & Dining',
+  'raising cane': 'Food & Dining', 'zaxby': 'Food & Dining', 'cracker barrel': 'Food & Dining',
   'instacart': 'Groceries',
 
   // Groceries
@@ -82,18 +83,9 @@ const DEFAULT_MERCHANT_MAP: Record<string, string> = {
   'rent payment': 'Housing', 'mortgage': 'Housing',
 };
 
-// Categories that are necessities (can reduce but can't eliminate)
-const NECESSITY_CATEGORIES = new Set([
-  'Groceries', 'Transportation', 'Housing', 'Utilities',
-  'Insurance', 'Healthcare', 'Phone', 'Internet',
-  'Childcare', 'Medical', 'Pharmacy', 'Rent',
-]);
-
-// Categories that are discretionary (the "cuttable" ones)
-const DISCRETIONARY_CATEGORIES = new Set([
-  'Restaurants', 'Entertainment', 'Shopping', 'Subscriptions',
-  'Personal Care', 'Travel', 'Hobbies', 'Clothing', 'Gifts',
-]);
+// Use shared category definitions as the source of truth
+const NECESSITY_CATEGORIES = NECESSITY_NAMES;
+const DISCRETIONARY_CATEGORIES = DISCRETIONARY_NAMES;
 
 function classifyMerchant(merchantName: string, existingCategory: string | null, userId: string): string {
   const normalized = (merchantName || '').toLowerCase().replace(/\s+/g, ' ').trim();

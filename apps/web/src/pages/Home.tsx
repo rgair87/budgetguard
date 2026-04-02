@@ -8,12 +8,10 @@ import InfoTip from '../components/InfoTip';
 import { SkeletonDashboard } from '../components/Skeleton';
 import TellerConnectButton from '../components/TellerConnect';
 import useTrack from '../hooks/useTrack';
+import { USER_CATEGORY_NAMES } from '@runway/shared';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@runway/shared';
 
-const CATEGORY_OPTIONS = [
-  'Groceries', 'Restaurants', 'Shopping', 'Entertainment',
-  'Transportation', 'Utilities', 'Healthcare', 'Other',
-];
+const CATEGORY_OPTIONS = USER_CATEGORY_NAMES;
 
 interface CategorySpend {
   category: string;

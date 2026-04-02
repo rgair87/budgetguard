@@ -90,6 +90,18 @@ export interface RunwayScore {
   };
 }
 
+// === Budget ===
+
+export interface Budget {
+  category: string;
+  monthly_limit: number;
+}
+
+export interface BudgetWithSuggestion extends Budget {
+  suggested: number | null;   // 3-month avg rounded up to nearest $25
+  currentSpend: number;       // actual last-30-day spend
+}
+
 // === Spending Category ===
 
 export interface SpendingCategory {

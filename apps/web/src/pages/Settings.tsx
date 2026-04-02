@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet, BarChart3, RefreshCw } from 'lucide-react';
+import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet, BarChart3, RefreshCw, Target, Check, Sparkles } from 'lucide-react';
 import api from '../api/client';
+import { BUDGETABLE_CATEGORIES } from '@runway/shared';
+import type { BudgetWithSuggestion } from '@runway/shared';
 import { useAuth } from '../context/AuthContext';
 import useTrack from '../hooks/useTrack';
 import TellerConnectButton from '../components/TellerConnect';
@@ -130,6 +132,189 @@ function SettingsRow({ children, last = false, className = '' }: { children: Rea
     <div className={`px-4 py-3.5 ${!last ? 'border-b border-slate-100' : ''} ${className}`}>
       {children}
     </div>
+  );
+}
+
+/* ───────── Budget Editor ───────── */
+function BudgetEditor() {
+  const [budgets, setBudgets] = useState<BudgetWithSuggestion[]>([]);
+  const [edits, setEdits] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    api.get('/runway/budgets')
+      .then(r => {
+        const items: BudgetWithSuggestion[] = r.data.budgets || [];
+        setBudgets(items);
+        // Pre-fill edits with existing budget values
+        const initial: Record<string, number> = {};
+        for (const b of items) {
+          if (b.monthly_limit > 0) initial[b.category] = b.monthly_limit;
+        }
+        setEdits(initial);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  function setEditValue(category: string, value: string) {
+    const num = parseFloat(value);
+    if (value === '' || value === '0') {
+      const next = { ...edits };
+      delete next[category];
+      setEdits(next);
+    } else if (!isNaN(num) && num >= 0) {
+      setEdits(prev => ({ ...prev, [category]: num }));
+    }
+  }
+
+  function applySuggestions() {
+    const next = { ...edits };
+    for (const b of budgets) {
+      if (b.suggested && !next[b.category]) {
+        next[b.category] = b.suggested;
+      }
+    }
+    setEdits(next);
+  }
+
+  async function saveBudgets() {
+    setSaving(true);
+    setSaved(false);
+    try {
+      // Build array: include categories that have a value OR had a value (to clear removed ones)
+      const allCategories = new Set([
+        ...budgets.map(b => b.category),
+        ...Object.keys(edits),
+      ]);
+      const payload = [...allCategories].map(category => ({
+        category,
+        monthly_limit: edits[category] || 0,
+      }));
+      await api.put('/runway/budgets', { budgets: payload });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {}
+    setSaving(false);
+  }
+
+  const hasEdits = budgets.some(b => {
+    const edited = edits[b.category];
+    const original = b.monthly_limit || 0;
+    return (edited || 0) !== original;
+  });
+
+  const hasSuggestions = budgets.some(b => b.suggested && !edits[b.category]);
+
+  return (
+    <>
+      <SectionHeader icon={Target} label="Monthly Budgets" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-700 font-medium">
+              {Object.keys(edits).length > 0
+                ? `${Object.keys(edits).length} budget${Object.keys(edits).length !== 1 ? 's' : ''} set`
+                : 'Set spending limits by category'}
+            </span>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+
+        {open && (
+          <div className="border-t border-slate-100">
+            {loading ? (
+              <div className="px-4 py-8 text-center text-sm text-slate-400">Loading spending data...</div>
+            ) : budgets.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm text-slate-500">No spending data yet.</p>
+                <p className="text-xs text-slate-400 mt-1">Import transactions to see budget suggestions.</p>
+              </div>
+            ) : (
+              <>
+                {/* Suggest all button */}
+                {hasSuggestions && (
+                  <div className="px-4 py-2.5 bg-indigo-50/50 border-b border-slate-100">
+                    <button
+                      onClick={applySuggestions}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Apply all suggestions (based on your 3-month average)
+                    </button>
+                  </div>
+                )}
+
+                {/* Category rows */}
+                <div className="divide-y divide-slate-100">
+                  {budgets.map(b => {
+                    const catDef = BUDGETABLE_CATEGORIES.find(c => c.name === b.category);
+                    const isNecessity = catDef?.type === 'necessity';
+                    return (
+                      <div key={b.category} className="px-4 py-3 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-slate-700 truncate">{b.category}</p>
+                            {isNecessity && (
+                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">need</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Spent ${b.currentSpend.toLocaleString()} this month
+                            {b.suggested ? ` · Avg ~$${b.suggested}/mo` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs text-slate-400">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="25"
+                            value={edits[b.category] ?? ''}
+                            placeholder={b.suggested ? String(b.suggested) : '0'}
+                            onChange={e => setEditValue(b.category, e.target.value)}
+                            className="w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+                          />
+                          <span className="text-xs text-slate-400">/mo</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Save bar */}
+                <div className="px-4 py-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between">
+                  <p className="text-xs text-slate-400">
+                    {saved ? (
+                      <span className="text-emerald-600 font-medium flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> Saved
+                      </span>
+                    ) : hasEdits ? (
+                      'You have unsaved changes'
+                    ) : (
+                      'Set limits to get budget alerts'
+                    )}
+                  </p>
+                  <button
+                    onClick={saveBudgets}
+                    disabled={saving || !hasEdits}
+                    className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+                  >
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -709,6 +894,9 @@ export default function Settings() {
           </>
         )}
       </div>
+
+      {/* ────────── BUDGETS ────────── */}
+      <BudgetEditor />
 
       {/* ────────── ACCOUNTS ────────── */}
       <SectionHeader icon={Landmark} label="Accounts" />

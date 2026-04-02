@@ -186,6 +186,93 @@ router.post('/classify-merchants-batch', authenticate, (req: AuthRequest, res: R
   res.json({ success: true, classified });
 });
 
+// === Budgets ===
+
+router.get('/budgets', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+
+  // Get user's existing budgets
+  const budgets = db.prepare(
+    'SELECT category, monthly_limit FROM budgets WHERE user_id = ? ORDER BY category'
+  ).all(userId) as unknown as { category: string; monthly_limit: number }[];
+
+  const budgetMap = new Map(budgets.map(b => [b.category, b.monthly_limit]));
+
+  // Get 3-month average spend per category for suggestions
+  const spendRows = db.prepare(
+    `SELECT category, SUM(ABS(amount)) as total
+     FROM transactions
+     WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
+       AND category IS NOT NULL AND category != ''
+       AND category NOT IN ('Transfers', 'Transfer', 'Debt Payments', 'Income', 'Payroll', 'Direct Deposit', 'Credit', 'Fees')
+     GROUP BY category
+     ORDER BY total DESC`
+  ).all(userId) as unknown as { category: string; total: number }[];
+
+  // Get last-30-day spend per category
+  const recentRows = db.prepare(
+    `SELECT category, SUM(ABS(amount)) as total
+     FROM transactions
+     WHERE user_id = ? AND amount < 0 AND date >= date('now', '-30 days')
+       AND category IS NOT NULL AND category != ''
+       AND category NOT IN ('Transfers', 'Transfer', 'Debt Payments', 'Income', 'Payroll', 'Direct Deposit', 'Credit', 'Fees')
+     GROUP BY category`
+  ).all(userId) as unknown as { category: string; total: number }[];
+
+  const recentMap = new Map(recentRows.map(r => [r.category, Math.round(r.total)]));
+
+  // Build response: categories with spending, their budget, and a suggestion
+  const result = spendRows.map(row => {
+    const monthlyAvg = row.total / 3;
+    // Round up to nearest $25 as a buffer
+    const suggested = Math.ceil(monthlyAvg / 25) * 25;
+    return {
+      category: row.category,
+      monthly_limit: budgetMap.get(row.category) ?? 0,
+      suggested: suggested > 0 ? suggested : null,
+      currentSpend: recentMap.get(row.category) ?? 0,
+    };
+  });
+
+  res.json({ budgets: result });
+});
+
+router.put('/budgets', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const { budgets } = req.body;
+  if (!Array.isArray(budgets)) {
+    res.status(400).json({ error: 'validation', message: 'budgets array required' });
+    return;
+  }
+
+  const upsert = db.prepare(
+    `INSERT INTO budgets (id, user_id, category, monthly_limit)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(user_id, category) DO UPDATE SET monthly_limit = excluded.monthly_limit`
+  );
+
+  // Check if budgets table has unique constraint on (user_id, category)
+  // If not, we need a different approach
+  const del = db.prepare('DELETE FROM budgets WHERE user_id = ? AND category = ?');
+
+  let saved = 0;
+  for (const b of budgets) {
+    if (!b.category || typeof b.monthly_limit !== 'number') continue;
+    if (b.monthly_limit <= 0) {
+      // Remove budget if set to 0
+      del.run(userId, b.category);
+    } else {
+      // Try upsert, fall back to delete+insert if no unique constraint
+      del.run(userId, b.category);
+      upsert.run(crypto.randomUUID(), userId, b.category, b.monthly_limit);
+    }
+    saved++;
+  }
+
+  invalidateCache(`runway:${userId}`);
+  res.json({ success: true, saved });
+});
+
 router.get('/subscriptions', authenticate, (req: AuthRequest, res: Response) => {
   const subs = getSubscriptionLifetime(req.userId!);
   res.json(subs);
