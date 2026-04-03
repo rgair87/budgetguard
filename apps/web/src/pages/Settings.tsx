@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet, BarChart3, RefreshCw, Target, Check, Sparkles } from 'lucide-react';
 import api from '../api/client';
 import { BUDGETABLE_CATEGORIES } from '@runway/shared';
@@ -897,7 +897,13 @@ export default function Settings() {
       </div>
 
       {/* ────────── BUDGETS ────────── */}
-      <BudgetEditor />
+      <SectionHeader icon={Target} label="Monthly Budgets" />
+      <Link to="/budgets" className="block bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all">
+        <div className="px-4 py-3.5 flex items-center justify-between">
+          <span className="text-sm text-slate-700 font-medium">Manage spending budgets by category</span>
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        </div>
+      </Link>
 
       {/* ────────── ACCOUNTS ────────── */}
       <SectionHeader icon={Landmark} label="Accounts" />

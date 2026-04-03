@@ -134,10 +134,15 @@ export default function RunwayScore({ score, plan }: Props) {
                 return 'Savings cushion';
               })()}
             </span>
-            {score.daysToPayday !== null && (
+            {score.daysToPayday !== null && score.daysToPayday >= 0 && (
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm bg-white/15 text-white">
                 <Clock className="w-3.5 h-3.5" />
-                Payday in {score.daysToPayday} day{score.daysToPayday !== 1 ? 's' : ''} <InfoTip text="Days until your next expected paycheck based on your income history." />
+                {score.daysToPayday === 0
+                  ? 'Payday today'
+                  : score.daysToPayday === 1
+                    ? 'Payday tomorrow'
+                    : `Payday in ${score.daysToPayday} days`}
+                <InfoTip text="Days until your next expected paycheck based on your income history." />
               </span>
             )}
           </div>
@@ -160,7 +165,7 @@ export default function RunwayScore({ score, plan }: Props) {
 
       {/* ── Key Numbers Grid ── */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md">
+        <Link to="/settings" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md hover:border-indigo-200 block cursor-pointer">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-emerald-50 rounded-lg">
               <Wallet className="w-4 h-4 text-emerald-600" />
@@ -170,8 +175,8 @@ export default function RunwayScore({ score, plan }: Props) {
           <p className="text-2xl font-bold text-gray-900">
             ${score.spendableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md">
+        </Link>
+        <Link to="/debt" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md hover:border-indigo-200 block cursor-pointer">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-gray-50 rounded-lg">
               <CreditCard className="w-4 h-4 text-gray-500" />
@@ -181,7 +186,7 @@ export default function RunwayScore({ score, plan }: Props) {
           <p className={`text-2xl font-bold ${score.totalDebt > 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
             {score.totalDebt > 0 ? `$${score.totalDebt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0'}
           </p>
-        </div>
+        </Link>
       </div>
 
       {/* ── Urgent Events ── */}

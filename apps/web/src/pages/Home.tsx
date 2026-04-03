@@ -444,15 +444,15 @@ export default function Home() {
             <p className="text-lg font-bold text-slate-900 animate-count-up">${score.spentThisMonth.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
             <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">Spent this month <InfoTip text="Total amount you've spent so far this calendar month across all your accounts." /></p>
           </Link>
-          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover">
+          <Link to="/trends" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
             <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-2">
               <CreditCard className="w-4 h-4 text-slate-500" />
             </div>
             <p className="text-lg font-bold text-slate-900 animate-count-up">${score.dailyBurnRate.toFixed(0)}</p>
             <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">Daily burn <InfoTip text="How much you spend per day on average, based on the last 90 days." /></p>
-          </div>
+          </Link>
           {plan ? (
-            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover">
+            <Link to="/budgets" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 ${plan.buckets.spending.monthly > 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
                 <Target className={`w-4 h-4 ${plan.buckets.spending.monthly > 0 ? 'text-emerald-500' : 'text-red-500'}`} />
               </div>
@@ -462,7 +462,7 @@ export default function Home() {
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">
                 {(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'Left to spend' : 'Over plan'} <InfoTip text="How much spending money you have left this month after bills, debt, and savings." />
               </p>
-            </div>
+            </Link>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 bg-slate-50">
