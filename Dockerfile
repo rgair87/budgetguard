@@ -20,6 +20,10 @@ COPY apps/web/ apps/web/
 
 # Build shared + web (server runs via tsx, no compile needed)
 RUN pnpm --filter @runway/shared build
+
+# Vite bakes VITE_* env vars at build time — set for production
+ARG VITE_TELLER_ENV=development
+ENV VITE_TELLER_ENV=${VITE_TELLER_ENV}
 RUN pnpm --filter @runway/web build
 
 # Stage 2: Production

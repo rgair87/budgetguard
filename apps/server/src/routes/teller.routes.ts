@@ -20,7 +20,23 @@ router.post('/enroll', authenticate, async (req: AuthRequest, res: Response) => 
     res.json({ success: true, ...result });
   } catch (err: any) {
     console.error('Teller enroll error:', err);
-    res.status(500).json({ error: 'enroll_error', message: err.message || 'Failed to connect bank' });
+    const msg = err.message || '';
+    // Provide user-friendly error messages
+    let userMessage = 'Failed to connect bank. Please try again.';
+    if (msg.includes('certificate') || msg.includes('cert') || msg.includes('CERT')) {
+      userMessage = 'Bank connection is not configured properly. Please contact support.';
+    } else if (msg.includes('enrollment.disconnected') || msg.includes('not healthy')) {
+      userMessage = 'Your bank connection expired. Please try connecting again.';
+    } else if (msg.includes('401') || msg.includes('unauthorized')) {
+      userMessage = 'Bank authentication failed. Please try connecting again.';
+    } else if (msg.includes('429') || msg.includes('rate')) {
+      userMessage = 'Too many requests. Please wait a minute and try again.';
+    } else if (msg.includes('500') || msg.includes('502') || msg.includes('503')) {
+      userMessage = 'Your bank\'s servers are temporarily unavailable. Please try again later.';
+    } else if (msg.includes('504') || msg.includes('timeout')) {
+      userMessage = 'Your bank is taking too long to respond. Try again in a few minutes.';
+    }
+    res.status(500).json({ error: 'enroll_error', message: userMessage });
   }
 });
 
@@ -34,7 +50,16 @@ router.post('/sync', authenticate, async (req: AuthRequest, res: Response) => {
     res.json({ success: true, ...result });
   } catch (err: any) {
     console.error('Teller sync error:', err);
-    res.status(500).json({ error: 'sync_error', message: err.message || 'Failed to sync' });
+    const msg = err.message || '';
+    let userMessage = 'Failed to sync. Please try again.';
+    if (msg.includes('No Teller access token')) {
+      userMessage = 'No bank connected. Link your bank first.';
+    } else if (msg.includes('enrollment.disconnected') || msg.includes('expired') || msg.includes('not healthy')) {
+      userMessage = 'Your bank connection expired. Please disconnect and re-connect your bank.';
+    } else if (msg.includes('504') || msg.includes('timeout') || msg.includes('taking too long')) {
+      userMessage = 'Your bank is slow to respond. We\'ll retry automatically in about a minute.';
+    }
+    res.status(500).json({ error: 'sync_error', message: userMessage });
   }
 });
 
