@@ -1,4 +1,5 @@
 import db from '../config/db';
+import { getMonthlyIncome } from './income.service';
 import type { RunwayScore } from '@runway/shared';
 
 // Shared WHERE clause fragments for excluding non-spend transactions
@@ -169,7 +170,7 @@ export function calculateRunway(userId: string): RunwayScore {
   today.setHours(0, 0, 0, 0);
   let daysToPayday: number | null = null;
 
-  const paycheckIntervalDays = getPaycheckInterval(user.pay_frequency);
+  let paycheckIntervalDays = getPaycheckInterval(user.pay_frequency);
 
   if (user.next_payday) {
     const np = new Date(user.next_payday + 'T00:00:00');
@@ -186,9 +187,17 @@ export function calculateRunway(userId: string): RunwayScore {
   // Income splits
   const spendableIds = new Set(spendableAccounts.map(a => a.id));
   const allocations = accounts.filter(a => a.income_allocation && a.income_allocation > 0);
-  const spendableIncome = allocations.length > 0
+  let spendableIncome = allocations.length > 0
     ? allocations.filter(a => spendableIds.has(a.id)).reduce((s, a) => s + a.income_allocation, 0)
     : (user.take_home_pay || 0);
+
+  // If no manual income configured, use deposit-based income
+  if (spendableIncome <= 0) {
+    const incomeResult = getMonthlyIncome(userId);
+    if (incomeResult.monthlyIncome > 0) {
+      spendableIncome = Math.round(incomeResult.monthlyIncome / 2); // estimate per-paycheck
+    }
+  }
 
   // === Day-by-day projection ===
   let balance = spendableBalance;
@@ -247,6 +256,39 @@ export function calculateRunway(userId: string): RunwayScore {
     // No next_payday set but pay_frequency exists — estimate next payday
     nextPayday = new Date(today);
     nextPayday.setDate(nextPayday.getDate() + 1);
+  }
+
+  // Auto-detect paydays from deposit history if nothing configured
+  if (!nextPayday && spendableIncome > 0) {
+    const recentDeposits = db.prepare(
+      `SELECT date, amount FROM transactions
+       WHERE user_id = ? AND amount > 0 AND amount >= 500
+       AND date >= date('now', '-90 days')
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%refund%'
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%transfer%'
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%venmo%'
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%zelle%'
+       ORDER BY date DESC LIMIT 10`
+    ).all(userId) as any[];
+
+    if (recentDeposits.length >= 2) {
+      const dates = recentDeposits.map(d => new Date(d.date + 'T00:00:00').getTime()).sort();
+      let totalInterval = 0;
+      for (let i = 1; i < dates.length; i++) totalInterval += dates[i] - dates[i - 1];
+      const avgDays = Math.round(totalInterval / (dates.length - 1) / (1000 * 60 * 60 * 24));
+
+      if (avgDays >= 5 && avgDays <= 35) {
+        const lastPay = new Date(dates[dates.length - 1]);
+        nextPayday = new Date(lastPay);
+        nextPayday.setDate(nextPayday.getDate() + avgDays);
+        while (nextPayday.getTime() < today.getTime()) {
+          nextPayday.setDate(nextPayday.getDate() + avgDays);
+        }
+        paycheckIntervalDays = avgDays;
+        const avgDeposit = recentDeposits.reduce((s, d) => s + d.amount, 0) / recentDeposits.length;
+        spendableIncome = Math.round(avgDeposit);
+      }
+    }
   }
 
   // Simulate forward

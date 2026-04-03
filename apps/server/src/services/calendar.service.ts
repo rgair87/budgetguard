@@ -1,5 +1,6 @@
 import db from '../config/db';
 import { getPaycheckPlan } from './paycheck.service';
+import { getMonthlyIncome } from './income.service';
 import type { CalendarMonth, CalendarDay, CalendarWeek } from '@runway/shared';
 
 export function getCalendarMonth(userId: string, month: string): CalendarMonth {
@@ -26,9 +27,19 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
 
   const spendableIds = new Set(spendableAccounts.map(a => a.id));
   const allocations = accounts.filter(a => a.income_allocation && a.income_allocation > 0);
-  const spendableIncome = allocations.length > 0
+  let spendableIncome = allocations.length > 0
     ? allocations.filter(a => spendableIds.has(a.id)).reduce((s, a) => s + a.income_allocation, 0)
     : (user.take_home_pay || 0);
+
+  // If no manual income configured, use deposit-based income from income service
+  if (spendableIncome <= 0) {
+    const incomeResult = getMonthlyIncome(userId);
+    if (incomeResult.monthlyIncome > 0) {
+      // Estimate per-paycheck amount based on detected frequency
+      // Default to biweekly if we can't detect
+      spendableIncome = Math.round(incomeResult.monthlyIncome / 2);
+    }
+  }
 
   // Daily burn rate from last 90 days — use actual calendar days, not just days with spending
   const spendRow = db.prepare(
@@ -49,7 +60,7 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
   // This matches what the home page shows, not the partial category budgets table
   const plan = getPaycheckPlan(userId);
   let monthlyBudget = plan ? Math.max(0, plan.buckets.spending.monthly) : 0;
-  const paycheckIntervalDays = getPaycheckInterval(user.pay_frequency);
+  let paycheckIntervalDays = getPaycheckInterval(user.pay_frequency);
 
   // If paycheck plan yields $0 budget (expenses > income), fall back to
   // spendable balance + expected income for the rest of this month.
@@ -188,6 +199,50 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
     // No next_payday set but pay_frequency exists — estimate next payday as tomorrow + interval
     simPayday = new Date(today);
     simPayday.setDate(simPayday.getDate() + 1); // start from tomorrow
+  }
+
+  // Auto-detect paydays from deposit history if no manual payday configured
+  if (!simPayday && spendableIncome > 0) {
+    // Find recent large deposits (likely paychecks) to detect pattern
+    const recentDeposits = db.prepare(
+      `SELECT date, amount FROM transactions
+       WHERE user_id = ? AND amount > 0 AND amount >= 500
+       AND date >= date('now', '-90 days')
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%refund%'
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%transfer%'
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%venmo%'
+       AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%zelle%'
+       ORDER BY date DESC LIMIT 10`
+    ).all(userId) as any[];
+
+    if (recentDeposits.length >= 2) {
+      // Calculate average interval between deposits
+      const dates = recentDeposits.map(d => new Date(d.date + 'T00:00:00').getTime()).sort();
+      let totalInterval = 0;
+      for (let i = 1; i < dates.length; i++) {
+        totalInterval += dates[i] - dates[i - 1];
+      }
+      const avgIntervalMs = totalInterval / (dates.length - 1);
+      const avgIntervalDays = Math.round(avgIntervalMs / (1000 * 60 * 60 * 24));
+
+      // Set paycheckIntervalDays if reasonable (5-35 days)
+      if (avgIntervalDays >= 5 && avgIntervalDays <= 35) {
+        // Use the most recent deposit date to project next payday
+        const lastPayDate = new Date(dates[dates.length - 1]);
+        simPayday = new Date(lastPayDate);
+        simPayday.setDate(simPayday.getDate() + avgIntervalDays);
+        // Advance past today if needed
+        while (simPayday.getTime() < today.getTime()) {
+          simPayday.setDate(simPayday.getDate() + avgIntervalDays);
+        }
+        // Override paycheckIntervalDays for the simulation
+        paycheckIntervalDays = avgIntervalDays;
+
+        // Also update spendableIncome to per-paycheck amount from actual deposits
+        const avgDeposit = recentDeposits.reduce((s, d) => s + d.amount, 0) / recentDeposits.length;
+        spendableIncome = Math.round(avgDeposit);
+      }
+    }
   }
 
   // --- Day-by-day simulation from today through end of requested month ---
