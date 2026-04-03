@@ -11,6 +11,10 @@ import {
   X,
   TrendingDown,
   Award,
+  ClipboardList,
+  ThumbsDown,
+  RefreshCw,
+  ShieldCheck,
 } from 'lucide-react';
 import api from '../api/client';
 import useTrack from '../hooks/useTrack';
@@ -50,6 +54,7 @@ export default function Negotiate() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     api.get('/negotiate')
@@ -214,6 +219,41 @@ export default function Negotiate() {
               {/* Expanded Content */}
               {isExpanded && (
                 <div className="border-t border-slate-100 p-5 space-y-5 animate-fade-in">
+
+                  {/* Have ready before you call */}
+                  <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <ClipboardList className="w-4 h-4 text-amber-600" />
+                      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Have ready before you call</p>
+                    </div>
+                    <ul className="space-y-1.5">
+                      <li className="text-sm text-amber-900 flex items-start gap-2">
+                        <ShieldCheck className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" />
+                        Your account number and name on the account
+                      </li>
+                      <li className="text-sm text-amber-900 flex items-start gap-2">
+                        <ShieldCheck className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" />
+                        Your current monthly amount: <span className="font-semibold">${s.currentAmount.toFixed(2)}/mo</span>
+                      </li>
+                      <li className="text-sm text-amber-900 flex items-start gap-2">
+                        <ShieldCheck className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" />
+                        A competitor quote or price (even a rough one helps)
+                      </li>
+                      {s.type === 'rate_reduction' && (
+                        <li className="text-sm text-amber-900 flex items-start gap-2">
+                          <ShieldCheck className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" />
+                          Your current APR and a balance transfer offer if you have one
+                        </li>
+                      )}
+                      {(s.type === 'call_to_negotiate' || s.type === 'switch_provider') && (
+                        <li className="text-sm text-amber-900 flex items-start gap-2">
+                          <ShieldCheck className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" />
+                          How long you've been a customer (loyalty = leverage)
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+
                   {/* Phone number button */}
                   {s.phoneNumber && (
                     <a
@@ -268,6 +308,42 @@ export default function Negotiate() {
                     </div>
                   )}
 
+                  {/* "Didn't work" section */}
+                  {failedIds.has(s.id) && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fade-in">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 text-slate-500" />
+                        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Don't give up yet — try this</p>
+                      </div>
+                      <ul className="space-y-2">
+                        <li className="text-sm text-slate-600 flex items-start gap-2">
+                          <span className="mt-1 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                          <span><strong>Call back and get a different agent.</strong> Results vary wildly between reps. A "no" from one agent is often a "yes" from another.</span>
+                        </li>
+                        <li className="text-sm text-slate-600 flex items-start gap-2">
+                          <span className="mt-1 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                          <span><strong>Ask for the retention or loyalty department.</strong> Front-line agents often can't offer discounts — retention teams can.</span>
+                        </li>
+                        <li className="text-sm text-slate-600 flex items-start gap-2">
+                          <span className="mt-1 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                          <span><strong>Mention you're considering canceling.</strong> This often triggers a transfer to someone with authority to offer discounts.</span>
+                        </li>
+                        {s.type !== 'rate_reduction' && (
+                          <li className="text-sm text-slate-600 flex items-start gap-2">
+                            <span className="mt-1 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">4</span>
+                            <span><strong>Get a competing quote first.</strong> Having an actual number from a competitor is the strongest negotiation tool.</span>
+                          </li>
+                        )}
+                        {s.type === 'rate_reduction' && (
+                          <li className="text-sm text-slate-600 flex items-start gap-2">
+                            <span className="mt-1 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">4</span>
+                            <span><strong>Apply for a 0% balance transfer card.</strong> If they won't lower your rate, move the balance to a card with a 0% intro APR (Chase Slate, Citi Simplicity, etc.).</span>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
                   {/* Action buttons */}
                   <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                     <button
@@ -275,15 +351,25 @@ export default function Negotiate() {
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 transition-colors"
                     >
                       <Check className="w-4 h-4" />
-                      I called - it worked!
+                      It worked!
                     </button>
-                    <button
-                      onClick={() => setCompletedIds(prev => new Set([...prev, s.id]))}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 text-slate-500 text-sm font-medium hover:bg-slate-100 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                      Not interested
-                    </button>
+                    {!failedIds.has(s.id) ? (
+                      <button
+                        onClick={() => setFailedIds(prev => new Set([...prev, s.id]))}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+                      >
+                        <ThumbsDown className="w-4 h-4" />
+                        Didn't work
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setCompletedIds(prev => new Set([...prev, s.id]))}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 text-slate-500 text-sm font-medium hover:bg-slate-100 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        Skip this one
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
