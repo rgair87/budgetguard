@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api/client';
+import { USER_CATEGORY_NAMES } from '@runway/shared';
 import useTrack from '../hooks/useTrack';
 
 interface Subscription {
@@ -52,7 +53,7 @@ function ActionMenu({ sub, onDismiss, onReclassify }: {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const otherCategories = ['subscription', 'bill', 'debt'].filter(c => c !== sub.category);
+  const [showCategories, setShowCategories] = useState(false);
 
   return (
     <div className="relative" ref={ref}>
@@ -68,15 +69,23 @@ function ActionMenu({ sub, onDismiss, onReclassify }: {
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-48">
-          {otherCategories.map(cat => (
+        <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-48 max-h-72 overflow-y-auto">
+          <button
+            onClick={() => setShowCategories(!showCategories)}
+            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-between"
+          >
+            Change category
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" className={`transition-transform ${showCategories ? 'rotate-180' : ''}`}>
+              <path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </button>
+          {showCategories && USER_CATEGORY_NAMES.map(cat => (
             <button
               key={cat}
               onClick={() => { onReclassify(sub.name, cat); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 pl-6"
             >
-              <span className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat]?.badge.split(' ')[0] || 'bg-gray-300'}`} />
-              Move to {CATEGORY_LABELS[cat]}
+              {cat}
             </button>
           ))}
           <div className="border-t border-gray-100 my-1" />

@@ -369,7 +369,7 @@ router.post('/subscriptions/restore', authenticate, (req: AuthRequest, res: Resp
   res.json({ success: true, message: `${merchantName} restored to recurring list` });
 });
 
-// Reclassify a subscription (change its category: subscription, bill, or debt)
+// Reclassify a subscription (change its category)
 router.post('/subscriptions/reclassify', authenticate, (req: AuthRequest, res: Response) => {
   const userId = req.userId!;
   const { merchantName, category } = req.body;
@@ -377,31 +377,33 @@ router.post('/subscriptions/reclassify', authenticate, (req: AuthRequest, res: R
     res.status(400).json({ error: 'validation', message: 'merchantName and category required' });
     return;
   }
-  if (!['subscription', 'bill', 'debt'].includes(category)) {
-    res.status(400).json({ error: 'validation', message: 'category must be subscription, bill, or debt' });
-    return;
-  }
 
   const key = normalizeMerchantKey(merchantName);
 
-  // Map subscription category to a transaction category for consistency
-  // Look up existing category from transactions first; fall back to defaults
-  const existingCatRow = db.prepare(
-    `SELECT category FROM transactions WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) LIKE ? AND category IS NOT NULL LIMIT 1`
-  ).get(userId, `%${key}%`) as any;
-
-  const txnCategory = category === 'subscription' ? 'Entertainment'
-    : category === 'debt' ? 'Debt Payments'
-    : existingCatRow?.category || 'Bills';
+  // Accept any category directly — no mapping needed
+  const txnCategory = category;
 
   // Upsert merchant classification
+  const BILL_CATEGORIES = new Set(['Utilities', 'Insurance', 'Phone & Internet', 'Housing', 'Bills', 'Debt Payments']);
+  const isBill = BILL_CATEGORIES.has(txnCategory) ? 1 : 0;
+
   db.prepare(
     `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
-  ).run(crypto.randomUUID(), userId, key, txnCategory, category === 'bill' ? 1 : 0);
+  ).run(crypto.randomUUID(), userId, key, txnCategory, isBill);
 
-  res.json({ success: true, message: `${merchantName} reclassified as ${category}` });
+  // Also update existing transactions with this merchant
+  db.prepare(
+    `UPDATE transactions SET category = ?
+     WHERE user_id = ? AND LOWER(REPLACE(merchant_name, '  ', ' ')) LIKE ?`
+  ).run(txnCategory, userId, `%${key}%`);
+
+  invalidateCache(`runway:${userId}`);
+  invalidateCache(`trends:${userId}`);
+  invalidateCache(`predictions:${userId}`);
+
+  res.json({ success: true, message: `${merchantName} reclassified as ${txnCategory}` });
 });
 
 export default router;
