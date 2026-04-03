@@ -31,7 +31,12 @@ const SPEND_EXCLUSION_MERCHANTS = `
   AND merchant_name NOT LIKE '%PL PYMT%'
   AND merchant_name NOT LIKE '%DIRECTPAY%'
   AND merchant_name NOT LIKE '%BANKERS HEALTHCA%'
-  AND merchant_name NOT LIKE '%SOFI BANK%'`;
+  AND merchant_name NOT LIKE '%SOFI BANK%'
+  AND merchant_name NOT LIKE '%Automatic Payment%'
+  AND merchant_name NOT LIKE '%AUTO PAY%'
+  AND merchant_name NOT LIKE '%PAYMENT - THANK%'
+  AND merchant_name NOT LIKE 'Check'
+  AND merchant_name NOT LIKE 'CHECK %'`;
 
 // Detect outlier transactions using IQR method on the user's own spending distribution
 function detectOutlierThreshold(amounts: number[]): number {

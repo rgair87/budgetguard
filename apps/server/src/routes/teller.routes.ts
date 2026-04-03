@@ -158,6 +158,27 @@ router.post('/fix-data', authenticate, async (req: AuthRequest, res: Response) =
     ).run(userId);
     if (incomeFixed.changes > 0) fixes.push(`Reclassified ${incomeFixed.changes} income transactions`);
 
+    // 1b. Fix null-category transactions that are clearly payments/transfers
+    const autoPayFixed = db.prepare(
+      `UPDATE transactions SET category = 'Debt Payments'
+       WHERE user_id = ? AND amount < 0 AND (category IS NULL OR category = '')
+       AND (LOWER(merchant_name) LIKE '%automatic payment%'
+         OR LOWER(merchant_name) LIKE '%autopay%'
+         OR LOWER(merchant_name) LIKE '%auto pay%'
+         OR LOWER(merchant_name) LIKE '%payment - thank%'
+         OR LOWER(merchant_name) LIKE '%e-payment%'
+         OR LOWER(merchant_name) LIKE '%online pmt%'
+         OR LOWER(merchant_name) LIKE '%bill pay%')`
+    ).run(userId);
+    if (autoPayFixed.changes > 0) fixes.push(`Classified ${autoPayFixed.changes} autopay transactions as Debt Payments`);
+
+    const checkFixed = db.prepare(
+      `UPDATE transactions SET category = 'Transfers'
+       WHERE user_id = ? AND amount < 0 AND (category IS NULL OR category = '')
+       AND (merchant_name = 'Check' OR LOWER(merchant_name) LIKE 'check %')`
+    ).run(userId);
+    if (checkFixed.changes > 0) fixes.push(`Classified ${checkFixed.changes} check transactions as Transfers`);
+
     // 2. Fix positive small amounts (refunds, cashback, interest) — don't mark as recurring
     const smallPosFixed = db.prepare(
       `UPDATE transactions SET is_recurring = 0

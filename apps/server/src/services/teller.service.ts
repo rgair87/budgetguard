@@ -408,6 +408,21 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
           }
         }
 
+        // TRANSFER/PAYMENT GUARD: detect common non-spending transactions
+        if (amount < 0 && !category) {
+          const lowerMerchant = (merchantName || '').toLowerCase();
+          const lowerDesc = (txn.description || '').toLowerCase();
+          const combined = lowerMerchant + ' ' + lowerDesc;
+          // Check payments, autopays, credit card payments, checks
+          if (/automatic payment|auto pay|autopay|payment - thank|credit card|crd autopay|crcardpmt/.test(combined)) {
+            category = 'Debt Payments';
+          } else if (/^check$|^check /i.test(merchantName || '')) {
+            category = 'Transfers';
+          } else if (/e-payment|online pmt|online payment|bill pay|web pay/.test(combined)) {
+            category = 'Debt Payments';
+          }
+        }
+
         // INCOME GUARD: positive amounts are money IN — never classify as debt, bills, or recurring expense
         if (amount > 0) {
           const lowerDesc = (txn.description || '').toLowerCase();
