@@ -225,6 +225,7 @@ export default function Home() {
   const [events, setEvents] = useState<IncomingEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasLinkedBank, setHasLinkedBank] = useState(false);
+  const [wizardCompleted, setWizardCompleted] = useState(true); // default true to avoid flash
   const [latestTransactionDate, setLatestTransactionDate] = useState<string | null>(null);
   const [freshnessDismissed, setFreshnessDismissed] = useState(false);
   const [advisorSummary, setAdvisorSummary] = useState<{ available: boolean; healthScore?: number; healthLabel?: string; topInsights?: AdvisorInsight[] } | null>(null);
@@ -262,6 +263,7 @@ export default function Home() {
       api.get('/accounts').then((r) => {
         setAccounts(r.data.accounts);
         setHasLinkedBank(r.data.hasLinkedBank);
+        setWizardCompleted(!!r.data.wizardCompleted);
         setLatestTransactionDate(r.data.latestTransactionDate);
       }).catch(() => { errorCount++; }),
       api.get('/events').then((r) => setEvents(r.data)).catch(() => {}),
@@ -414,6 +416,23 @@ export default function Home() {
 
       {/* === HERO: Runway Score === */}
       {score && accounts.length > 0 && <RunwayScore score={score} plan={plan} />}
+
+      {/* Wizard nudge */}
+      {!wizardCompleted && accounts.length > 0 && (
+        <Link to="/budget-wizard"
+          className="block bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 hover:bg-indigo-100 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <div>
+                <p className="text-sm font-medium text-indigo-800">Set up your money plan</p>
+                <p className="text-xs text-indigo-600">Review your bills, debt, and spending targets for accurate tracking.</p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-indigo-400" />
+          </div>
+        </Link>
+      )}
 
       {/* Quick stats row */}
       {score && accounts.length > 0 && (

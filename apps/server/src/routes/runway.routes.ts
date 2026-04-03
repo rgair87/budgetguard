@@ -6,6 +6,8 @@ import { getPaycheckPlan } from '../services/paycheck.service';
 import { getCalendarMonth } from '../services/calendar.service';
 import { getSubscriptionLifetime, getSpendingByCategory, getCategoryTransactions, normalizeMerchantKey } from '../services/csv.service';
 import { getCached, setCache, invalidateCache } from '../utils/cache';
+import { getMonthlyIncome } from '../services/income.service';
+import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from '../services/runway.service';
 import db from '../config/db';
 
 const router = Router();
@@ -282,6 +284,149 @@ router.put('/budgets', authenticate, (req: AuthRequest, res: Response) => {
 
   invalidateCache(`runway:${userId}`);
   res.json({ success: true, saved });
+});
+
+// === Budget Wizard ===
+
+router.get('/wizard/data', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+
+  // 1. Recurring bills/subscriptions
+  const subs = getSubscriptionLifetime(userId);
+
+  // 2. Debt accounts
+  const debtAccounts = db.prepare(
+    `SELECT id, name, type, current_balance, interest_rate, minimum_payment
+     FROM accounts WHERE user_id = ? AND type IN ('credit', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan')
+     AND current_balance > 0`
+  ).all(userId) as any[];
+
+  // 3. Spending averages by category (last 90 days)
+  const spendingAvgs = db.prepare(
+    `SELECT COALESCE(category, 'Other') as category, ROUND(SUM(ABS(amount)) / 3, 2) as monthlyAvg,
+            COUNT(*) as txnCount
+     FROM transactions
+     WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}
+       AND is_recurring = 0
+     GROUP BY category
+     HAVING monthlyAvg >= 10
+     ORDER BY monthlyAvg DESC`
+  ).all(userId) as any[];
+
+  // 4. Income
+  const income = getMonthlyIncome(userId);
+
+  // 5. User settings
+  const user = db.prepare(
+    'SELECT pay_frequency, next_payday, take_home_pay, wizard_completed FROM users WHERE id = ?'
+  ).get(userId) as any;
+
+  // 6. Existing budgets
+  const budgets = db.prepare(
+    'SELECT category, monthly_limit FROM budgets WHERE user_id = ?'
+  ).all(userId) as any[];
+
+  res.json({
+    bills: subs,
+    debtAccounts,
+    spendingByCategory: spendingAvgs.map(s => ({
+      category: s.category,
+      monthlyAvg: s.monthlyAvg,
+      suggested: Math.ceil(s.monthlyAvg / 25) * 25,
+      txnCount: s.txnCount,
+    })),
+    income,
+    user: {
+      payFrequency: user?.pay_frequency || null,
+      nextPayday: user?.next_payday || null,
+      takeHomePay: user?.take_home_pay || null,
+      wizardCompleted: !!user?.wizard_completed,
+    },
+    existingBudgets: budgets,
+  });
+});
+
+router.post('/wizard/save', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const { bills, debts, budgets: budgetData, income } = req.body;
+
+  // 1. Update merchant classifications from bills
+  if (Array.isArray(bills)) {
+    const upsertMc = db.prepare(
+      `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
+    );
+    for (const bill of bills) {
+      if (!bill.name) continue;
+      const key = bill.name.toLowerCase().replace(/\s+/g, ' ').trim();
+      const isBill = bill.type === 'bill' || bill.type === 'subscription' ? 1 : 0;
+      const category = bill.type === 'debt' ? 'Debt Payments'
+        : bill.type === 'subscription' ? 'Entertainment'
+        : bill.category || 'Bills';
+      upsertMc.run(crypto.randomUUID(), userId, key, category, isBill);
+    }
+  }
+
+  // 2. Upsert debt accounts
+  if (Array.isArray(debts)) {
+    for (const debt of debts) {
+      if (debt.id) {
+        // Update existing
+        db.prepare(
+          `UPDATE accounts SET name = ?, current_balance = ?, interest_rate = ?, minimum_payment = ?, type = ?
+           WHERE id = ? AND user_id = ?`
+        ).run(debt.name, debt.balance, debt.apr || null, debt.minimumPayment || null, debt.type || 'credit', debt.id, userId);
+      } else if (debt.name && debt.balance > 0) {
+        // Create new
+        db.prepare(
+          `INSERT INTO accounts (id, user_id, name, type, current_balance, interest_rate, minimum_payment)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).run(crypto.randomUUID(), userId, debt.name, debt.type || 'credit', debt.balance, debt.apr || null, debt.minimumPayment || null);
+      }
+    }
+  }
+
+  // 3. Save budgets
+  if (Array.isArray(budgetData)) {
+    const delBudget = db.prepare('DELETE FROM budgets WHERE user_id = ? AND category = ?');
+    const insBudget = db.prepare(
+      `INSERT INTO budgets (id, user_id, category, monthly_limit) VALUES (?, ?, ?, ?)`
+    );
+    for (const b of budgetData) {
+      if (!b.category) continue;
+      delBudget.run(userId, b.category);
+      if (b.monthlyLimit > 0) {
+        insBudget.run(crypto.randomUUID(), userId, b.category, b.monthlyLimit);
+      }
+    }
+  }
+
+  // 4. Update income settings
+  if (income) {
+    const updates: string[] = [];
+    const values: any[] = [];
+    if (income.payFrequency !== undefined) { updates.push('pay_frequency = ?'); values.push(income.payFrequency); }
+    if (income.takeHomePay !== undefined) { updates.push('take_home_pay = ?'); values.push(income.takeHomePay); }
+    if (income.nextPayday !== undefined) { updates.push('next_payday = ?'); values.push(income.nextPayday); }
+    if (updates.length > 0) {
+      values.push(userId);
+      db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    }
+  }
+
+  // 5. Mark wizard complete
+  db.prepare('UPDATE users SET wizard_completed = 1 WHERE id = ?').run(userId);
+
+  // 6. Invalidate all caches
+  invalidateCache(`runway:${userId}`);
+  invalidateCache(`trends:${userId}`);
+  invalidateCache(`predictions:${userId}`);
+  db.prepare('DELETE FROM ai_cache WHERE user_id = ?').run(userId);
+
+  res.json({ success: true });
 });
 
 router.get('/subscriptions', authenticate, (req: AuthRequest, res: Response) => {
