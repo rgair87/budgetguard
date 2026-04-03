@@ -20,6 +20,7 @@ export interface Account {
   type: 'checking' | 'savings' | 'credit';
   current_balance: number;
   available_balance: number | null;
+  institution_name: string | null;
   last_synced_at: string | null;
 }
 

@@ -293,10 +293,10 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
   }
 
   const upsertAcct = db.prepare(
-    `INSERT INTO accounts (id, user_id, teller_account_id, teller_access_token, name, type, current_balance, available_balance, last_synced_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO accounts (id, user_id, teller_account_id, teller_access_token, name, type, current_balance, available_balance, institution_name, last_synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT (user_id, teller_account_id)
-       DO UPDATE SET name = excluded.name, teller_access_token = excluded.teller_access_token, current_balance = excluded.current_balance, available_balance = excluded.available_balance, last_synced_at = datetime('now')`
+       DO UPDATE SET name = excluded.name, teller_access_token = excluded.teller_access_token, current_balance = excluded.current_balance, available_balance = excluded.available_balance, institution_name = excluded.institution_name, last_synced_at = datetime('now')`
   );
 
   for (const acct of accounts) {
@@ -321,11 +321,13 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       console.warn(`Failed to fetch balance for ${acct.id}, keeping existing balance:`, (err as Error).message);
     }
 
+    const institutionName = acct.institution?.name || null;
+
     if (balance !== null) {
       // Got fresh balances — upsert with new values
       upsertAcct.run(
         crypto.randomUUID(), userId, acct.id, accessToken, acct.name, type,
-        balance, available,
+        balance, available, institutionName,
       );
     } else {
       // Balance fetch failed — insert if new, but don't overwrite existing balances
@@ -335,7 +337,7 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       if (!existing) {
         upsertAcct.run(
           crypto.randomUUID(), userId, acct.id, accessToken, acct.name, type,
-          0, null,
+          0, null, institutionName,
         );
       }
     }

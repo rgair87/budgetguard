@@ -19,6 +19,7 @@ interface Account {
   minimum_payment: number | null;
   plaid_account_id: string | null;
   teller_account_id: string | null;
+  institution_name: string | null;
   last_synced_at: string | null;
 }
 
@@ -923,7 +924,9 @@ export default function Settings() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-900 truncate">{acct.name}</p>
-                        <p className="text-xs text-slate-400">{ACCOUNT_TYPES[acct.type] || acct.type}</p>
+                        <p className="text-xs text-slate-400">
+                          {acct.institution_name ? `${acct.institution_name} · ` : ''}{ACCOUNT_TYPES[acct.type] || acct.type}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -1039,7 +1042,9 @@ export default function Settings() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">{acct.name}</p>
-                      <p className="text-xs text-slate-400">{ACCOUNT_TYPES[acct.type] || acct.type}</p>
+                      <p className="text-xs text-slate-400">
+                        {acct.institution_name ? `${acct.institution_name} · ` : ''}{ACCOUNT_TYPES[acct.type] || acct.type}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

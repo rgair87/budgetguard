@@ -524,7 +524,7 @@ export default function Home() {
             <div key={acct.id} className="flex items-center justify-between py-1.5">
               <div>
                 <p className="text-sm font-medium text-gray-900">{acct.name}</p>
-                <p className="text-xs text-gray-400 capitalize">{acct.type}</p>
+                <p className="text-xs text-gray-400 capitalize">{acct.institution_name ? `${acct.institution_name} · ` : ''}{acct.type}</p>
               </div>
               <p className={`text-sm font-semibold ${acct.type === 'credit' ? 'text-red-600' : 'text-gray-900'}`}>
                 {acct.type === 'credit' ? '-' : ''}${Math.abs(Number(acct.current_balance)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
