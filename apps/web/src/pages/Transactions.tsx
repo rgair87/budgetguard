@@ -40,6 +40,7 @@ export default function Transactions() {
     const param = searchParams.get('dateFrom');
     return param === 'this_month' ? getMonthStart() : (param || '');
   });
+  const [spendingOnly, setSpendingOnly] = useState(() => searchParams.get('spendingOnly') === 'true');
   const [categories, setCategories] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,13 +65,14 @@ export default function Transactions() {
     if (search) params.set('search', search);
     if (categoryFilter) params.set('category', categoryFilter);
     if (dateFrom) params.set('dateFrom', dateFrom);
+    if (spendingOnly) params.set('spendingOnly', 'true');
     api.get(`/transactions?${params}`)
       .then(r => {
         setTransactions(r.data.transactions);
         setTotal(r.data.total);
       })
       .finally(() => setLoading(false));
-  }, [search, categoryFilter, offset, dateFrom]);
+  }, [search, categoryFilter, offset, dateFrom, spendingOnly]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -293,11 +295,12 @@ export default function Transactions() {
         </select>
       </div>
 
-      {(search || dateFrom) && (
+      {(search || dateFrom || spendingOnly) && (
         <div className="flex items-center gap-2 flex-wrap">
           {search && <span className="text-sm text-gray-500">Results for "{search}"</span>}
           {dateFrom && <span className="text-sm text-slate-500 bg-indigo-50 px-2 py-0.5 rounded-md">Since {dateFrom}</span>}
-          <button onClick={() => { setSearch(''); setSearchInput(''); setDateFrom(''); setSearchParams({}); }} className="text-sm text-indigo-600">Clear filters</button>
+          {spendingOnly && <span className="text-sm text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">Spending only</span>}
+          <button onClick={() => { setSearch(''); setSearchInput(''); setDateFrom(''); setSpendingOnly(false); setSearchParams({}); }} className="text-sm text-indigo-600">Clear filters</button>
         </div>
       )}
 

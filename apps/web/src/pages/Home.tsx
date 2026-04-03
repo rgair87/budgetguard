@@ -418,7 +418,7 @@ export default function Home() {
       {/* Quick stats row */}
       {score && accounts.length > 0 && (
         <div className="grid grid-cols-3 gap-3 animate-fade-in">
-          <Link to="/transactions?dateFrom=this_month" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
+          <Link to="/transactions?dateFrom=this_month&spendingOnly=true" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
             <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-2">
               <Wallet className="w-4 h-4 text-slate-500" />
             </div>
