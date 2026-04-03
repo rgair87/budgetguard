@@ -294,13 +294,18 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
 
   // Also filter out groceries and variable spending from bills
   // (recurring detection may flag grocery stores, gas stations, etc.)
-  const NON_BILL_CATEGORIES = new Set(['Groceries', 'Food & Dining', 'Gas', 'Shopping', 'Entertainment', 'Personal', 'Transportation']);
+  const NON_BILL_CATEGORIES = new Set([
+    'Groceries', 'Food & Dining', 'Gas', 'Shopping', 'Entertainment', 'Personal', 'Transportation',
+    'Debt Payments', 'Loan Payment', 'Credit Card Payment', 'Transfers', 'Transfer', 'Income',
+  ]);
   for (let i = billDetails.length - 1; i >= 0; i--) {
     // Look up this merchant's category from transactions
     const catRow = db.prepare(
       `SELECT category FROM transactions WHERE user_id = ? AND LOWER(merchant_name) = ? AND category IS NOT NULL LIMIT 1`
     ).get(userId, billDetails[i].name.toLowerCase().replace(/\s+/g, ' ').trim()) as any;
-    if (catRow && NON_BILL_CATEGORIES.has(catRow.category)) {
+    const billLower = billDetails[i].name.toLowerCase();
+    const isDebtByName = /^chase|^bank of|^wells fargo|^capital one|^discover|^citi|^barclays|^synchrony|^amex|^navient|^sallie mae|^nelnet|^sofi|^bankers|^psecu|^wf credit/.test(billLower);
+    if ((catRow && NON_BILL_CATEGORIES.has(catRow.category)) || isDebtByName) {
       totalBillsMonthly -= billDetails[i].amount;
       billDetails.splice(i, 1);
     }
