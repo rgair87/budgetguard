@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Scissors,
   RefreshCw,
@@ -199,13 +200,14 @@ export default function CutThis() {
                       <X className="h-4 w-4" />
                       Dismiss
                     </button>
-                    <button
-                      onClick={() => { track('cut_this', 'cut_subscription'); setDismissed(new Set([...dismissed, i])); }}
+                    <Link
+                      to="/subscriptions"
+                      onClick={() => track('cut_this', 'cut_subscription')}
                       className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-1.5 rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-indigo-800 transition"
                     >
                       <ThumbsUp className="h-4 w-4" />
-                      I'll work on it
-                    </button>
+                      View in Recurring
+                    </Link>
                   </div>
                 </div>
               )

@@ -208,20 +208,23 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
 
   // Auto-detect paydays from deposit history if no manual payday configured
   if (!simPayday && spendableIncome > 0) {
-    // Find recent large deposits (likely paychecks) to detect pattern
+    // Find recent deposits (likely paychecks) — use lower threshold to catch split deposits
     const recentDeposits = db.prepare(
-      `SELECT date, amount FROM transactions
-       WHERE user_id = ? AND amount > 0 AND amount >= 500
+      `SELECT date, SUM(amount) as total FROM transactions
+       WHERE user_id = ? AND amount > 0 AND amount >= 200
        AND date >= date('now', '-90 days')
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%refund%'
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%transfer%'
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%venmo%'
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%zelle%'
-       ORDER BY date DESC LIMIT 10`
+       AND LOWER(COALESCE(category, '')) NOT IN ('transfers', 'transfer')
+       GROUP BY date
+       HAVING total >= 500
+       ORDER BY date DESC LIMIT 15`
     ).all(userId) as any[];
 
     if (recentDeposits.length >= 2) {
-      // Calculate average interval between deposits
+      // Calculate average interval between unique payday dates
       const dates = recentDeposits.map(d => new Date(d.date + 'T00:00:00').getTime()).sort();
       let totalInterval = 0;
       for (let i = 1; i < dates.length; i++) {
@@ -230,22 +233,19 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
       const avgIntervalMs = totalInterval / (dates.length - 1);
       const avgIntervalDays = Math.round(avgIntervalMs / (1000 * 60 * 60 * 24));
 
-      // Set paycheckIntervalDays if reasonable (5-35 days)
-      if (avgIntervalDays >= 5 && avgIntervalDays <= 35) {
-        // Use the most recent deposit date to project next payday
+      // Set paycheckIntervalDays if reasonable (3-35 days)
+      if (avgIntervalDays >= 3 && avgIntervalDays <= 35) {
         const lastPayDate = new Date(dates[dates.length - 1]);
         simPayday = new Date(lastPayDate);
         simPayday.setDate(simPayday.getDate() + avgIntervalDays);
-        // Advance past today if needed
         while (simPayday.getTime() < today.getTime()) {
           simPayday.setDate(simPayday.getDate() + avgIntervalDays);
         }
-        // Override paycheckIntervalDays for the simulation
         paycheckIntervalDays = avgIntervalDays;
 
-        // Also update spendableIncome to per-paycheck amount from actual deposits
-        const avgDeposit = recentDeposits.reduce((s, d) => s + d.amount, 0) / recentDeposits.length;
-        spendableIncome = Math.round(avgDeposit);
+        // Per-payday income = average daily total (sum of all deposits on a payday)
+        const avgPaydayTotal = recentDeposits.reduce((s, d) => s + d.total, 0) / recentDeposits.length;
+        spendableIncome = Math.round(avgPaydayTotal);
       }
     }
   }
@@ -417,7 +417,11 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
   const weeks = computeWeeks(days, monthlyBudget, daysInMonth, dailyDiscretionaryRate);
 
   // --- Month-level summary ---
-  const projectedMonthlySpend = dailyDiscretionaryRate * daysInMonth +
+  // Early in the month (days 1-7), use 90-day daily rate instead of current month rate
+  // to avoid projecting 3 days of spending to an entire month (wildly inaccurate)
+  const dayOfMonth = today.getDate();
+  const projectionRate = dayOfMonth <= 7 ? dailyBurnRate : dailyDiscretionaryRate;
+  const projectedMonthlySpend = projectionRate * daysInMonth +
     days.reduce((sum, d) => sum + d.eventsCost, 0);
   const overBudget = monthlyBudget > 0 && projectedMonthlySpend > monthlyBudget;
   const budgetUtilization = monthlyBudget > 0 ? projectedMonthlySpend / monthlyBudget : 0;

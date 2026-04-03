@@ -264,16 +264,20 @@ export function calculateRunway(userId: string): RunwayScore {
   }
 
   // Auto-detect paydays from deposit history if nothing configured
+  // Group deposits by date to handle split deposits (multiple on same day = one payday)
   if (!nextPayday && spendableIncome > 0) {
     const recentDeposits = db.prepare(
-      `SELECT date, amount FROM transactions
-       WHERE user_id = ? AND amount > 0 AND amount >= 500
+      `SELECT date, SUM(amount) as total FROM transactions
+       WHERE user_id = ? AND amount > 0 AND amount >= 200
        AND date >= date('now', '-90 days')
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%refund%'
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%transfer%'
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%venmo%'
        AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%zelle%'
-       ORDER BY date DESC LIMIT 10`
+       AND LOWER(COALESCE(category, '')) NOT IN ('transfers', 'transfer')
+       GROUP BY date
+       HAVING total >= 500
+       ORDER BY date DESC LIMIT 15`
     ).all(userId) as any[];
 
     if (recentDeposits.length >= 2) {
@@ -282,7 +286,7 @@ export function calculateRunway(userId: string): RunwayScore {
       for (let i = 1; i < dates.length; i++) totalInterval += dates[i] - dates[i - 1];
       const avgDays = Math.round(totalInterval / (dates.length - 1) / (1000 * 60 * 60 * 24));
 
-      if (avgDays >= 5 && avgDays <= 35) {
+      if (avgDays >= 3 && avgDays <= 35) {
         const lastPay = new Date(dates[dates.length - 1]);
         nextPayday = new Date(lastPay);
         nextPayday.setDate(nextPayday.getDate() + avgDays);
@@ -290,7 +294,7 @@ export function calculateRunway(userId: string): RunwayScore {
           nextPayday.setDate(nextPayday.getDate() + avgDays);
         }
         paycheckIntervalDays = avgDays;
-        const avgDeposit = recentDeposits.reduce((s, d) => s + d.amount, 0) / recentDeposits.length;
+        const avgDeposit = recentDeposits.reduce((s, d) => s + d.total, 0) / recentDeposits.length;
         spendableIncome = Math.round(avgDeposit);
       }
     }

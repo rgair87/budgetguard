@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { USER_CATEGORY_NAMES } from '@runway/shared';
 import useTrack from '../hooks/useTrack';
@@ -276,9 +277,13 @@ export default function Subscriptions() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className={`font-medium ${sub.isActive ? 'text-gray-900' : 'text-gray-500 line-through'}`}>
+                    <Link
+                      to={`/transactions?search=${encodeURIComponent(sub.name)}`}
+                      className={`font-medium hover:text-indigo-600 hover:underline transition-colors ${sub.isActive ? 'text-gray-900' : 'text-gray-500 line-through'}`}
+                      onClick={e => e.stopPropagation()}
+                    >
                       {sub.name}
-                    </h3>
+                    </Link>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${colors.badge}`}>
                       {CATEGORY_LABELS[sub.category]?.replace(/s$/, '') || sub.category}
                     </span>
