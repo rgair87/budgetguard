@@ -1,5 +1,6 @@
 import db from '../config/db';
 import { calculateRunway } from './runway.service';
+import { getMonthlyIncome } from './income.service';
 import { NECESSITY_NAMES, DISCRETIONARY_NAMES } from '@runway/shared';
 import type { PaycheckPlan, SpendingCategory } from '@runway/shared';
 
@@ -119,12 +120,16 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
     'SELECT pay_frequency, take_home_pay FROM users WHERE id = ?'
   ).get(userId) as any;
 
-  if (!user?.take_home_pay) return null;
+  // Use shared income service — works for both fixed-paycheck and variable-income users
+  const incomeResult = getMonthlyIncome(userId);
+  const monthlyIncome = incomeResult.monthlyIncome;
 
-  const paycheckAmount = user.take_home_pay;
-  const perMonth = getPaychecksPerMonth(user.pay_frequency);
-  const monthlyIncome = paycheckAmount * perMonth;
-  const frequency = getFrequencyLabel(user.pay_frequency);
+  // If no income from any source, can't build a plan
+  if (monthlyIncome <= 0) return null;
+
+  const paycheckAmount = user?.take_home_pay || monthlyIncome;
+  const perMonth = getPaychecksPerMonth(user?.pay_frequency);
+  const frequency = getFrequencyLabel(user?.pay_frequency);
 
   const runway = calculateRunway(userId);
 

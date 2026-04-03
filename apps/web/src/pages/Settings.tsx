@@ -1277,14 +1277,12 @@ export default function Settings() {
                 </div>
               </>
             )}
-            {!data?.accounts.some(a => a.teller_account_id) && (
-              <div className="border-t border-slate-100 px-4 py-3.5 flex justify-center">
-                <TellerConnectButton onSuccess={async () => {
-                  const r = await api.get('/settings');
-                  setData(r.data);
-                }} />
-              </div>
-            )}
+            <div className="border-t border-slate-100 px-4 py-3.5 flex justify-center">
+              <TellerConnectButton onSuccess={async () => {
+                const r = await api.get('/settings');
+                setData(r.data);
+              }} />
+            </div>
             <div className="border-t border-slate-100">
               <button
                 onClick={() => navigate('/csv-upload')}

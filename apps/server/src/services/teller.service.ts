@@ -221,10 +221,10 @@ export { cleanMerchantName, titleCase, normalizeMerchantName };
  * Store the access token from Teller Connect and sync accounts + transactions.
  */
 export async function enrollBank(userId: string, accessToken: string): Promise<SyncResult> {
-  // Store access token
+  // Store access token on user (legacy, for backwards compat)
   db.prepare('UPDATE users SET teller_access_token = ? WHERE id = ?').run(accessToken, userId);
 
-  // Sync immediately
+  // Sync this enrollment's accounts (token stored per-account for multi-bank support)
   return await syncAccounts(userId, accessToken);
 }
 
@@ -240,6 +240,41 @@ export interface SyncResult {
  */
 export async function syncAccounts(userId: string, accessToken?: string): Promise<SyncResult> {
   if (!accessToken) {
+    // Try per-account tokens first (multi-bank support), then fall back to user-level token
+    const acctTokens = db.prepare(
+      'SELECT DISTINCT teller_access_token FROM accounts WHERE user_id = ? AND teller_access_token IS NOT NULL'
+    ).all(userId) as any[];
+
+    if (acctTokens.length > 0) {
+      // Multi-bank: sync each enrollment separately, merge results
+      let totalAccounts = 0;
+      let totalTransactions = 0;
+      let anyPending = false;
+      const messages: string[] = [];
+
+      for (const row of acctTokens) {
+        try {
+          const result = await syncAccounts(userId, row.teller_access_token);
+          totalAccounts += result.accounts;
+          totalTransactions += result.transactions;
+          if (result.pendingTransactions) anyPending = true;
+        } catch (err: any) {
+          console.warn(`[Teller] Sync failed for one enrollment:`, err.message);
+          messages.push(err.message);
+        }
+      }
+
+      return {
+        accounts: totalAccounts,
+        transactions: totalTransactions,
+        pendingTransactions: anyPending,
+        message: anyPending
+          ? `Synced ${totalAccounts} accounts, ${totalTransactions} transactions. Some banks still processing.`
+          : `Synced ${totalAccounts} accounts and ${totalTransactions} transactions.`,
+      };
+    }
+
+    // Fallback to user-level token (legacy single-bank)
     const row = db.prepare('SELECT teller_access_token FROM users WHERE id = ?').get(userId) as any;
     accessToken = row?.teller_access_token;
     if (!accessToken) throw new Error('No Teller access token. Connect a bank first.');
@@ -258,10 +293,10 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
   }
 
   const upsertAcct = db.prepare(
-    `INSERT INTO accounts (id, user_id, teller_account_id, name, type, current_balance, available_balance, last_synced_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO accounts (id, user_id, teller_account_id, teller_access_token, name, type, current_balance, available_balance, last_synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT (user_id, teller_account_id)
-       DO UPDATE SET name = excluded.name, current_balance = excluded.current_balance, available_balance = excluded.available_balance, last_synced_at = datetime('now')`
+       DO UPDATE SET name = excluded.name, teller_access_token = excluded.teller_access_token, current_balance = excluded.current_balance, available_balance = excluded.available_balance, last_synced_at = datetime('now')`
   );
 
   for (const acct of accounts) {
@@ -289,7 +324,7 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
     if (balance !== null) {
       // Got fresh balances — upsert with new values
       upsertAcct.run(
-        crypto.randomUUID(), userId, acct.id, acct.name, type,
+        crypto.randomUUID(), userId, acct.id, accessToken, acct.name, type,
         balance, available,
       );
     } else {
@@ -299,7 +334,7 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       ).get(userId, acct.id);
       if (!existing) {
         upsertAcct.run(
-          crypto.randomUUID(), userId, acct.id, acct.name, type,
+          crypto.randomUUID(), userId, acct.id, accessToken, acct.name, type,
           0, null,
         );
       }

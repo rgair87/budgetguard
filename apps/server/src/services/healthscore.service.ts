@@ -1,5 +1,6 @@
 import db from '../config/db';
 import { calculateRunway } from './runway.service';
+import { getMonthlyIncome } from './income.service';
 
 export interface HealthScoreResult {
   score: number;
@@ -34,18 +35,9 @@ export function calculateHealthScore(userId: string): HealthScoreResult {
   }
 
   // 2. Income vs spending (25 points)
-  const user = db.prepare(
-    'SELECT take_home_pay, pay_frequency FROM users WHERE id = ?'
-  ).get(userId) as unknown as any;
-
-  let monthlyIncome = 0;
-  if (user?.take_home_pay && user?.pay_frequency) {
-    const freq = user.pay_frequency;
-    monthlyIncome = freq === 'weekly' ? user.take_home_pay * 4.33
-      : freq === 'biweekly' ? user.take_home_pay * 2.17
-      : freq === 'twice_monthly' ? user.take_home_pay * 2
-      : user.take_home_pay;
-  }
+  // Use shared income service for consistent calculation (handles variable income)
+  const incomeResult = getMonthlyIncome(userId);
+  const monthlyIncome = incomeResult.monthlyIncome;
 
   const spendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total, MIN(date) as earliest
