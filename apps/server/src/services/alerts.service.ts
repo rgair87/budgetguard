@@ -101,11 +101,14 @@ export function getAlerts(userId: string): Alert[] {
   // 4. Unusual spending (category actually exceeding 3-month average)
   // Skip null/empty categories and system categories (Transfers, Income, etc.)
   const ALERT_SKIP_CATEGORIES = new Set([null, '', 'Transfers', 'Transfer', 'Income', 'Debt Payments', 'Fees']);
+  // Use complete prior calendar months (not rolling 90 days) to avoid partial-month averages
+  // that miss bills paid on the 1st or 2nd of the month
   const avgCategorySpend = db.prepare(
     `SELECT category, AVG(monthly_total) as avg_monthly FROM (
        SELECT category, strftime('%Y-%m', date) as month, SUM(ABS(amount)) as monthly_total
        FROM transactions
-       WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
+       WHERE user_id = ? AND amount < 0
+       AND date >= date('now', 'start of month', '-3 months')
        AND date < date('now', 'start of month')
        AND category IS NOT NULL AND category != ''
        GROUP BY category, month
@@ -113,6 +116,17 @@ export function getAlerts(userId: string): Alert[] {
   ).all(userId) as unknown as { category: string; avg_monthly: number }[];
 
   const avgMap = new Map(avgCategorySpend.map(c => [c.category, c.avg_monthly]));
+
+  // Get LAST month's spend per category — to detect "consistent but average is lagging"
+  const lastMonthSpend = db.prepare(
+    `SELECT category, SUM(ABS(amount)) as total FROM transactions
+     WHERE user_id = ? AND amount < 0
+     AND date >= date('now', 'start of month', '-1 month')
+     AND date < date('now', 'start of month')
+     AND category IS NOT NULL AND category != ''
+     GROUP BY category`
+  ).all(userId) as unknown as { category: string; total: number }[];
+  const lastMonthMap = new Map(lastMonthSpend.map(c => [c.category, c.total]));
 
   // Get transaction count per category this month (to decide if pro-rating makes sense)
   const categoryTxnCounts = db.prepare(
@@ -148,6 +162,14 @@ export function getAlerts(userId: string): Alert[] {
     } else {
       // Infrequent/large transactions (rent, insurance, tuition) — use actual amount
       projectedMonthly = spent;
+    }
+
+    // Skip if current spend is consistent with last month (within 15%).
+    // This avoids alerting when a bill amount changed and the average is just catching up.
+    const lastMonth = lastMonthMap.get(category);
+    if (lastMonth && lastMonth > 0) {
+      const vsLastMonth = Math.abs(projectedMonthly - lastMonth) / lastMonth;
+      if (vsLastMonth <= 0.15) continue; // Consistent with last month — not unusual
     }
 
     if (projectedMonthly > avg * 1.5) {
