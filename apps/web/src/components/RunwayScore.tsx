@@ -108,24 +108,31 @@ export default function RunwayScore({ score, plan }: Props) {
             <InfoTip text="How many days your current cash will last based on your spending habits and upcoming bills." />
           </p>
           <p className="text-sm text-white/65 mt-2 max-w-sm leading-relaxed">
-            {isGood ? (
-              "You're in great shape. Income covers spending, bills, and upcoming events. Keep it up!"
-            ) : score.runwayDays >= 365 ? (
-              "You have solid savings, but you're spending more than you earn. Consider trimming expenses."
-            ) : score.runoutDate ? (
-              <>Covered through <span className="font-semibold text-white/90">{formatDate(score.runoutDate)}</span></>
-            ) : (
-              'of breathing room'
-            )}
+            {(() => {
+              const incomeCoversExpenses = plan && !plan.isShortfall && plan.buckets.spending.monthly > 0;
+              if (isGood && incomeCoversExpenses) {
+                return "You're in great shape. Income covers spending, bills, and upcoming events. Keep it up!";
+              } else if (isGood || score.runwayDays >= 180) {
+                return `Your savings give you a strong cushion.${plan?.isShortfall ? ' Your income doesn\'t fully cover expenses yet — your cash reserves are making up the difference.' : ''}`;
+              } else if (score.runwayDays >= 365) {
+                return "You have solid savings, but you're spending more than you earn. Consider trimming expenses.";
+              } else if (score.runoutDate) {
+                return <>Covered through <span className="font-semibold text-white/90">{formatDate(score.runoutDate)}</span></>;
+              } else {
+                return 'of breathing room';
+              }
+            })()}
           </p>
 
           <div className="flex flex-wrap gap-2 mt-4">
             <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm ${badgeBg}`}>
-              {isDanger
-                ? (score.amount < 0 ? "Let's make a plan" : 'Time to take action')
-                : isTight
-                  ? (score.runwayDays >= 180 ? 'Spending more than you earn' : "Getting tight, let's find room")
-                  : 'On track'}
+              {(() => {
+                const incomeCoversExpenses = plan && !plan.isShortfall && plan.buckets.spending.monthly > 0;
+                if (isDanger) return score.amount < 0 ? "Let's make a plan" : 'Time to take action';
+                if (isTight) return score.runwayDays >= 180 ? 'Spending more than you earn' : "Getting tight, let's find room";
+                if (incomeCoversExpenses) return 'On track';
+                return 'Savings cushion';
+              })()}
             </span>
             {score.daysToPayday !== null && (
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm bg-white/15 text-white">

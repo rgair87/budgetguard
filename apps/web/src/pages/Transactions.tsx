@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { CATEGORY_NAMES } from '@runway/shared';
 import useTrack from '../hooks/useTrack';
@@ -21,14 +22,24 @@ interface UnclassifiedMerchant {
 
 const CATEGORY_OPTIONS = CATEGORY_NAMES;
 
+function getMonthStart(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
 export default function Transactions() {
   const track = useTrack('transactions');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => {
+    const param = searchParams.get('dateFrom');
+    return param === 'this_month' ? getMonthStart() : (param || '');
+  });
   const [categories, setCategories] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -52,13 +63,14 @@ export default function Transactions() {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (search) params.set('search', search);
     if (categoryFilter) params.set('category', categoryFilter);
+    if (dateFrom) params.set('dateFrom', dateFrom);
     api.get(`/transactions?${params}`)
       .then(r => {
         setTransactions(r.data.transactions);
         setTotal(r.data.total);
       })
       .finally(() => setLoading(false));
-  }, [search, categoryFilter, offset]);
+  }, [search, categoryFilter, offset, dateFrom]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -281,10 +293,11 @@ export default function Transactions() {
         </select>
       </div>
 
-      {search && (
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Showing results for "{search}"</span>
-          <button onClick={() => { setSearch(''); setSearchInput(''); }} className="text-sm text-indigo-600">Clear</button>
+      {(search || dateFrom) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {search && <span className="text-sm text-gray-500">Results for "{search}"</span>}
+          {dateFrom && <span className="text-sm text-slate-500 bg-indigo-50 px-2 py-0.5 rounded-md">Since {dateFrom}</span>}
+          <button onClick={() => { setSearch(''); setSearchInput(''); setDateFrom(''); setSearchParams({}); }} className="text-sm text-indigo-600">Clear filters</button>
         </div>
       )}
 
