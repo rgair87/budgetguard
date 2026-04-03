@@ -244,12 +244,12 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
      WHERE user_id = ? AND amount < 0 AND is_recurring = 1
      AND date >= date('now', '-90 days')
      AND (COALESCE(category, '') IN (${DEBT_BILL_CATEGORIES.map(() => '?').join(',')})
-       OR LOWER(COALESCE(merchant_name, '')) LIKE '%loan%'
        OR LOWER(COALESCE(merchant_name, '')) LIKE '%pymt%'
        OR LOWER(COALESCE(merchant_name, '')) LIKE '%autopay%'
        OR LOWER(COALESCE(merchant_name, '')) LIKE '%credit crd%'
        OR LOWER(COALESCE(merchant_name, '')) LIKE '%credit card%'
        OR LOWER(COALESCE(merchant_name, '')) LIKE '%payment to%')
+     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%mortgage%'
      GROUP BY LOWER(merchant_name)`
   ).all(userId, ...DEBT_BILL_CATEGORIES) as any[];
 
@@ -274,6 +274,38 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
       totalDebtMonthly += rounded;
     }
   }
+
+  // === DEDUPLICATE: remove bills that are already in debt ===
+  if (debtDetails.length > 0 && billDetails.length > 0) {
+    const debtMerchantKeys = new Set(
+      debtDetails.map(d => d.name.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 15))
+    );
+    const removedFromBills: string[] = [];
+    for (let i = billDetails.length - 1; i >= 0; i--) {
+      const billKey = billDetails[i].name.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 15);
+      if (debtMerchantKeys.has(billKey)) {
+        totalBillsMonthly -= billDetails[i].amount;
+        removedFromBills.push(billDetails[i].name);
+        billDetails.splice(i, 1);
+      }
+    }
+    totalBillsMonthly = Math.max(0, Math.round(totalBillsMonthly));
+  }
+
+  // Also filter out groceries and variable spending from bills
+  // (recurring detection may flag grocery stores, gas stations, etc.)
+  const NON_BILL_CATEGORIES = new Set(['Groceries', 'Food & Dining', 'Gas', 'Shopping', 'Entertainment', 'Personal', 'Transportation']);
+  for (let i = billDetails.length - 1; i >= 0; i--) {
+    // Look up this merchant's category from transactions
+    const catRow = db.prepare(
+      `SELECT category FROM transactions WHERE user_id = ? AND LOWER(merchant_name) = ? AND category IS NOT NULL LIMIT 1`
+    ).get(userId, billDetails[i].name.toLowerCase().replace(/\s+/g, ' ').trim()) as any;
+    if (catRow && NON_BILL_CATEGORIES.has(catRow.category)) {
+      totalBillsMonthly -= billDetails[i].amount;
+      billDetails.splice(i, 1);
+    }
+  }
+  totalBillsMonthly = Math.max(0, Math.round(totalBillsMonthly));
 
   // === SAVINGS: based on runway status ===
   let savingsPercent: number;
