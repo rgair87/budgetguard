@@ -1,5 +1,5 @@
 import db from '../config/db';
-import { calculateRunway } from './runway.service';
+import { calculateRunway, SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from './runway.service';
 import { getMonthlyIncome } from './income.service';
 import { NECESSITY_NAMES, DISCRETIONARY_NAMES } from '@runway/shared';
 import type { PaycheckPlan, SpendingCategory } from '@runway/shared';
@@ -357,13 +357,17 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
      WHERE user_id = ? AND amount < 0
      AND date >= date('now', '-90 days')
      AND is_recurring = 0
+     AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+     ${SPEND_EXCLUSION_MERCHANTS}
      ORDER BY ABS(amount) DESC`
   ).all(userId) as any[];
 
   // Figure out actual data span for non-recurring transactions
   const nonRecSpanRow = db.prepare(
     `SELECT MIN(date) as earliest FROM transactions
-     WHERE user_id = ? AND amount < 0 AND is_recurring = 0 AND date >= date('now', '-90 days')`
+     WHERE user_id = ? AND amount < 0 AND is_recurring = 0 AND date >= date('now', '-90 days')
+     AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+     ${SPEND_EXCLUSION_MERCHANTS}`
   ).get(userId) as any;
   let nonRecurringMonths = 3; // default
   if (nonRecSpanRow?.earliest) {
