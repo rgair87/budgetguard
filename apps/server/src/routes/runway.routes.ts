@@ -52,12 +52,18 @@ router.get('/review-merchants', authenticate, (req: AuthRequest, res: Response) 
   // Find distinct merchants from last 90 days that have no user classification
   // and no default classification
   const merchants = db.prepare(
-    `SELECT DISTINCT merchant_name, category, ABS(amount) as sample_amount
+    `SELECT merchant_name, category,
+            ROUND(AVG(ABS(amount)), 2) as avg_amount,
+            ROUND(MIN(ABS(amount)), 2) as min_amount,
+            ROUND(MAX(ABS(amount)), 2) as max_amount,
+            COUNT(*) as count,
+            MAX(date) as last_date,
+            MIN(date) as first_date
      FROM transactions
      WHERE user_id = ? AND amount < 0 AND merchant_name IS NOT NULL
      AND date >= date('now', '-90 days')
-     AND is_recurring = 0
-     ORDER BY ABS(amount) DESC`
+     GROUP BY LOWER(merchant_name)
+     ORDER BY COUNT(*) DESC, AVG(ABS(amount)) DESC`
   ).all(userId) as unknown as any[];
 
   // Default merchant map keys (simplified check)
@@ -79,7 +85,7 @@ router.get('/review-merchants', authenticate, (req: AuthRequest, res: Response) 
   const classifiedSet = new Set(userClassifications.map((r: any) => r.merchant_pattern));
 
   // Filter to unclassified merchants
-  const needsReview: { merchantName: string; sampleAmount: number; currentCategory: string | null }[] = [];
+  const needsReview: { merchantName: string; avgAmount: number; minAmount: number; maxAmount: number; count: number; lastDate: string; firstDate: string; currentCategory: string | null }[] = [];
   const seen = new Set<string>();
 
   for (const m of merchants) {
@@ -102,7 +108,12 @@ router.get('/review-merchants', authenticate, (req: AuthRequest, res: Response) 
 
     needsReview.push({
       merchantName: m.merchant_name,
-      sampleAmount: m.sample_amount,
+      avgAmount: m.avg_amount,
+      minAmount: m.min_amount,
+      maxAmount: m.max_amount,
+      count: m.count,
+      lastDate: m.last_date,
+      firstDate: m.first_date,
       currentCategory: m.category,
     });
   }

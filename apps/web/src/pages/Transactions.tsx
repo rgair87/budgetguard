@@ -16,7 +16,12 @@ interface Transaction {
 
 interface UnclassifiedMerchant {
   merchantName: string;
-  sampleAmount: number;
+  avgAmount: number;
+  minAmount: number;
+  maxAmount: number;
+  count: number;
+  lastDate: string;
+  firstDate: string;
   currentCategory: string | null;
 }
 
@@ -220,11 +225,14 @@ export default function Transactions() {
               <div className="text-center text-gray-500 py-6 text-sm">All merchants are classified!</div>
             ) : (
               unclassified.map(m => (
-                <div key={m.merchantName} className="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-gray-50">
+                <div key={m.merchantName} className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{m.merchantName}</p>
-                    <p className="text-xs text-gray-400">
-                      {m.currentCategory || 'No category'} · ${Math.abs(m.sampleAmount).toFixed(2)}
+                    <p className="text-sm font-medium text-gray-900">{m.merchantName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {m.count}x · ${m.avgAmount.toFixed(0)}/avg
+                      {m.minAmount !== m.maxAmount ? ` ($${m.minAmount.toFixed(0)}–$${m.maxAmount.toFixed(0)})` : ''}
+                      {' · '}{m.firstDate?.slice(0, 7)} → {m.lastDate?.slice(0, 7)}
+                      {m.currentCategory ? ` · ${m.currentCategory}` : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
