@@ -134,13 +134,22 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
   const runway = calculateRunway(userId);
 
   // === BILLS: recurring transactions from last 90 days → monthly amounts ===
+  // Exclude debt payment categories — those go in the debt bucket, not bills
+  const DEBT_BILL_CATEGORIES = ['Debt Payments', 'Loan Payment', 'Loan Payments', 'Credit Card Payments', 'Credit Card Payment'];
   const recurringRows = db.prepare(
     `SELECT merchant_name, category, ABS(amount) as amount
      FROM transactions
      WHERE user_id = ? AND amount < 0 AND is_recurring = 1
      AND date >= date('now', '-90 days')
+     AND COALESCE(category, '') NOT IN (${DEBT_BILL_CATEGORIES.map(() => '?').join(',')})
+     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%loan%'
+     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%pymt%'
+     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%autopay%'
+     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%credit crd%'
+     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%credit card%'
+     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%payment to%'
      ORDER BY ABS(amount) DESC`
-  ).all(userId) as any[];
+  ).all(userId, ...DEBT_BILL_CATEGORIES) as any[];
 
   // Figure out how many months of data we actually have for recurring bills
   const recurringSpanRow = db.prepare(
@@ -221,19 +230,48 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
 
   totalBillsMonthly = Math.round(totalBillsMonthly);
 
-  // === DEBT: monthly minimum payments ===
+  // === DEBT: actual monthly payments from transaction history ===
+  // Use real payment amounts from recurring transactions, not estimated balance * 2%
   const debtAccounts = db.prepare(
     "SELECT name, current_balance, minimum_payment FROM accounts WHERE user_id = ? AND type IN ('credit', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan') AND current_balance > 0"
   ).all(userId) as any[];
 
+  // Also get actual debt payments from transaction history
+  const debtPaymentRows = db.prepare(
+    `SELECT merchant_name, SUM(ABS(amount)) as total, COUNT(*) as count
+     FROM transactions
+     WHERE user_id = ? AND amount < 0 AND is_recurring = 1
+     AND date >= date('now', '-90 days')
+     AND (COALESCE(category, '') IN (${DEBT_BILL_CATEGORIES.map(() => '?').join(',')})
+       OR LOWER(COALESCE(merchant_name, '')) LIKE '%loan%'
+       OR LOWER(COALESCE(merchant_name, '')) LIKE '%pymt%'
+       OR LOWER(COALESCE(merchant_name, '')) LIKE '%autopay%'
+       OR LOWER(COALESCE(merchant_name, '')) LIKE '%credit crd%'
+       OR LOWER(COALESCE(merchant_name, '')) LIKE '%credit card%'
+       OR LOWER(COALESCE(merchant_name, '')) LIKE '%payment to%')
+     GROUP BY LOWER(merchant_name)`
+  ).all(userId, ...DEBT_BILL_CATEGORIES) as any[];
+
   const debtDetails: { name: string; amount: number }[] = [];
   let totalDebtMonthly = 0;
 
-  for (const acct of debtAccounts) {
-    const monthlyMin = acct.minimum_payment ?? Math.max(25, acct.current_balance * 0.02);
-    const rounded = Math.round(monthlyMin);
-    debtDetails.push({ name: acct.name, amount: rounded });
-    totalDebtMonthly += rounded;
+  if (debtPaymentRows.length > 0) {
+    // Use actual payment amounts from transaction history
+    for (const row of debtPaymentRows) {
+      const monthly = Math.round((row.total / recurringMonths) * 100) / 100;
+      if (monthly >= 5) {
+        debtDetails.push({ name: row.merchant_name, amount: monthly });
+        totalDebtMonthly += monthly;
+      }
+    }
+  } else {
+    // Fallback to account-based estimates if no transaction data
+    for (const acct of debtAccounts) {
+      const monthlyMin = acct.minimum_payment ?? Math.max(25, acct.current_balance * 0.02);
+      const rounded = Math.round(monthlyMin);
+      debtDetails.push({ name: acct.name, amount: rounded });
+      totalDebtMonthly += rounded;
+    }
   }
 
   // === SAVINGS: based on runway status ===
