@@ -125,7 +125,8 @@ export function calculateRunway(userId: string): RunwayScore {
   const spendableBalance = spendableAccounts.reduce((sum, a) => sum + (a.available_balance ?? a.current_balance), 0);
 
   const DEBT_TYPES = ['credit', 'loan', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan'];
-  const debtAccounts = accounts.filter(a => DEBT_TYPES.includes(a.type));
+  // Only count debt accounts that have a real balance — skip $0 ghost accounts from CSV auto-detection
+  const debtAccounts = accounts.filter(a => DEBT_TYPES.includes(a.type) && a.current_balance > 0);
   const totalDebt = debtAccounts.reduce((sum, a) => sum + a.current_balance, 0);
 
   // Get spend breakdown with outlier detection

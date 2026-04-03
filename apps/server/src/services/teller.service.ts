@@ -406,6 +406,17 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
           }
         }
 
+        // INCOME GUARD: positive amounts are money IN — never classify as debt, bills, or recurring expense
+        if (amount > 0) {
+          const lowerDesc = (txn.description || '').toLowerCase();
+          const incomeKeywords = ['payroll', 'direct dep', 'salary', 'deposit', 'ach credit', 'xfer in', 'credit'];
+          const isLikelyIncome = amount >= 200 || incomeKeywords.some(kw => lowerDesc.includes(kw));
+          if (isLikelyIncome) {
+            category = 'Income';
+            isRecurring = 0;
+          }
+        }
+
         insertTxn.run(
           `teller_${txn.id}`,
           userId, acctRow.id,

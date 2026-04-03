@@ -137,4 +137,88 @@ router.post('/reclean', authenticate, async (req: AuthRequest, res: Response) =>
   }
 });
 
+/**
+ * POST /api/teller/fix-data
+ * One-time data cleanup: fix income misclassification, clean ghost accounts,
+ * remove orphaned merchant_categories, fix recurring flags.
+ */
+router.post('/fix-data', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const db = (await import('../config/db')).default;
+    const userId = req.userId!;
+    const fixes: string[] = [];
+
+    // 1. Fix positive-amount transactions classified as debt/bills
+    const incomeFixed = db.prepare(
+      `UPDATE transactions SET category = 'Income', is_recurring = 0
+       WHERE user_id = ? AND amount > 0 AND amount >= 200
+       AND category NOT IN ('Income', 'Transfers', 'Transfer')
+       AND COALESCE(category, '') != 'Income'`
+    ).run(userId);
+    if (incomeFixed.changes > 0) fixes.push(`Reclassified ${incomeFixed.changes} income transactions`);
+
+    // 2. Fix positive small amounts (refunds, cashback, interest) — don't mark as recurring
+    const smallPosFixed = db.prepare(
+      `UPDATE transactions SET is_recurring = 0
+       WHERE user_id = ? AND amount > 0 AND is_recurring = 1`
+    ).run(userId);
+    if (smallPosFixed.changes > 0) fixes.push(`Unflagged ${smallPosFixed.changes} positive transactions from recurring`);
+
+    // 3. Fix merchant_categories entries that point to income merchants
+    const badMcFixed = db.prepare(
+      `DELETE FROM merchant_categories
+       WHERE user_id = ? AND merchant_pattern IN (
+         SELECT DISTINCT LOWER(REPLACE(merchant_name, '  ', ' '))
+         FROM transactions
+         WHERE user_id = ? AND amount > 0 AND amount >= 200
+         GROUP BY LOWER(merchant_name)
+         HAVING COUNT(*) >= 3
+       )`
+    ).run(userId, userId);
+    if (badMcFixed.changes > 0) fixes.push(`Removed ${badMcFixed.changes} income merchants from category overrides`);
+
+    // 4. Remove ghost $0 debt accounts that have no teller_account_id and no transactions
+    const ghostAccounts = db.prepare(
+      `DELETE FROM accounts
+       WHERE user_id = ? AND teller_account_id IS NULL AND current_balance = 0
+       AND id NOT IN (SELECT DISTINCT account_id FROM transactions WHERE user_id = ? AND account_id IS NOT NULL)`
+    ).run(userId, userId);
+    if (ghostAccounts.changes > 0) fixes.push(`Removed ${ghostAccounts.changes} empty ghost accounts`);
+
+    // 5. Remove orphaned merchant_categories (no matching transactions)
+    const orphanedMc = db.prepare(
+      `DELETE FROM merchant_categories
+       WHERE user_id = ? AND merchant_pattern NOT IN (
+         SELECT DISTINCT LOWER(REPLACE(merchant_name, '  ', ' '))
+         FROM transactions WHERE user_id = ?
+       )`
+    ).run(userId, userId);
+    if (orphanedMc.changes > 0) fixes.push(`Cleaned ${orphanedMc.changes} orphaned merchant classifications`);
+
+    // 6. Fix recurring flag on transactions with only 1 occurrence
+    const singleFixed = db.prepare(
+      `UPDATE transactions SET is_recurring = 0
+       WHERE user_id = ? AND is_recurring = 1
+       AND LOWER(merchant_name) IN (
+         SELECT LOWER(merchant_name)
+         FROM transactions WHERE user_id = ? AND is_recurring = 1
+         GROUP BY LOWER(merchant_name) HAVING COUNT(*) = 1
+       )`
+    ).run(userId, userId);
+    if (singleFixed.changes > 0) fixes.push(`Unflagged ${singleFixed.changes} single-occurrence transactions from recurring`);
+
+    // Invalidate caches
+    const { invalidateCache } = await import('../utils/cache');
+    invalidateCache(`runway:${userId}`);
+    invalidateCache(`trends:${userId}`);
+    invalidateCache(`predictions:${userId}`);
+    db.prepare('DELETE FROM ai_cache WHERE user_id = ?').run(userId);
+
+    res.json({ success: true, fixes });
+  } catch (err: any) {
+    console.error('Fix-data error:', err);
+    res.status(500).json({ error: 'fix_data_error', message: err.message });
+  }
+});
+
 export default router;
