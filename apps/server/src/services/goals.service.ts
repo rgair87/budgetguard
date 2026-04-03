@@ -1,5 +1,7 @@
 import db from '../config/db';
 import { randomUUID } from 'crypto';
+import { getMonthlyIncome } from './income.service';
+import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from './runway.service';
 
 // Create table at module load
 db.exec(`CREATE TABLE IF NOT EXISTS savings_goals (
@@ -173,17 +175,15 @@ export function generateGoalInsights(userId: string, goal: Goal): GoalInsight[] 
   const insights: GoalInsight[] = [];
   const category = detectGoalCategory(goal.name, goal.icon);
 
-  // Pull user financial context
-  const user = db.prepare('SELECT take_home_pay, pay_frequency FROM users WHERE id = ?').get(userId) as any;
-  const monthlyIncome = user?.take_home_pay
-    ? (user.pay_frequency === 'biweekly' ? user.take_home_pay * 26 / 12
-       : user.pay_frequency === 'weekly' ? user.take_home_pay * 52 / 12
-       : user.take_home_pay)
-    : 0;
+  // Pull user financial context — use shared income service for consistency
+  const incomeResult = getMonthlyIncome(userId);
+  const monthlyIncome = incomeResult.monthlyIncome;
 
   const spendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions
-     WHERE user_id = ? AND amount < 0 AND date >= date('now', '-30 days')`
+     WHERE user_id = ? AND amount < 0 AND date >= date('now', '-30 days')
+     AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+     ${SPEND_EXCLUSION_MERCHANTS}`
   ).get(userId) as any;
   const monthlySpend = spendRow?.total ?? 0;
   const monthlySurplus = monthlyIncome > 0 ? monthlyIncome - monthlySpend : 0;

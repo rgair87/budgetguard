@@ -1,5 +1,5 @@
 import db from '../config/db';
-import { calculateRunway } from './runway.service';
+import { calculateRunway, SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from './runway.service';
 import { getMonthlyIncome } from './income.service';
 
 export interface HealthScoreResult {
@@ -39,17 +39,12 @@ export function calculateHealthScore(userId: string): HealthScoreResult {
   const incomeResult = getMonthlyIncome(userId);
   const monthlyIncome = incomeResult.monthlyIncome;
 
+  // Use same exclusion filters as runway service for consistent spending numbers
   const spendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total, MIN(date) as earliest
      FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
-     AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer', 'Debt Payments', 'Loan Payment', 'Credit Card Payment', 'Income', 'Payroll', 'Direct Deposit', 'Credit')
-     AND (merchant_name IS NULL OR (
-       LOWER(merchant_name) NOT LIKE '%transfer%'
-       AND LOWER(merchant_name) NOT LIKE '%payment to%'
-       AND LOWER(merchant_name) NOT LIKE '%credit card%'
-       AND LOWER(merchant_name) NOT LIKE '%direct dep%'
-       AND LOWER(merchant_name) NOT LIKE '%payroll%'
-     ))`
+     AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+     ${SPEND_EXCLUSION_MERCHANTS}`
   ).get(userId) as unknown as any;
 
   let calendarDays = 90;
@@ -145,6 +140,8 @@ export function calculateHealthScore(userId: string): HealthScoreResult {
      FROM transactions
      WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
      AND date < date('now', 'start of month')
+     AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+     ${SPEND_EXCLUSION_MERCHANTS}
      GROUP BY month ORDER BY month`
   ).all(userId) as unknown as { month: string; total: number }[];
 
