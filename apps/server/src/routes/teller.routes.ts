@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { enrollBank, syncAccounts, recleanMerchantNames, type SyncResult } from '../services/teller.service';
 import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
+import { detectAndFlagRecurring } from '../services/csv.service';
 
 const router = Router();
 
@@ -228,6 +229,10 @@ router.post('/fix-data', authenticate, async (req: AuthRequest, res: Response) =
        )`
     ).run(userId, userId);
     if (singleFixed.changes > 0) fixes.push(`Unflagged ${singleFixed.changes} single-occurrence transactions from recurring`);
+
+    // 7. Run full recurring detection algorithm (catches bills that AI missed)
+    const recurringFound = detectAndFlagRecurring(userId);
+    if (recurringFound > 0) fixes.push(`Detected ${recurringFound} recurring transactions from spending patterns`);
 
     // Invalidate caches
     const { invalidateCache } = await import('../utils/cache');

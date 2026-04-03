@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import db from '../config/db';
 import { classifyMerchantsWithAI } from './ai-categorize.service';
+import { cleanMerchantName, titleCase, normalizeMerchantName } from './merchant-utils';
 
 interface CsvRow {
   date: string;
@@ -80,6 +81,7 @@ interface ColumnMapping {
   creditCol: number;  // -1 if not separate
   descCol: number;
   categoryCol: number; // -1 if not present
+  typeCol: number;     // -1 if not present — "Debit"/"Credit" indicator column
 }
 
 function detectColumns(headers: string[]): ColumnMapping | null {
@@ -112,21 +114,24 @@ function detectColumns(headers: string[]): ColumnMapping | null {
   );
   if (descCol === -1) descCol = lower.findIndex(h => h.includes('name') && !h.includes('file'));
 
+  // Type column — indicates "Debit"/"Credit" direction (Chase, Capital One, etc.)
+  // Must detect BEFORE category to avoid misidentifying it
+  let typeCol = lower.findIndex(h => h === 'transaction type' || h === 'trans type');
+  if (typeCol === -1) typeCol = lower.findIndex(h => h === 'type' && !h.includes('account'));
+
   // Category column (bank-provided categories like "Loans", "Groceries", "Credit Card Payments")
   let categoryCol = lower.findIndex(h => h === 'category' || h === 'transaction category' || h === 'trans category');
   if (categoryCol === -1) categoryCol = lower.findIndex(h => h.includes('category') && !h.includes('sub'));
-  // Some banks use "type" for category (but avoid confusion with account type)
-  if (categoryCol === -1) categoryCol = lower.findIndex(h => h === 'transaction type' || h === 'trans type');
 
   // If we still can't find date or amount, fail
   if (dateCol === -1 || amountCol === -1) return null;
 
   // If no description column, pick the first text column that isn't date/amount
   if (descCol === -1) {
-    descCol = lower.findIndex((_, i) => i !== dateCol && i !== amountCol && i !== debitCol && i !== creditCol && i !== categoryCol);
+    descCol = lower.findIndex((_, i) => i !== dateCol && i !== amountCol && i !== debitCol && i !== creditCol && i !== categoryCol && i !== typeCol);
   }
 
-  return { dateCol, amountCol, debitCol, creditCol, descCol, categoryCol };
+  return { dateCol, amountCol, debitCol, creditCol, descCol, categoryCol, typeCol };
 }
 
 function splitRow(line: string): string[] {
@@ -159,6 +164,20 @@ export function parseCsv(content: string): { rows: CsvRow[]; preview: string[][]
 
   const rows: CsvRow[] = [];
   const preview: string[][] = [headers];
+
+  // Check if there's a type column that tells us debit vs credit
+  // Sample values to see if they contain "debit"/"credit" indicators
+  let typeColIsDirection = false;
+  if (mapping.typeCol !== -1) {
+    for (let i = 1; i <= Math.min(10, lines.length - 1); i++) {
+      const cols = splitRow(lines[i]);
+      const typeVal = (cols[mapping.typeCol] || '').toLowerCase().trim();
+      if (/^(debit|credit|deposit|withdrawal|deb|cre|dr|cr)$/i.test(typeVal)) {
+        typeColIsDirection = true;
+        break;
+      }
+    }
+  }
 
   // Detect if the "Amount" column has sign convention (negative = spending, positive = income)
   // by sampling a few rows
@@ -198,15 +217,35 @@ export function parseCsv(content: string): { rows: CsvRow[]; preview: string[][]
     } else {
       // Single amount column
       amount = parseAmount(cols[mapping.amountCol] || '');
-      if (amount !== null && !amountsHaveSign) {
-        // All positive amounts → assume they're all spending, make negative
-        amount = -Math.abs(amount);
+      if (amount !== null && typeColIsDirection && mapping.typeCol !== -1) {
+        // Use the type column to determine sign
+        const typeVal = (cols[mapping.typeCol] || '').toLowerCase().trim();
+        const isCredit = /^(credit|deposit|cre|cr)$/i.test(typeVal);
+        const isDebit = /^(debit|withdrawal|deb|dr)$/i.test(typeVal);
+        if (isDebit) {
+          amount = -Math.abs(amount); // spending
+        } else if (isCredit) {
+          amount = Math.abs(amount); // income/deposit
+        }
+      } else if (amount !== null && !amountsHaveSign) {
+        // All positive amounts and no type column
+        // Check if description looks like income/deposit/refund — keep positive
+        const descLower = description.toLowerCase();
+        const isLikelyDeposit = /\b(direct dep|dir dep|payroll|salary|bonus|tax refund|tax ref|deposit|refund|cashback|cash back|interest paid|dividend|venmo cashout|zelle from|ach credit|debit card credit|moneyline)\b/i.test(descLower)
+          || (category && /^(income|payroll|direct deposit|credit|refund)$/i.test(category));
+        if (isLikelyDeposit) {
+          amount = Math.abs(amount); // keep as income
+        } else {
+          amount = -Math.abs(amount); // spending
+        }
       }
       // If amounts have sign, keep as-is (negative = spending, positive = income)
     }
 
     if (date && amount !== null && amount !== 0) {
-      rows.push({ date, amount, description, category });
+      // Clean up raw bank descriptions into readable merchant names
+      const cleanedName = normalizeMerchantName(titleCase(cleanMerchantName(description)));
+      rows.push({ date, amount, description: cleanedName, category });
     }
   }
 
@@ -663,7 +702,7 @@ export function detectDebtPayments(userId: string): {
   const existingDebtNames = new Set(existingDebts.map((d: any) => d.name));
 
   // Find transactions matching debt payment keywords OR bank-provided debt categories
-  const debtTxns: typeof txns = [];
+  const debtTxns: Array<(typeof txns)[number]> = [];
   for (const t of txns) {
     if (!t.merchant_name) continue;
     const lower = t.merchant_name.toLowerCase();
@@ -686,7 +725,21 @@ export function detectDebtPayments(userId: string): {
   const byMerchant = new Map<string, { raw: string; total: number; count: number; dates: string[]; amounts: number[]; bankCategory: string | null }>();
   for (const t of debtTxns) {
     const key = normalizeMerchantKey(t.merchant_name);
-    const existing = byMerchant.get(key) || { raw: t.merchant_name, total: 0, count: 0, dates: [], amounts: [], bankCategory: t.category || null };
+    const existing = byMerchant.get(key) || {
+      raw: t.merchant_name,
+      total: 0,
+      count: 0,
+      dates: [],
+      amounts: [],
+      bankCategory: t.category || null,
+    } as {
+      raw: string;
+      total: number;
+      count: number;
+      dates: string[];
+      amounts: number[];
+      bankCategory: string | null;
+    };
     existing.total += Math.abs(t.amount);
     existing.count++;
     existing.dates.push(t.date);
@@ -699,9 +752,9 @@ export function detectDebtPayments(userId: string): {
   // Calculate actual data span for monthly amount
   let dataMonths = 3;
   if (debtTxns.length > 0) {
-    const allDates = debtTxns.map(t => t.date).sort();
-    const earliest = new Date(allDates[0] + 'T00:00:00');
-    const latest = new Date(allDates[allDates.length - 1] + 'T00:00:00');
+  const allDates = debtTxns.map(t => t.date).sort();
+  const earliest = new Date(`${allDates[0]}T00:00:00`);
+  const latest = new Date(`${allDates[allDates.length - 1]}T00:00:00`);
     const daySpan = Math.max(1, Math.round((latest.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     dataMonths = Math.max(1, daySpan / 30);
   }
@@ -1042,12 +1095,18 @@ export function getSubscriptionLifetime(userId: string): SubscriptionSummary[] {
     // Skip merchants the user has dismissed from the recurring list
     if (hiddenSet.has(key)) continue;
 
-    const existing = byMerchant.get(key) || {
+  const existing = byMerchant.get(key) || {
       raw: t.merchant_name,
       amounts: [],
       dates: [],
       isRecurring: false,
       bankCategory: t.category || null,
+    } as {
+      raw: string;
+      amounts: number[];
+      dates: string[];
+      isRecurring: boolean;
+      bankCategory: string | null;
     };
     existing.amounts.push(Math.abs(t.amount));
     existing.dates.push(t.date);
@@ -1206,7 +1265,10 @@ function normalizeCategory(raw: string | null, merchantName?: string): string {
       lower.includes('cable') || lower.includes('telecom')) return 'Utilities';
 
   // Insurance
-  if (lower.includes('insurance')) return 'Insurance';
+  if (lower.includes('insurance') || lower.includes('geico') || lower.includes('state farm') ||
+      lower.includes('allstate') || lower.includes('progressive') || lower.includes('usaa ins') ||
+      lower.includes('liberty mutual') || lower.includes('nationwide') || lower.includes('farmers ins') ||
+      lower.startsWith('erie') || lower.includes('erie ins') || lower.includes('travelers')) return 'Insurance';
 
   // Healthcare
   if (lower.includes('health') || lower.includes('medical') || lower.includes('doctor') ||

@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import db from '../config/db';
 import { env } from '../config/env';
-import { guessCategoryFromMerchant } from './csv.service';
+import { guessCategoryFromMerchant, detectAndFlagRecurring } from './csv.service';
 import { classifyMerchantsWithAI } from './ai-categorize.service';
 import { invalidateCache } from '../utils/cache';
 
@@ -489,6 +489,12 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
     } catch (err) {
       console.warn('Teller: AI classification failed, transactions saved without categories:', err);
     }
+  }
+
+  // Run recurring detection on all transactions (catches bills that AI didn't flag)
+  if (totalInserted > 0) {
+    const recurringCount = detectAndFlagRecurring(userId);
+    console.log(`Teller: flagged ${recurringCount} recurring transactions`);
   }
 
   // Invalidate all caches so dashboard/advisor/trends reflect new data
