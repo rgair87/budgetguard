@@ -70,18 +70,53 @@ router.post('/sync', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/status', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const db = (await import('../config/db')).default;
-    const user = db.prepare('SELECT teller_access_token FROM users WHERE id = ?').get(req.userId!) as any;
+    const userId = req.userId!;
+    const user = db.prepare('SELECT teller_access_token FROM users WHERE id = ?').get(userId) as any;
+
     const accounts = db.prepare(
-      'SELECT id, name, type, teller_account_id, current_balance, last_synced_at FROM accounts WHERE user_id = ? AND teller_account_id IS NOT NULL'
-    ).all(req.userId!) as any[];
-    const txnCount = db.prepare(
-      'SELECT COUNT(*) as count FROM transactions WHERE user_id = ?'
-    ).get(req.userId!) as any;
+      `SELECT id, name, type, teller_account_id, current_balance, available_balance, last_synced_at,
+              CASE WHEN teller_access_token IS NOT NULL THEN 1 ELSE 0 END as has_token
+       FROM accounts WHERE user_id = ?`
+    ).all(userId) as any[];
+
+    const txnByAccount = db.prepare(
+      `SELECT account_id, COUNT(*) as count, MIN(date) as earliest, MAX(date) as latest
+       FROM transactions WHERE user_id = ? GROUP BY account_id`
+    ).all(userId) as any[];
+
+    const totalTxns = db.prepare(
+      'SELECT COUNT(*) as total, SUM(CASE WHEN is_recurring = 1 THEN 1 ELSE 0 END) as recurring FROM transactions WHERE user_id = ?'
+    ).get(userId) as any;
+
+    const uncategorized = db.prepare(
+      `SELECT COUNT(*) as count FROM transactions WHERE user_id = ? AND (category IS NULL OR category = '')`
+    ).get(userId) as any;
+
+    const categoryDist = db.prepare(
+      `SELECT COALESCE(category, '(uncategorized)') as category, COUNT(*) as count
+       FROM transactions WHERE user_id = ? GROUP BY category ORDER BY count DESC`
+    ).all(userId) as any[];
+
+    const topRecurring = db.prepare(
+      `SELECT merchant_name, COUNT(*) as count, ROUND(AVG(ABS(amount)),2) as avg_amt, category
+       FROM transactions WHERE user_id = ? AND is_recurring = 1
+       GROUP BY LOWER(merchant_name) ORDER BY count DESC LIMIT 25`
+    ).all(userId) as any[];
+
+    const merchantCatCount = db.prepare(
+      'SELECT COUNT(*) as count FROM merchant_categories WHERE user_id = ?'
+    ).get(userId) as any;
 
     res.json({
       hasAccessToken: !!user?.teller_access_token,
       accounts,
-      transactionCount: txnCount.count,
+      transactionsByAccount: txnByAccount,
+      totalTransactions: totalTxns.total,
+      recurringTransactions: totalTxns.recurring,
+      uncategorizedTransactions: uncategorized.count,
+      categoryDistribution: categoryDist,
+      topRecurringMerchants: topRecurring,
+      merchantCategoryEntries: merchantCatCount.count,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
