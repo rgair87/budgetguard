@@ -3,8 +3,8 @@ import { getMonthlyIncome } from './income.service';
 import type { RunwayScore } from '@runway/shared';
 
 // Shared WHERE clause fragments for excluding non-spend transactions
-const SPEND_EXCLUSION_CATEGORIES = `('Transfers', 'Transfer', 'Debt Payments', 'Income', 'Payroll', 'Direct Deposit', 'Credit', 'Loans', 'Loan Payment', 'Loan Payments', 'Credit Card Payments', 'Credit Card Payment', 'Mortgage', 'Mortgages')`;
-const SPEND_EXCLUSION_MERCHANTS = `
+export const SPEND_EXCLUSION_CATEGORIES = `('Transfers', 'Transfer', 'Debt Payments', 'Income', 'Payroll', 'Direct Deposit', 'Credit', 'Loans', 'Loan Payment', 'Loan Payments', 'Credit Card Payments', 'Credit Card Payment', 'Mortgage', 'Mortgages')`;
+export const SPEND_EXCLUSION_MERCHANTS = `
   AND merchant_name NOT LIKE '%transfer%'
   AND merchant_name NOT LIKE '%payment to%'
   AND merchant_name NOT LIKE '%CREDIT CARD%'

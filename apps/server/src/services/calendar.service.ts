@@ -1,6 +1,7 @@
 import db from '../config/db';
 import { getPaycheckPlan } from './paycheck.service';
 import { getMonthlyIncome } from './income.service';
+import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from './runway.service';
 import type { CalendarMonth, CalendarDay, CalendarWeek } from '@runway/shared';
 
 export function getCalendarMonth(userId: string, month: string): CalendarMonth {
@@ -41,11 +42,13 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
     }
   }
 
-  // Daily burn rate from last 90 days — use actual calendar days, not just days with spending
+  // Daily burn rate from last 90 days — exclude transfers, debt payments, income (same as runway service)
   const spendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total,
             MIN(date) as earliest_date
-     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')`
+     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}`
   ).get(userId) as any;
   let calendarDays = 90;
   if (spendRow.earliest_date) {
@@ -83,12 +86,14 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
     monthlyBudget = Math.round((spendableBalance + remainingIncome) * 100) / 100;
   }
 
-  // Actual non-recurring spend for the requested month (exclude bills — they're already accounted for)
+  // Actual spend for the requested month — exclude transfers, debt payments, income (same filters as runway)
   const monthStart = `${month}-01`;
   const monthEnd = `${month}-${String(daysInMonth).padStart(2, '0')}`;
   const actualSpendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions
-     WHERE user_id = ? AND amount < 0 AND is_recurring = 0 AND date >= ? AND date <= ?`
+     WHERE user_id = ? AND amount < 0 AND date >= ? AND date <= ?
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}`
   ).get(userId, monthStart, monthEnd) as any;
   const spentSoFar = actualSpendRow.total;
 
@@ -395,7 +400,9 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
   const nonRecurringSpendRow = db.prepare(
     `SELECT COALESCE(SUM(ABS(amount)), 0) as total,
             MIN(date) as earliest_date
-     FROM transactions WHERE user_id = ? AND amount < 0 AND is_recurring = 0 AND date >= date('now', '-90 days')`
+     FROM transactions WHERE user_id = ? AND amount < 0 AND is_recurring = 0 AND date >= date('now', '-90 days')
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}`
   ).get(userId) as any;
   let nrCalendarDays = calendarDays;
   if (nonRecurringSpendRow.earliest_date) {
