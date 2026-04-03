@@ -99,12 +99,15 @@ export function getAlerts(userId: string): Alert[] {
   }
 
   // 4. Unusual spending (category projected to exceed 50%+ above 3-month average)
+  // Skip null/empty categories and system categories (Transfers, Income, etc.)
+  const ALERT_SKIP_CATEGORIES = new Set([null, '', 'Transfers', 'Transfer', 'Income', 'Debt Payments', 'Fees']);
   const avgCategorySpend = db.prepare(
     `SELECT category, AVG(monthly_total) as avg_monthly FROM (
        SELECT category, strftime('%Y-%m', date) as month, SUM(ABS(amount)) as monthly_total
        FROM transactions
        WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')
        AND date < date('now', 'start of month')
+       AND category IS NOT NULL AND category != ''
        GROUP BY category, month
      ) GROUP BY category`
   ).all(userId) as unknown as { category: string; avg_monthly: number }[];
@@ -118,6 +121,7 @@ export function getAlerts(userId: string): Alert[] {
   const monthProgressRatio = dayOfMonth / daysInCurrentMonth;
 
   for (const [category, spent] of spendMap) {
+    if (ALERT_SKIP_CATEGORIES.has(category)) continue; // Skip null/system categories
     const avg = avgMap.get(category);
     if (avg && avg > 50) {
       // Project current spending to full month
