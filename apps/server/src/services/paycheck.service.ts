@@ -142,8 +142,9 @@ export function getPaycheckPlan(userId: string): PaycheckPlan | null {
      WHERE user_id = ? AND amount < 0 AND is_recurring = 1
      AND date >= date('now', '-90 days')
      AND COALESCE(category, '') NOT IN (${DEBT_BILL_CATEGORIES.map(() => '?').join(',')})
-     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%loan%'
-     AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%pymt%'
+     AND COALESCE(category, '') != 'Debt Payments'
+     AND (LOWER(COALESCE(merchant_name, '')) NOT LIKE '%pymt%' OR LOWER(COALESCE(merchant_name, '')) LIKE '%mortgage%')
+     AND (LOWER(COALESCE(merchant_name, '')) NOT LIKE '%loan%' OR LOWER(COALESCE(merchant_name, '')) LIKE '%mortgage%')
      AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%autopay%'
      AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%credit crd%'
      AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%credit card%'

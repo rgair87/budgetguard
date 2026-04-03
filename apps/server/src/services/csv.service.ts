@@ -354,7 +354,7 @@ const DEBT_PAYMENT_KEYWORDS = [
   'auto pay', 'autopay', 'auto pymt',
   'credit crd', 'credit card',
   'loan paymt', 'loan payment', 'loan pymt',
-  'mortgage', 'cmg mortgage', 'loan pay',
+  'loan pay',
   'capital one auto', 'capital one crcardpmt',
   'sofi bank', 'sofi ',
   'discover e-payment', 'discover e payment',
@@ -397,7 +397,7 @@ const NOT_BILL_CATEGORIES = [
   'electronics',
   'pets and pet care',
   'deposits', 'transfers',
-  'loans', 'credit card payments', 'mortgage', // debt, tracked separately
+  'loans', 'credit card payments', // debt, tracked separately (mortgage stays as bill)
 ];
 
 function isBillMerchant(merchantName: string, bankCategory?: string | null): boolean {
