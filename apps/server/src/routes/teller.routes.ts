@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { enrollBank, syncAccounts, recleanMerchantNames, type SyncResult } from '../services/teller.service';
+import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
 
 const router = Router();
 
@@ -218,6 +219,78 @@ router.post('/fix-data', authenticate, async (req: AuthRequest, res: Response) =
   } catch (err: any) {
     console.error('Fix-data error:', err);
     res.status(500).json({ error: 'fix_data_error', message: err.message });
+  }
+});
+
+/**
+ * POST /api/teller/reclassify
+ * Re-classify transactions stuck in Services/Other/uncategorized using AI.
+ */
+router.post('/reclassify', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const db = (await import('../config/db')).default;
+    const userId = req.userId!;
+
+    // Get distinct merchants in junk categories
+    const junkMerchants = db.prepare(
+      `SELECT DISTINCT merchant_name FROM transactions
+       WHERE user_id = ? AND amount < 0
+       AND (category IN ('Services', 'Other') OR category IS NULL OR category = '')
+       AND merchant_name IS NOT NULL AND merchant_name != ''`
+    ).all(userId) as any[];
+
+    const merchantNames = junkMerchants.map((m: any) => m.merchant_name);
+    if (merchantNames.length === 0) {
+      res.json({ success: true, classified: 0, message: 'No merchants to reclassify' });
+      return;
+    }
+
+    console.log(`[Reclassify] ${merchantNames.length} merchants to classify for user ${userId}`);
+
+    // Run AI classification
+    const results = await classifyMerchantsWithAI(merchantNames);
+    if (results.length === 0) {
+      res.json({ success: true, classified: 0, message: 'AI classification returned no results' });
+      return;
+    }
+
+    // Apply classifications
+    const upsertMc = db.prepare(
+      `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, is_bill)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, is_bill = excluded.is_bill`
+    );
+    const updateTxns = db.prepare(
+      `UPDATE transactions SET category = ?
+       WHERE user_id = ? AND LOWER(merchant_name) = ?`
+    );
+    const markRecurring = db.prepare(
+      `UPDATE transactions SET is_recurring = 1
+       WHERE user_id = ? AND LOWER(merchant_name) = ? AND amount < 0`
+    );
+
+    let classified = 0;
+    const { randomUUID } = await import('crypto');
+    for (const c of results) {
+      if (c.category === 'Other' || c.category === 'Services') continue; // Skip if AI also says Other/Services
+      const norm = c.merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
+      upsertMc.run(randomUUID(), userId, norm, c.category, c.isBill ? 1 : 0);
+      updateTxns.run(c.category, userId, norm);
+      if (c.isBill) markRecurring.run(userId, norm);
+      classified++;
+    }
+
+    // Invalidate caches
+    const { invalidateCache } = await import('../utils/cache');
+    invalidateCache(`runway:${userId}`);
+    invalidateCache(`trends:${userId}`);
+    invalidateCache(`predictions:${userId}`);
+
+    console.log(`[Reclassify] Classified ${classified} of ${merchantNames.length} merchants`);
+    res.json({ success: true, classified, total: merchantNames.length, message: `Reclassified ${classified} merchants` });
+  } catch (err: any) {
+    console.error('Reclassify error:', err);
+    res.status(500).json({ error: 'reclassify_error', message: err.message });
   }
 });
 
