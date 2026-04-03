@@ -48,7 +48,29 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
   // Monthly budget = spending money from paycheck plan (income minus bills/debt/savings)
   // This matches what the home page shows, not the partial category budgets table
   const plan = getPaycheckPlan(userId);
-  const monthlyBudget = plan ? Math.max(0, plan.buckets.spending.monthly) : 0;
+  let monthlyBudget = plan ? Math.max(0, plan.buckets.spending.monthly) : 0;
+  const paycheckIntervalDays = getPaycheckInterval(user.pay_frequency);
+
+  // If paycheck plan yields $0 budget (expenses > income), fall back to
+  // spendable balance + expected income for the rest of this month.
+  // This shows "how much you can actually spend" rather than $0.
+  if (monthlyBudget === 0) {
+    // Estimate remaining income this month from paydays
+    let remainingIncome = 0;
+    if (paycheckIntervalDays && spendableIncome > 0) {
+      let pd = user.next_payday ? new Date(user.next_payday + 'T00:00:00') : null;
+      if (pd) {
+        if (paycheckIntervalDays) {
+          while (pd.getTime() < today.getTime()) pd.setDate(pd.getDate() + paycheckIntervalDays);
+        }
+        while (pd.getTime() <= lastDay.getTime()) {
+          if (pd.getTime() > today.getTime()) remainingIncome += spendableIncome;
+          pd = new Date(pd); pd.setDate(pd.getDate() + paycheckIntervalDays);
+        }
+      }
+    }
+    monthlyBudget = Math.round((spendableBalance + remainingIncome) * 100) / 100;
+  }
 
   // Actual non-recurring spend for the requested month (exclude bills — they're already accounted for)
   const monthStart = `${month}-01`;
@@ -97,8 +119,63 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
     }
   }
 
+  // Auto-detect recurring bills from transaction history and project onto calendar
+  // Find recurring merchants, their typical day-of-month, and average amount
+  const recurringBills = db.prepare(
+    `SELECT merchant_name,
+            AVG(ABS(amount)) as avg_amount,
+            GROUP_CONCAT(CAST(strftime('%d', date) AS INTEGER)) as days_of_month,
+            COUNT(*) as occurrences
+     FROM transactions
+     WHERE user_id = ? AND amount < 0 AND is_recurring = 1
+       AND date >= date('now', '-90 days')
+       AND merchant_name IS NOT NULL
+     GROUP BY LOWER(merchant_name)
+     HAVING occurrences >= 2`
+  ).all(userId) as unknown as {
+    merchant_name: string;
+    avg_amount: number;
+    days_of_month: string;
+    occurrences: number;
+  }[];
+
+  for (const bill of recurringBills) {
+    // Find the most common day of month for this bill
+    const days = bill.days_of_month.split(',').map(Number);
+    const dayCounts = new Map<number, number>();
+    for (const d of days) {
+      dayCounts.set(d, (dayCounts.get(d) || 0) + 1);
+    }
+    let bestDay = days[0];
+    let bestCount = 0;
+    for (const [day, count] of dayCounts) {
+      if (count > bestCount) { bestDay = day; bestCount = count; }
+    }
+
+    // Project this bill onto the target month (and next month for near-boundary visibility)
+    const amount = Math.round(bill.avg_amount * 100) / 100;
+    const name = bill.merchant_name;
+
+    // Only add if not already covered by a manual event with a similar name
+    const nameLower = name.toLowerCase();
+    let alreadyCovered = false;
+    for (const evt of events) {
+      if (evt.name && evt.name.toLowerCase().includes(nameLower.substring(0, 10))) {
+        alreadyCovered = true;
+        break;
+      }
+    }
+    if (alreadyCovered) continue;
+
+    // Add to target month
+    const projectedDay = Math.min(bestDay, daysInMonth);
+    const ds = `${month}-${String(projectedDay).padStart(2, '0')}`;
+    const existing = eventDetailsByDate.get(ds) || [];
+    existing.push({ name, amount });
+    eventDetailsByDate.set(ds, existing);
+  }
+
   // Payday tracking (advance past stale dates)
-  const paycheckIntervalDays = getPaycheckInterval(user.pay_frequency);
   let simPayday = user.next_payday ? new Date(user.next_payday + 'T00:00:00') : null;
   if (simPayday) {
     simPayday.setHours(0, 0, 0, 0);
@@ -107,6 +184,10 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
         simPayday.setDate(simPayday.getDate() + paycheckIntervalDays);
       }
     }
+  } else if (paycheckIntervalDays && spendableIncome > 0) {
+    // No next_payday set but pay_frequency exists — estimate next payday as tomorrow + interval
+    simPayday = new Date(today);
+    simPayday.setDate(simPayday.getDate() + 1); // start from tomorrow
   }
 
   // --- Day-by-day simulation from today through end of requested month ---

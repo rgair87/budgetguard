@@ -8,10 +8,7 @@ import InfoTip from '../components/InfoTip';
 import { SkeletonDashboard } from '../components/Skeleton';
 import TellerConnectButton from '../components/TellerConnect';
 import useTrack from '../hooks/useTrack';
-import { USER_CATEGORY_NAMES } from '@runway/shared';
 import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@runway/shared';
-
-const CATEGORY_OPTIONS = USER_CATEGORY_NAMES;
 
 interface CategorySpend {
   category: string;
@@ -209,48 +206,6 @@ function SpendingByCategory() {
   );
 }
 
-// --- Merchant Review (compact inline) ---
-interface UnclassifiedMerchant { merchantName: string; sampleAmount: number; currentCategory: string | null; }
-
-function MerchantReview({ merchants, onDone }: { merchants: UnclassifiedMerchant[]; onDone: () => void }) {
-  const [remaining, setRemaining] = useState(merchants);
-  const [classifying, setClassifying] = useState<string | null>(null);
-
-  const classify = async (merchantName: string, category: string, isBill: boolean) => {
-    setClassifying(merchantName);
-    try {
-      await api.post('/runway/classify-merchant', { merchantName, category, isBill });
-      setRemaining(prev => prev.filter(m => m.merchantName !== merchantName));
-    } catch { /* ignore */ }
-    setClassifying(null);
-  };
-
-  if (remaining.length === 0) return null;
-  const current = remaining[0];
-
-  return (
-    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-indigo-800">Classify: <span className="text-sm text-gray-900">{current.merchantName}</span></p>
-        <button onClick={onDone} className="text-xs text-gray-400">Skip</button>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {CATEGORY_OPTIONS.map(cat => (
-          <button key={cat} disabled={classifying !== null}
-            onClick={() => classify(current.merchantName, cat, false)}
-            className="px-2.5 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-700 active:bg-indigo-100 disabled:opacity-50"
-          >{cat}</button>
-        ))}
-        <button disabled={classifying !== null}
-          onClick={() => classify(current.merchantName, current.currentCategory || 'Utilities', true)}
-          className="px-2.5 py-1 text-xs rounded-md border border-blue-200 bg-white text-blue-700 disabled:opacity-50"
-        >Bill</button>
-      </div>
-      <p className="text-[10px] text-gray-400 mt-1.5">{remaining.length} left to classify</p>
-    </div>
-  );
-}
-
 // --- Alert type ---
 interface Alert {
   id: string; type: string;
@@ -269,8 +224,6 @@ export default function Home() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [events, setEvents] = useState<IncomingEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unclassified, setUnclassified] = useState<UnclassifiedMerchant[]>([]);
-  const [showReview, setShowReview] = useState(true);
   const [hasLinkedBank, setHasLinkedBank] = useState(false);
   const [latestTransactionDate, setLatestTransactionDate] = useState<string | null>(null);
   const [freshnessDismissed, setFreshnessDismissed] = useState(false);
@@ -312,7 +265,6 @@ export default function Home() {
         setLatestTransactionDate(r.data.latestTransactionDate);
       }).catch(() => { errorCount++; }),
       api.get('/events').then((r) => setEvents(r.data)).catch(() => {}),
-      api.get('/runway/review-merchants').then((r) => setUnclassified(r.data.merchants)).catch(() => {}),
       api.get('/advisor/summary').then((r) => setAdvisorSummary(r.data)).catch(() => {}),
       api.get('/alerts').then((r) => setAlerts(r.data.alerts || [])).catch(() => {}),
     ]).finally(() => {
@@ -490,11 +442,6 @@ export default function Home() {
             <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">{score.remainingBudget >= 0 ? 'Budget left' : 'Over budget'} <InfoTip text="How much spending room you have left this month before your next paycheck, based on your income and bills." /></p>
           </div>
         </div>
-      )}
-
-      {/* Merchant review - compact */}
-      {showReview && unclassified.length > 0 && (
-        <MerchantReview merchants={unclassified} onDone={() => setShowReview(false)} />
       )}
 
       {/* Non-critical alerts - collapsed (hide when no data) */}
