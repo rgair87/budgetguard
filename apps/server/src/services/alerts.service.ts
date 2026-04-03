@@ -98,7 +98,7 @@ export function getAlerts(userId: string): Alert[] {
     });
   }
 
-  // 4. Unusual spending (category projected to exceed 50%+ above 3-month average)
+  // 4. Unusual spending (category actually exceeding 3-month average)
   // Skip null/empty categories and system categories (Transfers, Income, etc.)
   const ALERT_SKIP_CATEGORIES = new Set([null, '', 'Transfers', 'Transfer', 'Income', 'Debt Payments', 'Fees']);
   const avgCategorySpend = db.prepare(
@@ -114,30 +114,56 @@ export function getAlerts(userId: string): Alert[] {
 
   const avgMap = new Map(avgCategorySpend.map(c => [c.category, c.avg_monthly]));
 
-  // Pro-rate current month spending to project full month
+  // Get transaction count per category this month (to decide if pro-rating makes sense)
+  const categoryTxnCounts = db.prepare(
+    `SELECT category, COUNT(*) as count, COUNT(DISTINCT date) as distinct_days
+     FROM transactions
+     WHERE user_id = ? AND amount < 0 AND date >= date('now', 'start of month')
+     AND category IS NOT NULL AND category != ''
+     GROUP BY category`
+  ).all(userId) as unknown as { category: string; count: number; distinct_days: number }[];
+  const txnCountMap = new Map(categoryTxnCounts.map(c => [c.category, { count: c.count, days: c.distinct_days }]));
+
   const today = new Date();
   const dayOfMonth = today.getDate();
   const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const monthProgressRatio = dayOfMonth / daysInCurrentMonth;
 
   for (const [category, spent] of spendMap) {
-    if (ALERT_SKIP_CATEGORIES.has(category)) continue; // Skip null/system categories
+    if (ALERT_SKIP_CATEGORIES.has(category)) continue;
     const avg = avgMap.get(category);
-    if (avg && avg > 50) {
-      // Project current spending to full month
-      const projectedMonthly = monthProgressRatio > 0 ? spent / monthProgressRatio : spent;
-      if (projectedMonthly > avg * 1.5) {
-        const pctAbove = Math.round(((projectedMonthly - avg) / avg) * 100);
-        alerts.push({
-          id: `unusual_${category}`,
-          type: 'unusual_spending',
-          severity: 'warning',
-          title: `${category} spending is on pace to be ${pctAbove}% above normal`,
-          body: `You've spent $${spent.toFixed(0)} on ${category} so far this month (on pace for $${Math.round(projectedMonthly)}) vs your $${avg.toFixed(0)} monthly average.`,
-          action: null,
-          actionLink: null,
-        });
-      }
+    if (!avg || avg <= 50) continue;
+
+    const txnInfo = txnCountMap.get(category);
+    const txnCount = txnInfo?.count || 1;
+    const distinctDays = txnInfo?.days || 1;
+
+    // Smart projection: only pro-rate if the category has frequent transactions across multiple days.
+    // Categories with few large transactions (mortgage, insurance, tuition) should NOT be pro-rated —
+    // a $5,000 mortgage on day 1 doesn't mean $50,000/month.
+    let projectedMonthly: number;
+    if (distinctDays >= 3 && txnCount >= 5) {
+      // Frequent spending (dining, gas, groceries) — safe to pro-rate
+      const monthProgressRatio = dayOfMonth / daysInCurrentMonth;
+      projectedMonthly = monthProgressRatio > 0 ? spent / monthProgressRatio : spent;
+    } else {
+      // Infrequent/large transactions (rent, insurance, tuition) — use actual amount
+      projectedMonthly = spent;
+    }
+
+    if (projectedMonthly > avg * 1.5) {
+      const pctAbove = Math.round(((projectedMonthly - avg) / avg) * 100);
+      const isProrated = distinctDays >= 3 && txnCount >= 5;
+      alerts.push({
+        id: `unusual_${category}`,
+        type: 'unusual_spending',
+        severity: 'warning',
+        title: `${category} spending is ${isProrated ? 'on pace to be ' : ''}${pctAbove}% above normal`,
+        body: isProrated
+          ? `You've spent $${spent.toFixed(0)} on ${category} so far this month (on pace for $${Math.round(projectedMonthly)}) vs your $${avg.toFixed(0)} monthly average.`
+          : `You've spent $${spent.toFixed(0)} on ${category} this month vs your $${avg.toFixed(0)} monthly average.`,
+        action: null,
+        actionLink: null,
+      });
     }
   }
 
