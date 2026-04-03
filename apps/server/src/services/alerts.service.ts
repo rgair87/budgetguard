@@ -209,11 +209,13 @@ export function getAlerts(userId: string): Alert[] {
 
   if (excessCash > 0 && monthlyExpenses > 0) {
     // Fetch debt accounts to find payoff targets
+    // Only consider debts with interest > 0% — never recommend paying off 0% promo rates early
     const debtAccounts = db.prepare(
       `SELECT name, type, current_balance, interest_rate, minimum_payment
        FROM accounts
        WHERE user_id = ? AND type IN ('credit', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan')
          AND current_balance > 0
+         AND COALESCE(interest_rate, 0) > 0
        ORDER BY interest_rate DESC`
     ).all(userId) as unknown as {
       name: string; type: string; current_balance: number;
@@ -221,14 +223,16 @@ export function getAlerts(userId: string): Alert[] {
     }[];
 
     if (debtAccounts.length > 0) {
-      // Find highest-interest debt
+      // Find highest-interest debt (already sorted DESC, nulls filtered out)
       const highestInterest = debtAccounts[0];
-      // Find smallest balance debt (for quick wins)
-      const smallestBalance = [...debtAccounts].sort((a, b) => a.current_balance - b.current_balance)[0];
+      // Find smallest balance with meaningful interest (>5%) for quick wins
+      const smallBalanceCandidates = [...debtAccounts]
+        .filter(d => (d.interest_rate || 0) > 5)
+        .sort((a, b) => a.current_balance - b.current_balance);
+      const smallestBalance = smallBalanceCandidates.length > 0 ? smallBalanceCandidates[0] : null;
 
-      // Pick the best target: if smallest balance can be fully paid off with excess cash, suggest that;
-      // otherwise suggest highest-interest debt
-      const target = (smallestBalance.current_balance <= excessCash)
+      // Pick the best target: prefer small payable balance with real interest, otherwise highest rate
+      const target = (smallestBalance && smallestBalance.current_balance <= excessCash)
         ? smallestBalance
         : highestInterest;
 
@@ -237,34 +241,33 @@ export function getAlerts(userId: string): Alert[] {
       const interestRate = target.interest_rate || 0;
       const monthlyInterestCost = Math.round((target.current_balance * (interestRate / 100)) / 12);
 
-      let body: string;
-      let title: string;
+      // Only show alert if there's actual interest savings
+      if (monthlyInterestCost > 0) {
+        let body: string;
+        let title: string;
 
-      if (canPayInFull) {
-        title = `Extra cash could wipe out ${target.name}`;
-        body = `You have $${Math.round(excessCash).toLocaleString()} beyond your 3-month safety net. Paying off ${target.name} ($${Math.round(target.current_balance).toLocaleString()} balance) would free up $${Math.round(minPayment).toLocaleString()}/mo in payments`;
-        if (monthlyInterestCost > 0) {
-          body += ` and save ~$${monthlyInterestCost}/mo in interest`;
+        if (canPayInFull) {
+          title = `Extra cash could wipe out ${target.name}`;
+          body = `You have $${Math.round(excessCash).toLocaleString()} beyond your 3-month safety net. Paying off ${target.name} ($${Math.round(target.current_balance).toLocaleString()} at ${interestRate}% APR) saves $${monthlyInterestCost}/mo in interest`;
+          if (minPayment > 0) {
+            body += ` and frees up $${Math.round(minPayment).toLocaleString()}/mo in payments`;
+          }
+          body += '.';
+        } else {
+          title = `Excess cash? Attack your ${target.name} balance`;
+          body = `You have $${Math.round(excessCash).toLocaleString()} above your 3-month safety net. A lump payment on ${target.name} (${interestRate}% APR, $${Math.round(target.current_balance).toLocaleString()} balance) would save ~$${monthlyInterestCost}/mo in interest.`;
         }
-        body += '.';
-      } else {
-        title = `Excess cash? Attack your ${target.name} balance`;
-        body = `You have $${Math.round(excessCash).toLocaleString()} above your 3-month safety net. A lump payment on ${target.name} (${interestRate > 0 ? interestRate + '% APR, ' : ''}$${Math.round(target.current_balance).toLocaleString()} balance) would cut interest costs`;
-        if (monthlyInterestCost > 0) {
-          body += ` — currently ~$${monthlyInterestCost}/mo in interest charges`;
-        }
-        body += '.';
+
+        alerts.push({
+          id: 'debt_payoff_opportunity',
+          type: 'debt_payoff_opportunity',
+          severity: 'info',
+          title,
+          body,
+          action: canPayInFull ? `Pay off ${target.name} in full` : `Make extra payment on ${target.name}`,
+          actionLink: '/debt',
+        });
       }
-
-      alerts.push({
-        id: 'debt_payoff_opportunity',
-        type: 'debt_payoff_opportunity',
-        severity: 'info',
-        title,
-        body,
-        action: canPayInFull ? `Pay off ${target.name} in full` : `Make extra payment on ${target.name}`,
-        actionLink: '/debt',
-      });
     }
   }
 
