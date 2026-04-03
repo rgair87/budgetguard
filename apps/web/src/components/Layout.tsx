@@ -14,6 +14,7 @@ import {
   Scissors,
   MessageCircle,
   Receipt,
+  Wallet,
   Settings,
   LayoutGrid,
   Lightbulb,
@@ -58,6 +59,7 @@ const NAV_GROUPS: Record<string, NavEntry> = {
     icon: LayoutGrid,
     items: [
       { to: '/calendar', label: 'Calendar', icon: Calendar },
+      { to: '/budgets', label: 'Budgets', icon: Wallet },
       { to: '/debt', label: 'Debt', icon: CreditCard },
       { to: '/subscriptions', label: 'Recurring', icon: Repeat },
       { to: '/goals', label: 'Goals', icon: Target },
@@ -85,7 +87,7 @@ function isGroup(entry: NavEntry): entry is NavGroup {
 
 function getActiveGroup(pathname: string): string {
   if (pathname === '/') return 'home';
-  if (['/calendar', '/debt', '/subscriptions', '/goals'].some(p => pathname.startsWith(p))) return 'plan';
+  if (['/calendar', '/budgets', '/debt', '/subscriptions', '/goals'].some(p => pathname.startsWith(p))) return 'plan';
   if (['/advisor', '/chat', '/cut-this', '/transactions', '/csv-upload', '/predictions', '/trends', '/negotiate', '/simulator'].some(p => pathname.startsWith(p))) return 'insights';
   if (pathname.startsWith('/settings') || pathname.startsWith('/onboarding')) return 'settings';
   return 'home';
