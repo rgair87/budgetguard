@@ -55,6 +55,26 @@ export default function Negotiate() {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
+  const [successId, setSuccessId] = useState<string | null>(null);
+  const [newAmount, setNewAmount] = useState('');
+
+  // Persist completed items in localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('negotiate_completed');
+    if (saved) {
+      try { setCompletedIds(new Set(JSON.parse(saved))); } catch {}
+    }
+  }, []);
+
+  function markCompleted(id: string) {
+    setCompletedIds(prev => {
+      const next = new Set([...prev, id]);
+      localStorage.setItem('negotiate_completed', JSON.stringify([...next]));
+      return next;
+    });
+    setSuccessId(null);
+    setNewAmount('');
+  }
 
   useEffect(() => {
     api.get('/negotiate')
@@ -344,10 +364,30 @@ export default function Negotiate() {
                     </div>
                   )}
 
+                  {/* Success input */}
+                  {successId === s.id && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mt-3 animate-fade-in">
+                      <p className="text-xs font-semibold text-emerald-700 mb-2">Nice! What's your new rate/amount?</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-emerald-600">$</span>
+                        <input type="number" value={newAmount} onChange={e => setNewAmount(e.target.value)}
+                          placeholder={`Was $${s.currentAmount.toFixed(0)}/mo`}
+                          className="flex-1 text-sm border border-emerald-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-400/30" />
+                        <span className="text-xs text-emerald-600">/mo</span>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => markCompleted(s.id)}
+                          className="text-xs font-medium text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-lg">
+                          {newAmount ? `Save ($${Math.round(s.currentAmount - parseFloat(newAmount))}/mo saved!)` : 'Skip amount'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action buttons */}
                   <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                     <button
-                      onClick={() => setCompletedIds(prev => new Set([...prev, s.id]))}
+                      onClick={() => setSuccessId(s.id)}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 transition-colors"
                     >
                       <Check className="w-4 h-4" />
@@ -363,7 +403,7 @@ export default function Negotiate() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => setCompletedIds(prev => new Set([...prev, s.id]))}
+                        onClick={() => markCompleted(s.id)}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 text-slate-500 text-sm font-medium hover:bg-slate-100 transition-colors"
                       >
                         <X className="w-4 h-4" />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Minus, Sparkles, AlertTriangle, BarChart3 } from 'lucide-react';
 import api from '../api/client';
 import useTrack from '../hooks/useTrack';
@@ -178,7 +179,7 @@ export default function Trends() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900 text-sm truncate">{mt.merchantName}</p>
+                      <Link to={`/transactions?search=${encodeURIComponent(mt.merchantName)}`} className="font-medium text-gray-900 text-sm truncate hover:text-indigo-600 hover:underline transition-colors">{mt.merchantName}</Link>
                       <TrendBadge trend={mt.trend} changePercent={mt.changePercent} />
                       {mt.isRecurring && (
                         <span className="text-[10px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full font-medium ring-1 ring-indigo-200/60">recurring</span>
@@ -229,7 +230,7 @@ export default function Trends() {
               <div key={ct.category} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900 text-sm">{ct.category}</p>
+                    <Link to={`/transactions?search=${encodeURIComponent(ct.category)}`} className="font-medium text-gray-900 text-sm hover:text-indigo-600 hover:underline transition-colors">{ct.category}</Link>
                     <TrendBadge trend={ct.trend} changePercent={ct.changePercent} />
                   </div>
                   <div className="text-right">
