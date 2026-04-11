@@ -148,6 +148,11 @@ export default function PaycheckPlan() {
               </div>
               <span className="text-sm font-semibold text-gray-900 ml-3">${fmt(buckets.debt.amount)}</span>
             </button>
+            {buckets.debt.amount > 0 && (
+              <div className="px-5 pb-1 border-t border-gray-50">
+                <Link to="/debt" className="text-xs text-indigo-500 hover:text-indigo-700 font-medium">Manage payoff plan &rarr;</Link>
+              </div>
+            )}
             {expanded === 'debt' && buckets.debt.details.length > 0 && (
               <div className="px-5 pb-3 space-y-0.5">
                 {buckets.debt.details.map((d, i) => (
@@ -174,6 +179,11 @@ export default function PaycheckPlan() {
           </div>
           <span className="text-sm font-semibold text-gray-900 ml-3">${fmt(buckets.savings.amount)}</span>
         </div>
+        {buckets.savings.amount > 0 && (
+          <div className="px-5 pb-1 border-t border-gray-50">
+            <Link to="/goals" className="text-xs text-indigo-500 hover:text-indigo-700 font-medium">Set savings goals &rarr;</Link>
+          </div>
+        )}
       </div>
 
       {/* ===== SPENDING SECTION: The Hero ===== */}

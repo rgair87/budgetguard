@@ -94,6 +94,8 @@ export default function Goals() {
   const [addAmount, setAddAmount] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [expandedInsights, setExpandedInsights] = useState<Record<string, boolean>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', target_amount: '', deadline: '' });
 
   useEffect(() => {
     loadGoals();
@@ -139,6 +141,26 @@ export default function Goals() {
 
   async function handleDelete(goalId: string) {
     await api.delete(`/goals/${goalId}`);
+    loadGoals();
+  }
+
+  function startEdit(goal: Goal) {
+    setEditingId(goal.id);
+    setEditForm({
+      name: goal.name,
+      target_amount: String(goal.target_amount),
+      deadline: goal.deadline || '',
+    });
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    await api.patch(`/goals/${editingId}`, {
+      name: editForm.name,
+      target_amount: parseFloat(editForm.target_amount) || 0,
+      deadline: editForm.deadline || null,
+    });
+    setEditingId(null);
     loadGoals();
   }
 
@@ -358,6 +380,13 @@ export default function Goals() {
                       </span>
                     )}
                     <button
+                      onClick={() => startEdit(goal)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition"
+                      title="Edit goal"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 2l3 3-9 9H2v-3L11 2z"/></svg>
+                    </button>
+                    <button
                       onClick={() => handleDelete(goal.id)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition"
                       title="Remove goal"
@@ -366,6 +395,33 @@ export default function Goals() {
                     </button>
                   </div>
                 </div>
+
+                {/* Inline edit form */}
+                {editingId === goal.id && (
+                  <div className="mt-3 bg-slate-50 rounded-xl p-3 space-y-2 animate-fade-in">
+                    <input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="Goal name" className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Target amount</label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-400">$</span>
+                          <input type="number" value={editForm.target_amount} onChange={e => setEditForm(p => ({ ...p, target_amount: e.target.value }))}
+                            className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Deadline</label>
+                        <input type="date" value={editForm.deadline} onChange={e => setEditForm(p => ({ ...p, deadline: e.target.value }))}
+                          className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => setEditingId(null)} className="text-xs text-slate-500 px-3 py-1.5">Cancel</button>
+                      <button onClick={saveEdit} className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg">Save</button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Progress bar */}
                 <div className="mt-4">

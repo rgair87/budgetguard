@@ -543,6 +543,22 @@ export default function Home() {
         <PaycheckPlan />
       </Section>
 
+      {/* Debt & Goals quick cards */}
+      {score && score.totalDebt > 0 && (
+        <div className="grid grid-cols-2 gap-3 animate-fade-in">
+          <Link to="/debt" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 hover:border-amber-200 hover:shadow-md transition-all block">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Debt Focus</p>
+            <p className="text-lg font-bold text-slate-900">${Math.round(score.totalDebt).toLocaleString()}</p>
+            <p className="text-xs text-slate-500 mt-0.5">View payoff plan &rarr;</p>
+          </Link>
+          <Link to="/goals" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 hover:border-emerald-200 hover:shadow-md transition-all block">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Savings Goals</p>
+            <p className="text-lg font-bold text-slate-900">{plan ? `$${Math.round(plan.buckets.savings.amount).toLocaleString()}/mo` : 'Set up'}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Track progress &rarr;</p>
+          </Link>
+        </div>
+      )}
+
       {/* Spending breakdown - collapsed, shows top 5 */}
       <Section title="Where Your Money Goes" linkTo="/transactions" linkLabel="Transactions" defaultOpen={false} icon={CreditCard}>
         <SpendingByCategory />
@@ -590,12 +606,12 @@ export default function Home() {
 
       {/* Quick actions row */}
       <div className="grid grid-cols-3 gap-3 animate-fade-in">
-        <Link to="/simulator" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
-            <Sparkles className="w-5 h-5 text-white" />
+        <Link to="/debt" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover group">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
+            <CreditCard className="w-5 h-5 text-white" />
           </div>
-          <p className="text-xs font-semibold text-slate-700">What If?</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Simulate expenses</p>
+          <p className="text-xs font-semibold text-slate-700">Debt Payoff</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Your payoff plan</p>
         </Link>
         <Link to="/goals" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
