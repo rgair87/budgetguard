@@ -46,6 +46,7 @@ export default function Transactions() {
     return param === 'this_month' ? getMonthStart() : (param || '');
   });
   const [spendingOnly, setSpendingOnly] = useState(() => searchParams.get('spendingOnly') === 'true');
+  const [sort, setSort] = useState('date_desc');
   const [categories, setCategories] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -71,13 +72,14 @@ export default function Transactions() {
     if (categoryFilter) params.set('category', categoryFilter);
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (spendingOnly) params.set('spendingOnly', 'true');
+    if (sort !== 'date_desc') params.set('sort', sort);
     api.get(`/transactions?${params}`)
       .then(r => {
         setTransactions(r.data.transactions);
         setTotal(r.data.total);
       })
       .finally(() => setLoading(false));
-  }, [search, categoryFilter, offset, dateFrom, spendingOnly]);
+  }, [search, categoryFilter, offset, dateFrom, spendingOnly, sort]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -301,6 +303,23 @@ export default function Transactions() {
           <option value="">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        <button
+          onClick={() => { setSpendingOnly(!spendingOnly); setOffset(0); }}
+          className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+            spendingOnly
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-medium'
+              : 'border-gray-300 text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          {spendingOnly ? 'Spending only' : 'All txns'}
+        </button>
+        <select value={sort} onChange={e => { setSort(e.target.value); setOffset(0); }}
+          className="text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-500">
+          <option value="date_desc">Newest first</option>
+          <option value="date_asc">Oldest first</option>
+          <option value="amount_desc">Largest first</option>
+          <option value="amount_asc">Smallest first</option>
+        </select>
       </div>
 
       {(search || dateFrom || spendingOnly) && (
@@ -328,7 +347,10 @@ export default function Transactions() {
             <div key={tx.id} className="px-4 py-3 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-gray-900 truncate">{tx.merchant_name || 'Unknown'}</p>
+                  <button
+                    onClick={() => { setSearchInput(tx.merchant_name || ''); setSearch(tx.merchant_name || ''); setOffset(0); }}
+                    className="text-sm font-medium text-gray-900 truncate hover:text-indigo-600 hover:underline transition-colors text-left"
+                  >{tx.merchant_name || 'Unknown'}</button>
                   {tx.is_recurring ? <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Recurring</span> : null}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">

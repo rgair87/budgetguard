@@ -59,7 +59,12 @@ router.get('/', authenticate, (req: TieredRequest, res: Response) => {
      FROM transactions t
      JOIN accounts a ON t.account_id = a.id
      WHERE ${where}
-     ORDER BY t.date DESC
+     ORDER BY ${
+       req.query.sort === 'amount_desc' ? 'ABS(t.amount) DESC' :
+       req.query.sort === 'amount_asc' ? 'ABS(t.amount) ASC' :
+       req.query.sort === 'date_asc' ? 't.date ASC' :
+       't.date DESC'
+     }
      LIMIT ? OFFSET ?`
   ).all(...params, limit, offset);
 
