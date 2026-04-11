@@ -341,15 +341,15 @@ export default function Calendar() {
       </div>
 
       {/* ---- Month Summary Stat Cards ---- */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Left to spend */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-sm">
           <div className="absolute top-2 right-2">
-            <InfoTip text="Your monthly budget minus what you've already spent on everyday things like groceries, dining, and shopping. Bills aren't included because they're already accounted for." />
+            <InfoTip text="How much you have left to spend this month based on your budget or available cash, minus what you've already spent on everyday purchases. Bills are tracked separately." />
           </div>
           <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-100">Left to Spend</p>
           <p className="text-xl font-bold mt-1">${fmt(Math.max(0, data.monthlyBudget - data.spentSoFar))}</p>
-          <p className="text-[10px] text-emerald-200 mt-0.5">of ${fmt(data.monthlyBudget)}/mo</p>
+          <p className="text-[10px] text-emerald-200 mt-0.5">${fmt(data.spentSoFar)} of ${fmt(data.monthlyBudget)} spent</p>
         </div>
 
         {/* Spent so far */}

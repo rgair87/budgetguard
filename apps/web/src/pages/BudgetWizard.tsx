@@ -277,13 +277,13 @@ function StepDebt({ debts, onChange }: { debts: DebtItem[]; onChange: (d: DebtIt
               {Object.entries(DEBT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <input type="number" value={newDebt.balance} onChange={e => setNewDebt(p => ({ ...p, balance: e.target.value }))} placeholder="Balance"
-              className="flex-1 text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5" />
+              className="text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5" />
             <input type="number" value={newDebt.apr} onChange={e => setNewDebt(p => ({ ...p, apr: e.target.value }))} placeholder="APR %"
-              className="w-20 text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5" />
+              className="text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5" />
             <input type="number" value={newDebt.minimumPayment} onChange={e => setNewDebt(p => ({ ...p, minimumPayment: e.target.value }))} placeholder="Min $"
-              className="w-20 text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5" />
+              className="text-sm bg-white border border-slate-200 rounded-lg px-3 py-1.5" />
           </div>
           <div className="flex gap-2">
             <button onClick={addDebt} className="text-sm font-medium text-indigo-600">Add</button>

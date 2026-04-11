@@ -333,7 +333,17 @@ export default function Transactions() {
 
       {/* Transaction list */}
       {loading ? (
-        <div className="text-center text-gray-500 py-8">Loading...</div>
+        <div className="space-y-2 animate-pulse">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 px-4 py-3 flex justify-between">
+              <div className="space-y-1.5 flex-1">
+                <div className="h-4 bg-slate-100 rounded w-32" />
+                <div className="h-3 bg-slate-100 rounded w-48" />
+              </div>
+              <div className="h-4 bg-slate-100 rounded w-16" />
+            </div>
+          ))}
+        </div>
       ) : transactions.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500 text-sm">{search || categoryFilter ? 'No transactions match your filters.' : 'No transactions yet.'}</p>

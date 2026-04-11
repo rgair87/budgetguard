@@ -436,7 +436,7 @@ export default function Home() {
 
       {/* Quick stats row */}
       {score && accounts.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fade-in">
           <Link to="/transactions?dateFrom=this_month&spendingOnly=true" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
             <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-2">
               <Wallet className="w-4 h-4 text-slate-500" />
@@ -605,7 +605,7 @@ export default function Home() {
       )}
 
       {/* Quick actions row */}
-      <div className="grid grid-cols-3 gap-3 animate-fade-in">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fade-in">
         <Link to="/debt" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
             <CreditCard className="w-5 h-5 text-white" />

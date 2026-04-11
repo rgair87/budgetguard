@@ -27,7 +27,7 @@ export function SkeletonDashboard() {
   return (
     <div className="space-y-4 animate-fade-in">
       <SkeletonHero />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[1, 2, 3].map(i => (
           <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
             <div className="skeleton h-2 w-12" />

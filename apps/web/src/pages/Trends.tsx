@@ -92,7 +92,15 @@ export default function Trends() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-gray-500 text-center py-12">Analyzing spending trends...</div>;
+  if (loading) return (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-24 bg-slate-100 rounded-2xl" />
+      <div className="h-10 bg-slate-100 rounded-xl w-48" />
+      <div className="space-y-3">
+        {[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-2xl" />)}
+      </div>
+    </div>
+  );
   if (error) return <div className="bg-red-50 text-red-600 text-sm p-4 rounded-2xl border border-red-200/60">{error}</div>;
   if (!data) return null;
 
