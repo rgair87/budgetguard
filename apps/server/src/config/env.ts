@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({ override: true });
+// Try multiple .env locations (server dir + project root)
+dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
+dotenv.config({ override: true }); // also try CWD
 
 function required(key: string): string {
   const val = process.env[key];
@@ -22,4 +24,9 @@ export const env = {
   CORS_ORIGINS: process.env.CORS_ORIGINS || 'http://localhost:5173',
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   APP_URL: process.env.APP_URL || 'http://localhost:5173',
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
+  STRIPE_PLUS_PRICE_ID: process.env.STRIPE_PLUS_PRICE_ID || '',
+  STRIPE_PRO_PRICE_ID: process.env.STRIPE_PRO_PRICE_ID || '',
+  VITE_STRIPE_PUBLISHABLE_KEY: process.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
 };

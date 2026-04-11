@@ -25,6 +25,7 @@ import trendsRoutes from './routes/trends.routes';
 import negotiateRoutes from './routes/negotiate.routes';
 import familyRoutes from './routes/family.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import stripeRoutes from './routes/stripe.routes';
 
 const app = express();
 
@@ -37,6 +38,8 @@ app.use(cors({
   origin: env.CORS_ORIGINS.split(','),
   credentials: true,
 }));
+// Stripe webhook needs raw body BEFORE json parser
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '5mb' }));
 
 // Request logging
@@ -72,6 +75,7 @@ app.use('/api/trends', trendsRoutes);
 app.use('/api/negotiate', negotiateRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

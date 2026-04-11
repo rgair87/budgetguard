@@ -1328,7 +1328,13 @@ export default function Settings() {
                 <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 5 savings goals</li>
                 <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 3-month calendar</li>
               </ul>
-              <button onClick={() => { api.post('/settings/upgrade', { tier: 'plus' }).then(() => window.location.reload()); }}
+              <button onClick={async () => {
+                  try {
+                    const { data } = await api.post('/stripe/create-checkout', { tier: 'plus' });
+                    if (data.url) window.location.href = data.url;
+                    else { await api.post('/settings/upgrade', { tier: 'plus' }); window.location.reload(); }
+                  } catch { await api.post('/settings/upgrade', { tier: 'plus' }); window.location.reload(); }
+                }}
                 className={`w-full text-sm py-2.5 rounded-xl font-semibold transition-all ${tierInfo?.tier === 'plus' ? 'bg-slate-200 text-slate-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                 disabled={tierInfo?.tier === 'plus'}>
                 {tierInfo?.tier === 'plus' ? 'Current plan' : 'Subscribe to Plus'}
@@ -1349,7 +1355,13 @@ export default function Settings() {
                 <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 6-month calendar</li>
                 <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Unlimited goals</li>
               </ul>
-              <button onClick={() => { api.post('/settings/upgrade', { tier: 'pro' }).then(() => window.location.reload()); }}
+              <button onClick={async () => {
+                  try {
+                    const { data } = await api.post('/stripe/create-checkout', { tier: 'pro' });
+                    if (data.url) window.location.href = data.url;
+                    else { await api.post('/settings/upgrade', { tier: 'pro' }); window.location.reload(); }
+                  } catch { await api.post('/settings/upgrade', { tier: 'pro' }); window.location.reload(); }
+                }}
                 className="w-full bg-violet-600 text-white text-sm py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition-all shadow-sm">
                 Subscribe to Pro
               </button>
@@ -1362,6 +1374,36 @@ export default function Settings() {
                 : 'Your free trial has ended. Subscribe to continue using premium features.'}
             </p>
           )}
+        </>
+      )}
+
+      {/* ────────── MANAGE SUBSCRIPTION (paid users) ────────── */}
+      {(tierInfo?.tier === 'plus' || tierInfo?.tier === 'pro') && (
+        <>
+          <SectionHeader icon={Crown} label="Subscription" />
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <SettingsRow>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">
+                    {tierInfo.tier === 'pro' ? 'Pro' : 'Plus'} Plan
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {tierInfo.tier === 'pro' ? '$14.99' : '$7.99'}/month
+                  </p>
+                </div>
+                <button onClick={async () => {
+                    try {
+                      const { data } = await api.post('/stripe/portal');
+                      if (data.url) window.location.href = data.url;
+                    } catch {}
+                  }}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                  Manage subscription
+                </button>
+              </div>
+            </SettingsRow>
+          </div>
         </>
       )}
 

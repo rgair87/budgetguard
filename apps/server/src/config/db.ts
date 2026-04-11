@@ -33,6 +33,8 @@ try { db.exec("ALTER TABLE accounts ADD COLUMN teller_access_token TEXT"); } cat
 try { db.exec("ALTER TABLE accounts ADD COLUMN institution_name TEXT"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN wizard_completed INTEGER DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN onboarding_completed INTEGER DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT"); } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT"); } catch {}
 // Create unique index for teller upserts (can't use UNIQUE constraint in ALTER TABLE)
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_user_teller ON accounts(user_id, teller_account_id)"); } catch {}
 
