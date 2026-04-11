@@ -236,6 +236,8 @@ export default function Home() {
   const [clearingDemo, setClearingDemo] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [tier, setTier] = useState<string>('pro');
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
   // Detect demo data by checking for the exact set of demo account names
   const DEMO_ACCOUNT_NAMES = ['Main Checking', 'Emergency Savings', 'Chase Visa', 'Car Loan'];
@@ -264,6 +266,8 @@ export default function Home() {
         setAccounts(r.data.accounts);
         setHasLinkedBank(r.data.hasLinkedBank);
         setWizardCompleted(!!r.data.wizardCompleted);
+        if (r.data.tier) setTier(r.data.tier);
+        if (r.data.trialDaysLeft !== undefined) setTrialDaysLeft(r.data.trialDaysLeft);
         setLatestTransactionDate(r.data.latestTransactionDate);
       }).catch(() => { errorCount++; }),
       api.get('/events').then((r) => setEvents(r.data)).catch(() => {}),
@@ -317,6 +321,36 @@ export default function Home() {
           </button>
         </div>
       )}
+      {/* Trial banner */}
+      {trialDaysLeft !== null && trialDaysLeft > 0 && trialDaysLeft <= 7 && (
+        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Sparkles className="w-4 h-4 text-white shrink-0" />
+            <p className="text-sm font-medium text-white">
+              {trialDaysLeft === 1 ? 'Last day of your free trial!' : `${trialDaysLeft} days left in your free trial`}
+            </p>
+          </div>
+          <Link to="/settings" className="text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+            Choose a plan
+          </Link>
+        </div>
+      )}
+
+      {/* Trial expired banner */}
+      {trialDaysLeft !== null && trialDaysLeft === 0 && tier === 'free' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-red-800">Your free trial has ended</p>
+              <p className="text-xs text-red-600 mt-0.5">Subscribe to keep using AI insights, bank sync, and more.</p>
+            </div>
+            <Link to="/settings" className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors shrink-0">
+              View plans
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Demo data banner */}
       {isDemoData && !demoBannerDismissed && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">

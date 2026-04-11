@@ -23,13 +23,15 @@ router.get('/', authenticate, attachTier, (req: TieredRequest, res: Response) =>
   const tier = req.tier!;
   const limits = TIER_LIMITS[tier];
 
-  res.json({ user, accounts, tier, limits });
+  res.json({ user, accounts, tier, limits, trialDaysLeft: req.trialDaysLeft ?? null });
 });
 
-// Upgrade to Pro (placeholder — in production this would go through Stripe)
+// Upgrade (placeholder — in production this would go through Stripe)
 router.post('/upgrade', authenticate, (req: AuthRequest, res: Response) => {
-  db.prepare("UPDATE users SET subscription_status = 'active' WHERE id = ?").run(req.userId!);
-  res.json({ success: true, message: 'Upgraded to Pro!' });
+  const tier = req.body?.tier || 'plus';
+  const status = tier === 'pro' ? 'pro' : 'plus';
+  db.prepare('UPDATE users SET subscription_status = ? WHERE id = ?').run(status, req.userId!);
+  res.json({ success: true, message: `Upgraded to ${status}!` });
 });
 
 // Downgrade to free

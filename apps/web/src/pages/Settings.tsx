@@ -410,8 +410,9 @@ function ImportData() {
 }
 
 interface TierInfo {
-  tier: 'free' | 'pro';
+  tier: 'free' | 'plus' | 'pro';
   limits: Record<string, any>;
+  trialDaysLeft?: number | null;
 }
 
 /* ───────── Privacy & Data section ───────── */
@@ -628,7 +629,7 @@ export default function Settings() {
     api.get('/settings')
       .then(r => {
         setData(r.data);
-        setTierInfo({ tier: r.data.tier, limits: r.data.limits });
+        setTierInfo({ tier: r.data.tier, limits: r.data.limits, trialDaysLeft: r.data.trialDaysLeft });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -1310,35 +1311,57 @@ export default function Settings() {
       {/* ────────── IMPORT DATA ────────── */}
       <ImportData />
 
-      {/* ────────── PRO UPGRADE (free tier only) ────────── */}
+      {/* ────────── SUBSCRIPTION PLANS ────────── */}
       {tierInfo?.tier !== 'pro' && (
         <>
-          <SectionHeader icon={Crown} label="Go Pro" />
-          <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/20 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-            <div className="relative">
-              <p className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Crown className="w-5 h-5 text-amber-300" />
-                Unlock Pro Features
-              </p>
-              <ul className="text-xs text-white/80 space-y-1.5 mb-4">
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> 50 AI chat messages/day (vs 15 free)</li>
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Bank sync via Teller</li>
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Weekly advisor refresh (vs biweekly)</li>
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> 6-month calendar projections (vs 2)</li>
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Transaction export (CSV)</li>
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Unlimited CSV imports &amp; savings goals</li>
-                <li className="flex items-center gap-1.5"><span className="text-emerald-300">&#10003;</span> Subscription management</li>
+          <SectionHeader icon={Crown} label="Choose Your Plan" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Plus */}
+            <div className={`rounded-2xl p-5 border-2 transition-all ${tierInfo?.tier === 'plus' ? 'border-indigo-400 bg-indigo-50/50' : 'border-slate-200 bg-white'}`}>
+              <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Plus</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">$7.99<span className="text-sm font-normal text-slate-400">/mo</span></p>
+              <ul className="text-xs text-slate-600 space-y-1.5 mt-3 mb-4">
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Bank sync (Teller)</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> AI Advisor (1x/month)</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 15 chat messages/day</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> CSV export</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 5 savings goals</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 3-month calendar</li>
               </ul>
-              <button
-                onClick={handleUpgrade}
-                className="w-full bg-white text-indigo-700 text-sm py-3 rounded-xl font-semibold hover:bg-indigo-50 shadow-sm transition-all"
-              >
-                Upgrade to Pro
+              <button onClick={() => { api.post('/settings/upgrade', { tier: 'plus' }).then(() => window.location.reload()); }}
+                className={`w-full text-sm py-2.5 rounded-xl font-semibold transition-all ${tierInfo?.tier === 'plus' ? 'bg-slate-200 text-slate-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                disabled={tierInfo?.tier === 'plus'}>
+                {tierInfo?.tier === 'plus' ? 'Current plan' : 'Subscribe to Plus'}
+              </button>
+            </div>
+            {/* Pro */}
+            <div className="rounded-2xl p-5 border-2 border-violet-400 bg-gradient-to-br from-violet-50 to-purple-50 relative">
+              <span className="absolute -top-2.5 right-4 text-[10px] font-bold bg-violet-600 text-white px-2.5 py-0.5 rounded-full">Best value</span>
+              <p className="text-xs font-bold text-violet-600 uppercase tracking-wider">Pro</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">$14.99<span className="text-sm font-normal text-slate-400">/mo</span></p>
+              <ul className="text-xs text-slate-600 space-y-1.5 mt-3 mb-4">
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Everything in Plus</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Unlimited AI Advisor</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 50 chat messages/day</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Cut This recommendations</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Bill negotiation scripts</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Family accounts</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 6-month calendar</li>
+                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Unlimited goals</li>
+              </ul>
+              <button onClick={() => { api.post('/settings/upgrade', { tier: 'pro' }).then(() => window.location.reload()); }}
+                className="w-full bg-violet-600 text-white text-sm py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition-all shadow-sm">
+                Subscribe to Pro
               </button>
             </div>
           </div>
+          {data?.user?.subscription_status === 'trial' && (
+            <p className="text-xs text-slate-400 text-center mt-2">
+              {tierInfo?.trialDaysLeft && tierInfo.trialDaysLeft > 0
+                ? `${tierInfo.trialDaysLeft} days left in your free trial. You have full Pro access until then.`
+                : 'Your free trial has ended. Subscribe to continue using premium features.'}
+            </p>
+          )}
         </>
       )}
 

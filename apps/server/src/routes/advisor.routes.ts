@@ -1,12 +1,13 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
-import { generateAdvisorReport, getAdvisorSummary } from '../services/advisor.service';
+import { attachTier, requirePlus, TieredRequest } from '../middleware/tier';
+import { generateAdvisorReport, getAdvisorSummary, invalidateAdvisorCache } from '../services/advisor.service';
 import { calculateHealthScore } from '../services/healthscore.service';
 
 const router = Router();
 
-// Full report (for Advisor page)
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+// Full report (for Advisor page) — requires Plus or Pro
+router.get('/', authenticate, attachTier, requirePlus, async (req: TieredRequest, res: Response) => {
   try {
     const forceRefresh = req.query.refresh === 'true';
     const report = await generateAdvisorReport(req.userId!, forceRefresh);
@@ -32,6 +33,12 @@ router.get('/health-score', authenticate, (req: AuthRequest, res: Response) => {
     console.error('[HealthScore] Error:', err.message);
     res.status(500).json({ error: 'score_error', message: 'Failed to calculate health score' });
   }
+});
+
+// Invalidate cache (force fresh report on next visit)
+router.post('/invalidate-cache', authenticate, (req: AuthRequest, res: Response) => {
+  invalidateAdvisorCache(req.userId!);
+  res.json({ success: true });
 });
 
 export default router;

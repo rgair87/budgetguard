@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { attachTier, requirePro, TieredRequest } from '../middleware/tier';
 import {
   createFamily,
   getFamily,
@@ -11,6 +12,7 @@ import {
 
 const router = Router();
 router.use(authenticate);
+router.use(attachTier);
 
 router.get('/', (req: AuthRequest, res: Response) => {
   try {
@@ -21,7 +23,7 @@ router.get('/', (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', (req: AuthRequest, res: Response) => {
+router.post('/', requirePro, (req: TieredRequest, res: Response) => {
   try {
     const { name } = req.body;
     const family = createFamily(req.userId!, name);
@@ -61,7 +63,7 @@ router.post('/accept', (req: AuthRequest, res: Response) => {
 
 router.delete('/members/:id', (req: AuthRequest, res: Response) => {
   try {
-    removeMember(req.userId!, req.params.id);
+    removeMember(req.userId!, req.params.id as string);
     res.json({ ok: true });
   } catch (e: any) {
     res.status(400).json({ error: e.message });

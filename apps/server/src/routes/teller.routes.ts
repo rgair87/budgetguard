@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
+import { attachTier, requirePlus, TieredRequest } from '../middleware/tier';
 import { enrollBank, syncAccounts, recleanMerchantNames, type SyncResult } from '../services/teller.service';
 import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
 import { detectAndFlagRecurring } from '../services/csv.service';
@@ -11,7 +12,8 @@ const router = Router();
  * Called after Teller Connect completes on the frontend.
  * Stores the access token and syncs accounts + transactions.
  */
-router.post('/enroll', authenticate, async (req: AuthRequest, res: Response) => {
+// Bank sync requires Plus or Pro
+router.post('/enroll', authenticate, attachTier, requirePlus, async (req: TieredRequest, res: Response) => {
   try {
     const { accessToken } = req.body;
     if (!accessToken) {

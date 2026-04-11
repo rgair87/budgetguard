@@ -1,10 +1,12 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
+import { attachTier, requirePro, TieredRequest } from '../middleware/tier';
 import { generateCutRecommendations } from '../services/cutthis.service';
 
 const router = Router();
 
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+// Pro only — AI-powered recommendations
+router.get('/', authenticate, attachTier, requirePro, async (req: TieredRequest, res: Response) => {
   try {
     const forceRefresh = req.query.refresh === 'true';
     const result = await generateCutRecommendations(req.userId!, forceRefresh);
