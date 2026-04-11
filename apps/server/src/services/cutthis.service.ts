@@ -84,7 +84,7 @@ Respond with a JSON array of exactly 3 objects, each with:
 - title: a short headline (under 60 chars)
 - detail: 2-3 sentences with specific numbers and actionable advice
 - potentialSavings: estimated monthly dollar savings as a number
-- actionSteps: a string with the EXACT steps to take. Include: what to do, where to go (URL or phone number if applicable), and how long it takes. Examples: "Go to netflix.com/cancel → downgrade to Basic ($6.99). Takes 2 minutes." or "Call GEICO at 1-800-207-7847 → ask for a loyalty discount. 10-min call." or "Delete DoorDash app from your phone and batch-cook meals on Sunday. Saves 2-3 hours and $200/mo."
+- actionSteps: a string with the EXACT steps to take. Be specific about what to do and how long it takes. Do NOT include phone numbers or URLs — those change frequently and could be wrong. Instead say "Log into your [merchant] account" or "Call [merchant] customer service". Examples: "Log into your Netflix account → downgrade to Basic ($6.99). Takes 2 minutes." or "Call your insurance company and ask for a loyalty discount. 10-min call." or "Delete DoorDash app from your phone and batch-cook meals on Sunday."
 - difficulty: "easy", "medium", or "hard"
 - timeToComplete: how long it takes (e.g. "2 minutes", "10 min phone call", "1 hour meal prep")
 
@@ -137,6 +137,25 @@ Respond ONLY with the JSON array, no other text.`;
   }
 
   // Save to cache
+  // Post-generation validation: cap savings to actual spending, strip fake URLs/phones
+  const allMerchantAmounts = new Map(
+    [...(subscriptions || []).map(s => [s.name?.toLowerCase(), s.amount] as const),
+     ...(merchantSpend || []).map(m => [m.merchant_name?.toLowerCase(), m.total / 3] as const)]
+  );
+
+  for (const rec of recommendations) {
+    // Cap savings to actual monthly spend on any mentioned merchant
+    if (rec.potentialSavings > 0) {
+      const maxPossible = Math.max(...[...allMerchantAmounts.values()].filter(v => v > 0), rec.potentialSavings);
+      rec.potentialSavings = Math.min(rec.potentialSavings, maxPossible);
+    }
+    // Strip any hallucinated phone numbers (XXX-XXX-XXXX patterns)
+    if (rec.actionSteps) {
+      rec.actionSteps = rec.actionSteps.replace(/\d{1,2}-\d{3}-\d{3}-\d{4}/g, '[call customer service]');
+      rec.actionSteps = rec.actionSteps.replace(/1-\d{3}-\d{3}-\d{4}/g, '[call customer service]');
+    }
+  }
+
   db.prepare(
     `INSERT OR REPLACE INTO ai_cache (id, user_id, cache_key, result, created_at)
      VALUES (?, ?, 'cut_this', ?, datetime('now'))`

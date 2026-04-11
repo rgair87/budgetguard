@@ -4,7 +4,7 @@ import { AuthRequest, authenticate } from '../middleware/auth';
 import { calculateRunway } from '../services/runway.service';
 import { getPaycheckPlan } from '../services/paycheck.service';
 import { getCalendarMonth } from '../services/calendar.service';
-import { getSubscriptionLifetime, getSpendingByCategory, getCategoryTransactions, normalizeMerchantKey } from '../services/csv.service';
+import { getSubscriptionLifetime, getSpendingByCategory, getCategoryTransactions, normalizeMerchantKey, detectDebtPayments } from '../services/csv.service';
 import { getCached, setCache, invalidateCache } from '../utils/cache';
 import { getMonthlyIncome } from '../services/income.service';
 import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from '../services/runway.service';
@@ -345,6 +345,7 @@ router.get('/wizard/data', authenticate, (req: AuthRequest, res: Response) => {
       wizardCompleted: !!user?.wizard_completed,
     },
     existingBudgets: budgets,
+    detectedDebts: detectDebtPayments(userId),
   });
 });
 
@@ -427,6 +428,17 @@ router.post('/wizard/save', authenticate, (req: AuthRequest, res: Response) => {
   db.prepare('DELETE FROM ai_cache WHERE user_id = ?').run(userId);
 
   res.json({ success: true });
+});
+
+router.get('/detected-debts', authenticate, (req: AuthRequest, res: Response) => {
+  const detected = detectDebtPayments(req.userId!);
+  // Filter out debts that already exist as accounts
+  const existingAccounts = db.prepare(
+    "SELECT LOWER(name) as name FROM accounts WHERE user_id = ? AND type IN ('credit', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan') AND current_balance > 0"
+  ).all(req.userId!) as any[];
+  const existingNames = new Set(existingAccounts.map((a: any) => a.name));
+  const newDebts = detected.filter(d => !existingNames.has(d.displayName.toLowerCase()));
+  res.json({ detected: newDebts, existingCount: existingAccounts.length });
 });
 
 router.get('/subscriptions', authenticate, (req: AuthRequest, res: Response) => {

@@ -366,6 +366,15 @@ const DEBT_PAYMENT_KEYWORDS = [
   'bankers healthca',      // Bankers Healthcare Group — loan payment
   'initium professi',      // Initium Professional — loan/legal payment
   'e-payment ach',
+  // Modern lenders & BNPL
+  'affirm', 'klarna', 'afterpay', 'zip pay', 'sezzle',
+  'upstart', 'lightstream', 'prosper', 'lending club', 'lendingclub',
+  'avant', 'upgrade', 'best egg', 'bestegg', 'payoff',
+  'navient', 'nelnet', 'sallie mae', 'mohela', 'fedloan', 'great lakes',
+  'psecu', 'penfed', 'navy federal',
+  // Common credit card issuers
+  'synchrony', 'barclays', 'amex', 'american express',
+  'apple card', 'goldman sachs',
 ];
 
 // Transfers between own accounts, not real expenses

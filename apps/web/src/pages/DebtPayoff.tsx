@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import {
@@ -16,6 +16,7 @@ import {
   ArrowRight,
   CircleDollarSign,
   PartyPopper,
+  Pencil,
 } from 'lucide-react';
 import useTrack from '../hooks/useTrack';
 
@@ -250,13 +251,50 @@ export default function DebtPayoff() {
   const [loading, setLoading] = useState(true);
   const [extraPayment, setExtraPayment] = useState(100);
   const [showComparison, setShowComparison] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<{ balance: string; rate: string; minPay: string }>({ balance: '', rate: '', minPay: '' });
 
-  useEffect(() => {
+  const [detectedDebts, setDetectedDebts] = useState<any[]>([]);
+  const [addingDetected, setAddingDetected] = useState<string | null>(null);
+
+  const fetchPlan = useCallback(() => {
     api.get('/debt?extra=0')
       .then(r => setPlan(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { fetchPlan(); }, [fetchPlan]);
+
+  useEffect(() => {
+    api.get('/runway/detected-debts').then(r => setDetectedDebts(r.data.detected || [])).catch(() => {});
+  }, []);
+
+  async function addDetectedDebt(debt: any) {
+    setAddingDetected(debt.displayName);
+    try {
+      await api.post('/csv/add-debt', {
+        merchantName: debt.displayName,
+        suggestedType: debt.suggestedType,
+        monthlyAmount: debt.monthlyAmount,
+      });
+      setDetectedDebts(prev => prev.filter(d => d.displayName !== debt.displayName));
+      fetchPlan();
+    } catch {}
+    setAddingDetected(null);
+  }
+
+  const saveEdit = async (debtId: string) => {
+    try {
+      await api.patch(`/settings/accounts/${debtId}`, {
+        balance: editValues.balance || undefined,
+        interest_rate: editValues.rate || undefined,
+        minimum_payment: editValues.minPay || undefined,
+      });
+      setEditingId(null);
+      fetchPlan(); // refresh data
+    } catch {}
+  };
 
   // Extract debt accounts from plan
   const debts: DebtAccount[] = useMemo(() => {
@@ -330,14 +368,44 @@ export default function DebtPayoff() {
 
   if (!plan || debts.length === 0) {
     return (
-      <div className="text-center py-16">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-          <Award className="w-8 h-8 text-emerald-600" />
-        </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">No debt found</h2>
-        <p className="text-gray-500 text-sm max-w-xs mx-auto">
-          You don't have any debt accounts. That's something to celebrate!
-        </p>
+      <div className="space-y-6">
+        {detectedDebts.length > 0 ? (
+          <div>
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">We found possible debts</h2>
+              <p className="text-gray-500 text-sm max-w-sm mx-auto">
+                Based on your transaction history, these look like recurring debt payments. Add them to track your payoff progress.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {detectedDebts.map(d => (
+                <div key={d.displayName} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">{d.displayName}</p>
+                    <p className="text-xs text-slate-400">{d.suggestedType.replace('_', ' ')} · ${Math.round(d.monthlyAmount)}/mo · {d.occurrences} payments</p>
+                  </div>
+                  <button
+                    onClick={() => addDetectedDebt(d)}
+                    disabled={addingDetected === d.displayName}
+                    className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {addingDetected === d.displayName ? 'Adding...' : 'Add debt'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <Award className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">No debt found</h2>
+            <p className="text-gray-500 text-sm max-w-xs mx-auto">
+              You don't have any debt accounts. That's something to celebrate!
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -416,6 +484,24 @@ export default function DebtPayoff() {
           </div>
         </div>
       </div>
+
+      {/* ---- Detected debts ---- */}
+      {detectedDebts.length > 0 && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+          <p className="text-sm font-semibold text-indigo-800 mb-2">We found {detectedDebts.length} more possible debt{detectedDebts.length > 1 ? 's' : ''} from your transactions</p>
+          <div className="space-y-1.5">
+            {detectedDebts.slice(0, 5).map(d => (
+              <div key={d.displayName} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-indigo-700">{d.displayName} — ${Math.round(d.monthlyAmount)}/mo</span>
+                <button onClick={() => addDetectedDebt(d)} disabled={addingDetected === d.displayName}
+                  className="text-[10px] font-medium text-indigo-600 bg-indigo-100 hover:bg-indigo-200 px-2 py-1 rounded-lg disabled:opacity-50">
+                  {addingDetected === d.displayName ? 'Adding...' : 'Add'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ---- APR warning ---- */}
       {debts.some(d => [24, 7, 8.5, 6, 12].includes(d.interestRate)) && (
@@ -581,7 +667,7 @@ export default function DebtPayoff() {
           <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-100">
             <p className="text-sm text-gray-800 leading-relaxed">
               Adding <span className="font-bold text-indigo-700">${extraPayment}/mo</span> pays off all debt{' '}
-              <span className="font-bold text-emerald-700">{monthsSaved} months sooner</span> and saves{' '}
+              <span className="font-bold text-emerald-700">{monthsSaved} {monthsSaved === 1 ? 'month' : 'months'} sooner</span> and saves{' '}
               <span className="font-bold text-emerald-700">${interestSaved.toLocaleString()}</span> in interest.
             </p>
           </div>
@@ -614,6 +700,8 @@ export default function DebtPayoff() {
               debt.interestRate >= 15 ? 'text-orange-600 bg-orange-50 ring-orange-200' :
               debt.interestRate >= 10 ? 'text-amber-600 bg-amber-50 ring-amber-200' :
               'text-emerald-600 bg-emerald-50 ring-emerald-200';
+            const isEditing = editingId === debt.id;
+            const needsBalance = debt.balance === 0;
             return (
               <div key={debt.id} className="px-5 py-4">
                 <div className="flex items-start justify-between">
@@ -621,21 +709,93 @@ export default function DebtPayoff() {
                     <p className="font-medium text-gray-900 text-sm">{debt.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{debtTypeLabel((debt as any).type)}</p>
                   </div>
-                  <p className="font-bold text-gray-900 text-lg shrink-0">
-                    ${debt.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!isEditing && (
+                      <>
+                        <p className={`font-bold text-lg ${needsBalance ? 'text-amber-500' : 'text-gray-900'}`}>
+                          {needsBalance ? 'No balance' : `$${debt.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setEditingId(debt.id);
+                            setEditValues({
+                              balance: debt.balance > 0 ? String(debt.balance) : '',
+                              rate: debt.interestRate > 0 ? String(debt.interestRate) : '',
+                              minPay: debt.minimumPayment > 0 ? String(debt.minimumPayment) : '',
+                            });
+                          }}
+                          className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-3">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ring-1 ${aprSeverity}`}>
-                    {debt.interestRate}% APR
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    ${debt.minimumPayment.toFixed(0)}/mo minimum
-                  </span>
-                  <span className="text-xs text-red-500 font-medium ml-auto">
-                    ${monthlyInterest.toFixed(0)}/mo interest
-                  </span>
-                </div>
+
+                {isEditing ? (
+                  <div className="mt-3 space-y-2 bg-gray-50 rounded-lg p-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium">Balance</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={editValues.balance}
+                          onChange={e => setEditValues(v => ({ ...v, balance: e.target.value }))}
+                          className="w-full text-sm border rounded-md px-2 py-1.5 mt-0.5"
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium">APR %</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={editValues.rate}
+                          onChange={e => setEditValues(v => ({ ...v, rate: e.target.value }))}
+                          className="w-full text-sm border rounded-md px-2 py-1.5 mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium">Min/mo</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={editValues.minPay}
+                          onChange={e => setEditValues(v => ({ ...v, minPay: e.target.value }))}
+                          className="w-full text-sm border rounded-md px-2 py-1.5 mt-0.5"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => setEditingId(null)} className="text-xs text-gray-500 px-3 py-1 rounded-md hover:bg-gray-200">Cancel</button>
+                      <button onClick={() => saveEdit(debt.id)} className="text-xs text-white bg-indigo-600 px-3 py-1 rounded-md hover:bg-indigo-700">Save</button>
+                    </div>
+                  </div>
+                ) : needsBalance ? (
+                  <button
+                    onClick={() => {
+                      setEditingId(debt.id);
+                      setEditValues({ balance: '', rate: '', minPay: '' });
+                    }}
+                    className="mt-2 w-full text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 hover:bg-amber-100 text-center"
+                  >
+                    Tap to enter balance, APR & minimum payment
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ring-1 ${aprSeverity}`}>
+                      {debt.interestRate}% APR
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      ${debt.minimumPayment.toFixed(0)}/mo minimum
+                    </span>
+                    <span className="text-xs text-red-500 font-medium ml-auto">
+                      ${monthlyInterest.toFixed(0)}/mo interest
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}

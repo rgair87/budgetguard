@@ -777,12 +777,31 @@ Generate 6-10 insights covering different categories. Include exactly 3 what-if 
     const savingsInsights = generateSavingsInsights(runway, spendingContext, paycheckPlan);
     const insights: AdvisorInsight[] = [...aiInsights, ...savingsInsights];
 
+    // Validate what-if scenarios: cap savings to monthly income, verify math
+    const validatedScenarios = (parsed.scenarios || []).map((s: any) => ({
+      ...s,
+      // Cap monthly savings to monthly income (can't save more than you earn)
+      monthlySavings: Math.min(Math.abs(s.monthlySavings || 0), spendingContext.totalMonthlyIncome || 99999),
+      // Cap runway days gained to max projection window
+      runwayDaysGained: Math.min(Math.abs(s.runwayDaysGained || 0), 730),
+      // Recalculate annual impact from validated monthly
+      annualImpact: Math.min(Math.abs(s.monthlySavings || 0), spendingContext.totalMonthlyIncome || 99999) * 12,
+    }));
+
+    // Strip any hallucinated phone numbers from insight actions
+    for (const ins of aiInsights) {
+      if (ins.action) {
+        ins.action = ins.action.replace(/1-\d{3}-\d{3}-\d{4}/g, '[call customer service]');
+        ins.action = ins.action.replace(/\d{1,2}-\d{3}-\d{3}-\d{4}/g, '[call customer service]');
+      }
+    }
+
     const report: AdvisorReport = {
       healthScore: healthScore.score, // Always use server-side score
       healthLabel: healthScore.label,
       healthSummary: parsed.healthSummary || '',
       insights,
-      scenarios: parsed.scenarios || [],
+      scenarios: validatedScenarios,
       changes: parsed.changes || { hasLastReport: false, summary: null, improved: [], regressed: [] },
       priorityActions: parsed.priorityActions || [],
       generatedAt: new Date().toISOString(),
