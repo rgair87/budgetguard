@@ -135,12 +135,45 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
     }
   }
 
-  // Auto-detect recurring bills from transaction history and project onto calendar
-  // Find recurring merchants, their typical day-of-month, and average amount
+  // Auto-detect expected transactions from history and project onto this month.
+  // Strategy: find all recurring/regular transactions from the SAME month last year
+  // and from the last 3 months, then project them onto expected days.
+  //
+  // This catches everything: bills, subscriptions, loan payments, regular purchases —
+  // anything that happened on similar days in prior months.
+
+  // Get all negative transactions grouped by merchant + day-of-month from last 3 complete months
+  const projectedBills = db.prepare(
+    `SELECT merchant_name,
+            CAST(strftime('%d', date) AS INTEGER) as day_of_month,
+            ROUND(AVG(ABS(amount)), 2) as avg_amount,
+            COUNT(*) as months_seen,
+            MAX(date) as last_seen,
+            category
+     FROM transactions
+     WHERE user_id = ? AND amount < 0
+       AND merchant_name IS NOT NULL AND merchant_name != ''
+       AND date >= date('now', 'start of month', '-3 months')
+       AND date < date('now', 'start of month')
+       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+       ${SPEND_EXCLUSION_MERCHANTS}
+     GROUP BY LOWER(merchant_name), CAST(strftime('%d', date) AS INTEGER)
+     HAVING months_seen >= 2
+     ORDER BY avg_amount DESC`
+  ).all(userId) as unknown as {
+    merchant_name: string;
+    day_of_month: number;
+    avg_amount: number;
+    months_seen: number;
+    last_seen: string;
+    category: string | null;
+  }[];
+
+  // Also get recurring-flagged bills that might not have 2+ months on the same day
   const recurringBills = db.prepare(
     `SELECT merchant_name,
-            AVG(ABS(amount)) as avg_amount,
-            GROUP_CONCAT(CAST(strftime('%d', date) AS INTEGER)) as days_of_month,
+            ROUND(AVG(ABS(amount)), 2) as avg_amount,
+            GROUP_CONCAT(DISTINCT CAST(strftime('%d', date) AS INTEGER)) as days_of_month,
             COUNT(*) as occurrences
      FROM transactions
      WHERE user_id = ? AND amount < 0 AND is_recurring = 1
@@ -155,40 +188,48 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
     occurrences: number;
   }[];
 
+  // Track which merchants we've already projected (avoid duplicates)
+  const projectedMerchants = new Set<string>();
+
+  // Manual events already cover some merchants
+  const manualEventNames = new Set(events.filter(e => e.name).map(e => e.name.toLowerCase().substring(0, 10)));
+
+  // First pass: project bills that consistently hit on the same day
+  for (const bill of projectedBills) {
+    const key = bill.merchant_name.toLowerCase();
+    if (projectedMerchants.has(key)) continue;
+    if (manualEventNames.has(key.substring(0, 10))) continue;
+
+    const projectedDay = Math.min(bill.day_of_month, daysInMonth);
+    const ds = `${month}-${String(projectedDay).padStart(2, '0')}`;
+    const existing = eventDetailsByDate.get(ds) || [];
+    existing.push({ name: bill.merchant_name, amount: bill.avg_amount });
+    eventDetailsByDate.set(ds, existing);
+    projectedMerchants.add(key);
+  }
+
+  // Second pass: recurring merchants not caught by first pass (different days each month)
   for (const bill of recurringBills) {
-    // Find the most common day of month for this bill
+    const key = bill.merchant_name.toLowerCase();
+    if (projectedMerchants.has(key)) continue;
+    if (manualEventNames.has(key.substring(0, 10))) continue;
+
+    // Find most common day
     const days = bill.days_of_month.split(',').map(Number);
     const dayCounts = new Map<number, number>();
-    for (const d of days) {
-      dayCounts.set(d, (dayCounts.get(d) || 0) + 1);
-    }
+    for (const d of days) dayCounts.set(d, (dayCounts.get(d) || 0) + 1);
     let bestDay = days[0];
     let bestCount = 0;
     for (const [day, count] of dayCounts) {
       if (count > bestCount) { bestDay = day; bestCount = count; }
     }
 
-    // Project this bill onto the target month (and next month for near-boundary visibility)
-    const amount = Math.round(bill.avg_amount * 100) / 100;
-    const name = bill.merchant_name;
-
-    // Only add if not already covered by a manual event with a similar name
-    const nameLower = name.toLowerCase();
-    let alreadyCovered = false;
-    for (const evt of events) {
-      if (evt.name && evt.name.toLowerCase().includes(nameLower.substring(0, 10))) {
-        alreadyCovered = true;
-        break;
-      }
-    }
-    if (alreadyCovered) continue;
-
-    // Add to target month
     const projectedDay = Math.min(bestDay, daysInMonth);
     const ds = `${month}-${String(projectedDay).padStart(2, '0')}`;
     const existing = eventDetailsByDate.get(ds) || [];
-    existing.push({ name, amount });
+    existing.push({ name: bill.merchant_name, amount: bill.avg_amount });
     eventDetailsByDate.set(ds, existing);
+    projectedMerchants.add(key);
   }
 
   // Payday tracking (advance past stale dates)
