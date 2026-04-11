@@ -45,6 +45,7 @@ export default function Onboarding() {
           onDemoData={async () => {
             try {
               await api.post('/auth/demo-data');
+              await api.post('/auth/complete-onboarding');
               navigate('/');
             } catch (err) {
               console.error('Failed to load demo data:', err);
@@ -54,7 +55,10 @@ export default function Onboarding() {
       )}
       {step === 1 && <StepConnect onNext={() => setStep(2)} />}
       {step === 2 && <StepEvents onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-      {step === 3 && <StepPaycheck onDone={() => navigate('/')} onBack={() => setStep(2)} />}
+      {step === 3 && <StepPaycheck onDone={async () => {
+        try { await api.post('/auth/complete-onboarding'); } catch {}
+        navigate('/');
+      }} onBack={() => setStep(2)} />}
     </div>
   );
 }

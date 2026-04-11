@@ -18,14 +18,16 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
   const hasLinkedBank = rows.some(r => r.plaid_account_id != null || r.teller_account_id != null);
   const latestTransactionDate = latestTxn?.latest_date || null;
 
-  const userRow = db.prepare('SELECT wizard_completed FROM users WHERE id = ?').get(userId) as any;
+  const userRow = db.prepare('SELECT wizard_completed, onboarding_completed FROM users WHERE id = ?').get(userId) as any;
   const wizardCompleted = !!userRow?.wizard_completed;
+  const onboardingCompleted = !!userRow?.onboarding_completed;
 
   res.json({
     accounts: rows,
     hasLinkedBank,
     latestTransactionDate,
     wizardCompleted,
+    onboardingCompleted,
   });
 });
 

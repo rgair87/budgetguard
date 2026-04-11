@@ -141,4 +141,10 @@ router.post('/demo-data', authenticate, (req: AuthRequest, res: Response) => {
   }
 });
 
+// Mark onboarding as completed
+router.post('/complete-onboarding', authenticate, (req: AuthRequest, res: Response) => {
+  db.prepare('UPDATE users SET onboarding_completed = 1 WHERE id = ?').run(req.userId!);
+  res.json({ success: true });
+});
+
 export default router;

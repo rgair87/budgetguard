@@ -343,16 +343,17 @@ export default function Home() {
       {accounts.length === 0 && (
         <div className="space-y-5 animate-fade-in">
           <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-6 shadow-lg shadow-indigo-200/50 text-center">
-            <h2 className="text-xl font-bold text-white mb-1">Let's set up your dashboard</h2>
-            <p className="text-sm text-indigo-100">Add your accounts so Runway can calculate your financial runway</p>
+            <h2 className="text-xl font-bold text-white mb-1">Welcome to Runway</h2>
+            <p className="text-sm text-indigo-100">Connect your bank to see how long your money will last. It takes about 2 minutes.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 text-center flex flex-col items-center">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mx-auto mb-3">
+            <div className="bg-white rounded-2xl border-2 border-indigo-300 shadow-sm p-5 text-center flex flex-col items-center relative">
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full">Recommended</span>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mx-auto mb-3 mt-1">
                 <Landmark className="w-6 h-6 text-white" />
               </div>
               <p className="text-sm font-semibold text-slate-800 mb-0.5">Connect Bank</p>
-              <p className="text-xs text-slate-400 mb-3">Securely link via Teller</p>
+              <p className="text-xs text-slate-400 mb-3">Automatic sync, always up to date</p>
               <TellerConnectButton
                 onSuccess={() => setRefreshKey(k => k + 1)}
                 className="inline-flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-sm hover:from-indigo-700 hover:to-indigo-800 transition"
