@@ -79,7 +79,13 @@ export default function Negotiate() {
   useEffect(() => {
     api.get('/negotiate')
       .then(r => setSuggestions(r.data.suggestions))
-      .catch(() => setError('Failed to load negotiation suggestions.'))
+      .catch((err: any) => {
+        if (err.response?.status === 403) {
+          setError('upgrade_required');
+        } else {
+          setError('Failed to load negotiation suggestions.');
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -98,6 +104,21 @@ export default function Negotiate() {
       <div className="flex flex-col items-center justify-center py-20 animate-pulse">
         <Phone className="w-10 h-10 text-indigo-300 mb-4" />
         <p className="text-slate-400 font-medium">Scanning your bills for savings...</p>
+      </div>
+    );
+  }
+
+  if (error === 'upgrade_required') {
+    return (
+      <div className="text-center py-16">
+        <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+          <Phone className="w-8 h-8 text-blue-600" />
+        </div>
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Bill Negotiation requires Pro</h2>
+        <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">Get phone scripts, success rates, and step-by-step guides to lower your bills.</p>
+        <a href="/settings" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+          View plans
+        </a>
       </div>
     );
   }

@@ -351,7 +351,13 @@ export default function Advisor() {
     setError('');
     api.get(`/advisor${refresh ? '?refresh=true' : ''}`)
       .then(r => setReport(r.data))
-      .catch(() => setError('Failed to generate advisor report. Try again.'))
+      .catch((err: any) => {
+        if (err.response?.status === 403) {
+          setError('upgrade_required');
+        } else {
+          setError('Failed to generate advisor report. Try again.');
+        }
+      })
       .finally(() => setLoading(false));
   }
 
@@ -381,8 +387,22 @@ export default function Advisor() {
       {/* Loading */}
       {loading && <AdvisorLoadingProgress />}
 
+      {/* Upgrade required */}
+      {error === 'upgrade_required' && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-indigo-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">AI Advisor requires Plus or Pro</h2>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">Get personalized financial insights, spending analysis, and actionable recommendations powered by AI.</p>
+          <Link to="/settings" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+            View plans
+          </Link>
+        </div>
+      )}
+
       {/* Error */}
-      {error && (
+      {error && error !== 'upgrade_required' && (
         <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-4 rounded-2xl flex items-center gap-3">
           <XCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>

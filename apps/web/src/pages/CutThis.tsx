@@ -74,7 +74,13 @@ export default function CutThis() {
         setCached(r.data.cached);
         setCachedAt(r.data.cachedAt);
       })
-      .catch(() => setError('Failed to generate recommendations. Try again.'))
+      .catch((err: any) => {
+        if (err.response?.status === 403) {
+          setError('upgrade_required');
+        } else {
+          setError('Failed to generate recommendations. Try again.');
+        }
+      })
       .finally(() => setLoading(false));
   }
 
@@ -133,7 +139,19 @@ export default function CutThis() {
         </div>
       )}
 
-      {error && <div className="bg-red-50 text-red-600 text-sm p-4 rounded-2xl border border-red-200/60">{error}</div>}
+      {error === 'upgrade_required' && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4">
+            <Scissors className="w-8 h-8 text-rose-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Cut This requires Pro</h2>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">AI-powered recommendations to cut unnecessary spending and save money every month.</p>
+          <a href="/settings" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+            View plans
+          </a>
+        </div>
+      )}
+      {error && error !== 'upgrade_required' && <div className="bg-red-50 text-red-600 text-sm p-4 rounded-2xl border border-red-200/60">{error}</div>}
 
       {!loading && !error && (
         <>

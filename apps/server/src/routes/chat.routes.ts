@@ -38,11 +38,13 @@ router.post('/', authenticate, attachTier, async (req: TieredRequest, res: Respo
   const used = getDailyMessageCount(req.userId!);
   if (used >= limit) {
     const upgradeMsg = req.tier === 'free'
-      ? ' Upgrade to Pro for 50 messages/day.'
-      : '';
+      ? ' Upgrade to Plus ($7.99/mo) for 15/day, or Pro ($14.99/mo) for 50/day.'
+      : req.tier === 'plus'
+        ? ' Upgrade to Pro ($14.99/mo) for 50 messages/day.'
+        : '';
     res.status(429).json({
       error: 'rate_limit',
-      message: `You've used all ${limit} messages for today. Your limit resets at midnight.${upgradeMsg}`,
+      message: `You've used all ${limit} messages for today. Resets at midnight.${upgradeMsg}`,
       dailyUsage: { used, limit, remaining: 0 }
     });
     return;

@@ -35,6 +35,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   end?: boolean;
+  badge?: 'plus' | 'pro';
 }
 
 interface NavGroup {
@@ -69,11 +70,11 @@ const NAV_GROUPS: Record<string, NavEntry> = {
     label: 'Insights',
     icon: Lightbulb,
     items: [
-      { to: '/advisor', label: 'Advisor', icon: BrainCircuit },
+      { to: '/advisor', label: 'Advisor', icon: BrainCircuit, badge: 'plus' },
       { to: '/simulator', label: 'What If', icon: Sparkles },
       { to: '/trends', label: 'Trends', icon: TrendingUp },
-      { to: '/negotiate', label: 'Negotiate', icon: Phone },
-      { to: '/cut-this', label: 'Cut This', icon: Scissors },
+      { to: '/negotiate', label: 'Negotiate', icon: Phone, badge: 'pro' },
+      { to: '/cut-this', label: 'Cut This', icon: Scissors, badge: 'pro' },
       { to: '/chat', label: 'Ask', icon: MessageCircle },
       { to: '/transactions', label: 'Transactions', icon: Receipt },
     ],
@@ -97,7 +98,7 @@ function getActiveGroup(pathname: string): string {
 /*  Sidebar nav link (desktop)                                         */
 /* ------------------------------------------------------------------ */
 
-function SidebarLink({ to, icon: Icon, label, end }: NavItem & { end?: boolean }) {
+function SidebarLink({ to, icon: Icon, label, end, badge }: NavItem & { end?: boolean }) {
   return (
     <NavLink
       to={to}
@@ -111,7 +112,12 @@ function SidebarLink({ to, icon: Icon, label, end }: NavItem & { end?: boolean }
       }
     >
       <Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-      <span>{label}</span>
+      <span className="flex-1">{label}</span>
+      {badge && (
+        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+          badge === 'pro' ? 'bg-violet-500/20 text-violet-400' : 'bg-indigo-500/20 text-indigo-400'
+        }`}>{badge === 'pro' ? 'PRO' : 'PLUS'}</span>
+      )}
     </NavLink>
   );
 }
