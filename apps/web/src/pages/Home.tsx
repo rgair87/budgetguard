@@ -330,7 +330,7 @@ export default function Home() {
               {trialDaysLeft === 1 ? 'Last day of your free trial!' : `${trialDaysLeft} days left in your free trial`}
             </p>
           </div>
-          <Link to="/settings" className="text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+          <Link to="/pricing" className="text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors shrink-0">
             Choose a plan
           </Link>
         </div>
@@ -344,7 +344,7 @@ export default function Home() {
               <p className="text-sm font-semibold text-red-800">Your free trial has ended</p>
               <p className="text-xs text-red-600 mt-0.5">Subscribe to keep using AI insights, bank sync, and more.</p>
             </div>
-            <Link to="/settings" className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors shrink-0">
+            <Link to="/pricing" className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors shrink-0">
               View plans
             </Link>
           </div>

@@ -135,7 +135,7 @@ export function requirePlus(req: TieredRequest, res: Response, next: NextFunctio
       error: 'upgrade_required',
       tier: 'plus',
       message: 'This feature requires a Plus or Pro subscription.',
-      upgradeUrl: '/settings',
+      upgradeUrl: '/pricing',
     });
     return;
   }
@@ -148,7 +148,7 @@ export function requirePro(req: TieredRequest, res: Response, next: NextFunction
       error: 'upgrade_required',
       tier: 'pro',
       message: 'This feature requires a Pro subscription.',
-      upgradeUrl: '/settings',
+      upgradeUrl: '/pricing',
     });
     return;
   }

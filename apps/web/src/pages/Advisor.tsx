@@ -395,7 +395,7 @@ export default function Advisor() {
           </div>
           <h2 className="text-xl font-semibold text-slate-900 mb-2">AI Advisor requires Plus or Pro</h2>
           <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">Get personalized financial insights, spending analysis, and actionable recommendations powered by AI.</p>
-          <Link to="/settings" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+          <Link to="/pricing" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
             View plans
           </Link>
         </div>

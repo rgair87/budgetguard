@@ -769,23 +769,20 @@ export default function Settings() {
               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                 tierInfo?.tier === 'pro'
                   ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-amber-900'
-                  : 'bg-white/15 text-white/80'
+                  : tierInfo?.tier === 'plus'
+                    ? 'bg-indigo-400/30 text-indigo-200'
+                    : 'bg-white/15 text-white/80'
               }`}>
-                {tierInfo?.tier === 'pro' ? 'Pro' : 'Free'}
+                {tierInfo?.tier === 'pro' ? 'Pro' : tierInfo?.tier === 'plus' ? 'Plus' : 'Free'}
               </span>
               {memberSince && (
                 <span className="text-[11px] text-white/40">Member since {memberSince}</span>
               )}
             </div>
             {tierInfo?.tier !== 'pro' && (
-              <button onClick={handleUpgrade} className="text-xs text-indigo-300 hover:text-indigo-200 mt-1.5 font-medium transition-colors">
-                Upgrade to Pro &rarr;
-              </button>
-            )}
-            {tierInfo?.tier === 'pro' && (
-              <button onClick={handleDowngrade} className="text-xs text-white/30 hover:text-white/50 mt-1.5 transition-colors">
-                Downgrade
-              </button>
+              <Link to="/pricing" className="text-xs text-indigo-300 hover:text-indigo-200 mt-1.5 font-medium transition-colors inline-block">
+                {tierInfo?.tier === 'plus' ? 'Upgrade to Pro' : 'View plans'} &rarr;
+              </Link>
             )}
           </div>
         </div>
@@ -1311,69 +1308,24 @@ export default function Settings() {
       {/* ────────── IMPORT DATA ────────── */}
       <ImportData />
 
-      {/* ────────── SUBSCRIPTION PLANS ────────── */}
+      {/* ────────── SUBSCRIPTION ────────── */}
       {tierInfo?.tier !== 'pro' && (
         <>
-          <SectionHeader icon={Crown} label="Choose Your Plan" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Plus */}
-            <div className={`rounded-2xl p-5 border-2 transition-all ${tierInfo?.tier === 'plus' ? 'border-indigo-400 bg-indigo-50/50' : 'border-slate-200 bg-white'}`}>
-              <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Plus</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">$7.99<span className="text-sm font-normal text-slate-400">/mo</span></p>
-              <ul className="text-xs text-slate-600 space-y-1.5 mt-3 mb-4">
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Bank sync (Teller)</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> AI Advisor (1x/month)</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 15 chat messages/day</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> CSV export</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 5 savings goals</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 3-month calendar</li>
-              </ul>
-              <button onClick={async () => {
-                  try {
-                    const { data } = await api.post('/stripe/create-checkout', { tier: 'plus' });
-                    if (data.url) window.location.href = data.url;
-                    else { await api.post('/settings/upgrade', { tier: 'plus' }); window.location.reload(); }
-                  } catch { await api.post('/settings/upgrade', { tier: 'plus' }); window.location.reload(); }
-                }}
-                className={`w-full text-sm py-2.5 rounded-xl font-semibold transition-all ${tierInfo?.tier === 'plus' ? 'bg-slate-200 text-slate-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                disabled={tierInfo?.tier === 'plus'}>
-                {tierInfo?.tier === 'plus' ? 'Current plan' : 'Subscribe to Plus'}
-              </button>
+          <SectionHeader icon={Crown} label="Subscription" />
+          <Link to="/pricing" className="block bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-300" />
+                  {tierInfo?.trialDaysLeft && tierInfo.trialDaysLeft > 0
+                    ? `${tierInfo.trialDaysLeft} days left in your free trial`
+                    : 'Upgrade your plan'}
+                </p>
+                <p className="text-xs text-white/70 mt-1">Starting at $7.99/mo — bank sync, AI advisor, and more</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-white/50" />
             </div>
-            {/* Pro */}
-            <div className="rounded-2xl p-5 border-2 border-violet-400 bg-gradient-to-br from-violet-50 to-purple-50 relative">
-              <span className="absolute -top-2.5 right-4 text-[10px] font-bold bg-violet-600 text-white px-2.5 py-0.5 rounded-full">Best value</span>
-              <p className="text-xs font-bold text-violet-600 uppercase tracking-wider">Pro</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">$14.99<span className="text-sm font-normal text-slate-400">/mo</span></p>
-              <ul className="text-xs text-slate-600 space-y-1.5 mt-3 mb-4">
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Everything in Plus</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Unlimited AI Advisor</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 50 chat messages/day</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Cut This recommendations</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Bill negotiation scripts</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Family accounts</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> 6-month calendar</li>
-                <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-emerald-500" /> Unlimited goals</li>
-              </ul>
-              <button onClick={async () => {
-                  try {
-                    const { data } = await api.post('/stripe/create-checkout', { tier: 'pro' });
-                    if (data.url) window.location.href = data.url;
-                    else { await api.post('/settings/upgrade', { tier: 'pro' }); window.location.reload(); }
-                  } catch { await api.post('/settings/upgrade', { tier: 'pro' }); window.location.reload(); }
-                }}
-                className="w-full bg-violet-600 text-white text-sm py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition-all shadow-sm">
-                Subscribe to Pro
-              </button>
-            </div>
-          </div>
-          {data?.user?.subscription_status === 'trial' && (
-            <p className="text-xs text-slate-400 text-center mt-2">
-              {tierInfo?.trialDaysLeft && tierInfo.trialDaysLeft > 0
-                ? `${tierInfo.trialDaysLeft} days left in your free trial. You have full Pro access until then.`
-                : 'Your free trial has ended. Subscribe to continue using premium features.'}
-            </p>
-          )}
+          </Link>
         </>
       )}
 

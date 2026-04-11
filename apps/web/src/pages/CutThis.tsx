@@ -146,7 +146,7 @@ export default function CutThis() {
           </div>
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Cut This requires Pro</h2>
           <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">AI-powered recommendations to cut unnecessary spending and save money every month.</p>
-          <a href="/settings" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+          <a href="/pricing" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
             View plans
           </a>
         </div>

@@ -28,6 +28,7 @@ import Privacy from './pages/Privacy';
 import Analytics from './pages/Analytics';
 import Budgets from './pages/Budgets';
 import BudgetWizard from './pages/BudgetWizard';
+import Pricing from './pages/Pricing';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="goals" element={<Goals />} />
         <Route path="budgets" element={<Budgets />} />
         <Route path="budget-wizard" element={<BudgetWizard />} />
+        <Route path="pricing" element={<Pricing />} />
         <Route path="trends" element={<Trends />} />
         <Route path="negotiate" element={<Negotiate />} />
         <Route path="predictions" element={<Predictions />} />
