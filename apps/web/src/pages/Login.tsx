@@ -1,7 +1,41 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, ArrowRight, Shield, TrendingDown, Calculator } from 'lucide-react';
+import {
+  Mail, Lock, ArrowRight, Shield, TrendingDown, Calculator,
+  Zap, Clock, BrainCircuit, CreditCard, Target, BarChart3,
+  CheckCircle,
+} from 'lucide-react';
+
+const FEATURES = [
+  {
+    icon: Clock,
+    title: 'Know your runway',
+    desc: 'See exactly how many days your money will last — no guessing.',
+  },
+  {
+    icon: BrainCircuit,
+    title: 'AI-powered advisor',
+    desc: 'Get personalized insights that actually make sense for your situation.',
+  },
+  {
+    icon: TrendingDown,
+    title: 'Cut wasteful spending',
+    desc: 'Find subscriptions you forgot about and bills you can negotiate down.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Smart debt payoff',
+    desc: 'See exactly which debt to attack first and how much you\'ll save.',
+  },
+];
+
+const CHECKLIST = [
+  '7-day free trial — full access, no card required',
+  'Connect your bank in 2 minutes',
+  'AI analyzes your spending automatically',
+  'Cancel anytime, keep your data',
+];
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
@@ -35,177 +69,191 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left brand panel - hidden on mobile */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 relative overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-700/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-slate-700/20 rounded-full blur-3xl" />
+      {/* Left brand panel */}
+      <div className="hidden lg:flex lg:w-[55%] bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-0 w-full h-full">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-400/5 rounded-full blur-3xl" />
+        </div>
 
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-20 w-full">
-          <h1 className="text-5xl font-bold text-white tracking-tight mb-4">Runway</h1>
-          <p className="text-indigo-200 text-lg leading-relaxed mb-12 max-w-md">
-            The finance app that plans around your real life - not the other way around.
+          {/* Logo */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">R</span>
+            </div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Runway</h1>
+          </div>
+
+          {/* Headline */}
+          <h2 className="text-4xl xl:text-5xl font-bold text-white tracking-tight leading-tight mb-4">
+            Know when you'll<br />
+            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">run out of money</span>
+          </h2>
+          <p className="text-slate-400 text-lg leading-relaxed mb-12 max-w-lg">
+            Connect your bank, and Runway tells you exactly how many days your cash will last — then helps you make it last longer.
           </p>
 
-          <div className="space-y-8">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-indigo-300" />
+          {/* Feature grid */}
+          <div className="grid grid-cols-2 gap-5 mb-12">
+            {FEATURES.map(f => (
+              <div key={f.title} className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white/[0.08] flex items-center justify-center shrink-0">
+                  <f.icon className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div>
+                  <p className="text-white text-sm font-semibold mb-0.5">{f.title}</p>
+                  <p className="text-slate-500 text-xs leading-relaxed">{f.desc}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-white font-semibold mb-1">Bank-level security</h3>
-                <p className="text-indigo-300 text-sm leading-relaxed">
-                  256-bit encryption and read-only bank connections keep your data safe.
-                </p>
-              </div>
-            </div>
+            ))}
+          </div>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 text-indigo-300" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold mb-1">Cut wasteful spending</h3>
-                <p className="text-indigo-300 text-sm leading-relaxed">
-                  AI finds subscriptions you forgot about and bills you can negotiate down.
-                </p>
-              </div>
+          {/* Social proof */}
+          <div className="flex items-center gap-4">
+            <div className="flex -space-x-2">
+              {['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'].map((c, i) => (
+                <div key={i} className={`w-8 h-8 rounded-full ${c} border-2 border-slate-900 flex items-center justify-center text-white text-[10px] font-bold`}>
+                  {['RG', 'JT', 'KM', 'AL'][i]}
+                </div>
+              ))}
             </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
-                <Calculator className="w-5 h-5 text-indigo-300" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold mb-1">Know your runway</h3>
-                <p className="text-indigo-300 text-sm leading-relaxed">
-                  See exactly how many days your money will last with smart forecasting.
-                </p>
-              </div>
-            </div>
+            <p className="text-slate-500 text-sm">
+              Trusted by <span className="text-slate-300 font-medium">people who want to stop worrying about money</span>
+            </p>
           </div>
         </div>
       </div>
 
       {/* Right form panel */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-gray-50 px-6 py-12">
+      <div className="w-full lg:w-[45%] flex flex-col items-center justify-center bg-white px-6 py-12">
         {/* Mobile-only brand header */}
-        <div className="lg:hidden text-center mb-10">
-          <h1 className="text-3xl font-bold text-indigo-600 tracking-tight">Runway</h1>
-          <p className="text-gray-500 text-sm mt-1">Finance that fits your life</p>
+        <div className="lg:hidden text-center mb-8">
+          <div className="flex items-center justify-center gap-2.5 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">R</span>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Runway</h1>
+          </div>
+          <p className="text-slate-500 text-sm">Know when you'll run out of money</p>
         </div>
 
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              {isRegister ? 'Create your account' : 'Welcome back'}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-900 mb-1">
+              {isRegister ? 'Start your free trial' : 'Welcome back'}
             </h2>
-            <p className="text-gray-500 text-sm mb-8">
+            <p className="text-slate-500 text-sm">
               {isRegister
-                ? 'Start taking control of your finances today.'
-                : 'Sign in to pick up where you left off.'}
+                ? '7 days free. No credit card required.'
+                : 'Sign in to your Runway account.'}
             </p>
-
-            {error && (
-              <div className="mb-6 flex items-center gap-3 bg-red-50 text-red-600 text-sm p-4 rounded-xl">
-                <div className="flex-shrink-0 w-2 h-2 bg-red-500 rounded-full" />
-                {error}
-              </div>
-            )}
-
-            {registered && !error && (
-              <div className="mb-6 flex items-center gap-3 bg-green-50 text-green-700 text-sm p-4 rounded-xl">
-                <div className="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full" />
-                Account created! Check the server console for your verification link.
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="you@example.com"
-                    className="w-full bg-gray-50 rounded-xl pl-12 pr-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    placeholder={isRegister ? 'Min 8 characters' : 'Enter your password'}
-                    className="w-full bg-gray-50 rounded-xl pl-12 pr-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              {!isRegister && (
-                <div className="text-right">
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white py-3.5 rounded-xl text-sm font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25"
-              >
-                {loading ? (
-                  <span>Please wait...</span>
-                ) : (
-                  <>
-                    {isRegister ? 'Create account' : 'Sign in'}
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-              <p className="text-sm text-gray-500">
-                {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsRegister(!isRegister);
-                    setError('');
-                  }}
-                  className="text-indigo-600 hover:text-indigo-700 font-semibold transition-colors"
-                >
-                  {isRegister ? 'Sign in' : 'Create one'}
-                </button>
-              </p>
-            </div>
           </div>
 
-          <p className="text-center text-xs text-gray-400 mt-6 leading-relaxed">
-            By signing in, you agree to our{' '}
-            <Link to="/terms" className="text-indigo-500 hover:text-indigo-600 underline underline-offset-2">
-              Terms of Service
-            </Link>{' '}
+          {/* Trial checklist (register only) */}
+          {isRegister && (
+            <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+              <div className="space-y-2">
+                {CHECKLIST.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span className="text-xs text-emerald-800">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-5 flex items-center gap-3 bg-red-50 text-red-600 text-sm p-4 rounded-xl border border-red-200">
+              <div className="flex-shrink-0 w-2 h-2 bg-red-500 rounded-full" />
+              {error}
+            </div>
+          )}
+
+          {registered && !error && (
+            <div className="mb-5 flex items-center gap-3 bg-emerald-50 text-emerald-700 text-sm p-4 rounded-xl border border-emerald-200">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              Account created! Setting up your dashboard...
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="you@example.com"
+                  className="w-full bg-slate-50 rounded-xl pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white border border-slate-200 transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  placeholder={isRegister ? 'Min 8 characters' : 'Enter your password'}
+                  className="w-full bg-slate-50 rounded-xl pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white border border-slate-200 transition-all"
+                />
+              </div>
+            </div>
+
+            {!isRegister && (
+              <div className="text-right">
+                <Link to="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                  Forgot password?
+                </Link>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25"
+            >
+              {loading ? (
+                <span>Please wait...</span>
+              ) : (
+                <>
+                  {isRegister ? 'Start free trial' : 'Sign in'}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-500">
+              {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+              <button
+                type="button"
+                onClick={() => { setIsRegister(!isRegister); setError(''); }}
+                className="text-indigo-600 hover:text-indigo-700 font-semibold"
+              >
+                {isRegister ? 'Sign in' : 'Start free trial'}
+              </button>
+            </p>
+          </div>
+
+          <p className="text-center text-[11px] text-slate-400 mt-6 leading-relaxed">
+            By signing up, you agree to our{' '}
+            <Link to="/terms" className="text-indigo-500 hover:underline">Terms</Link>{' '}
             and{' '}
-            <Link to="/privacy" className="text-indigo-500 hover:text-indigo-600 underline underline-offset-2">
-              Privacy Policy
-            </Link>
-            .
+            <Link to="/privacy" className="text-indigo-500 hover:underline">Privacy Policy</Link>.
           </p>
         </div>
       </div>
