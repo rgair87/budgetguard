@@ -38,7 +38,8 @@ const CHECKLIST = [
 ];
 
 export default function Login() {
-  const [isRegister, setIsRegister] = useState(false);
+  const params = new URLSearchParams(window.location.search);
+  const [isRegister, setIsRegister] = useState(params.get('register') === 'true');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -55,10 +56,10 @@ export default function Login() {
       if (isRegister) {
         await register(email, password);
         setRegistered(true);
-        navigate('/onboarding');
+        navigate('/dashboard/onboarding');
       } else {
         await login(email, password);
-        navigate('/');
+        navigate('/dashboard');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Something went wrong');

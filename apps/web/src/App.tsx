@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import { SkeletonCard } from './components/Skeleton';
 
 // Eager: hot paths loaded immediately
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Chat from './pages/Chat';
@@ -44,14 +45,22 @@ function LazyFallback() {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
   if (loading) return <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>;
-  if (!token) return <Navigate to="/login" />;
+  if (!token) return <Navigate to="/" />;
   return <>{children}</>;
+}
+
+function LandingOrDashboard() {
+  const { token, loading } = useAuth();
+  if (loading) return <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>;
+  if (token) return <Navigate to="/dashboard" />;
+  return <Landing />;
 }
 
 function AppRoutes() {
   return (
     <Suspense fallback={<LazyFallback />}>
       <Routes>
+        <Route path="/" element={<LandingOrDashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -59,7 +68,7 @@ function AppRoutes() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Layout />
