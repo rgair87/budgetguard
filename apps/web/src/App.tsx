@@ -49,18 +49,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function LandingOrDashboard() {
+function LandingOrApp() {
   const { token, loading } = useAuth();
   if (loading) return <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>;
-  if (token) return <Navigate to="/dashboard" />;
-  return <Landing />;
+  if (!token) return <Landing />;
+  return <ProtectedRoute><Layout /></ProtectedRoute>;
 }
 
 function AppRoutes() {
   return (
     <Suspense fallback={<LazyFallback />}>
       <Routes>
-        <Route path="/" element={<LandingOrDashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -68,12 +67,8 @@ function AppRoutes() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
+          path="/"
+          element={<LandingOrApp />}
         >
           <Route index element={<Home />} />
           <Route path="advisor" element={<Advisor />} />

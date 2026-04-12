@@ -56,10 +56,10 @@ export default function Login() {
       if (isRegister) {
         await register(email, password);
         setRegistered(true);
-        navigate('/dashboard/onboarding');
+        navigate('/onboarding');
       } else {
         await login(email, password);
-        navigate('/dashboard');
+        navigate('/');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Something went wrong');
