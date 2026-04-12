@@ -1323,7 +1323,7 @@ export default function Settings() {
                     ? `${tierInfo.trialDaysLeft} days left in your free trial`
                     : 'Upgrade your plan'}
                 </p>
-                <p className="text-xs text-white/70 mt-1">Starting at $7.99/mo — bank sync, AI advisor, and more</p>
+                <p className="text-xs text-white/70 mt-1">Starting at $7.99/mo. Bank sync, advisor, and more.</p>
               </div>
               <ChevronRight className="w-5 h-5 text-white/50" />
             </div>

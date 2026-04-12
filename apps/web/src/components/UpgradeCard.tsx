@@ -27,7 +27,7 @@ export default function UpgradeCard({ feature, description, tierNeeded }: Upgrad
             to="/pricing"
             className={`inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-white bg-gradient-to-r ${TIER_COLORS[tierNeeded]} px-4 py-2 rounded-lg hover:opacity-90 transition-opacity`}
           >
-            Unlock for {TIER_PRICES[tierNeeded]}/mo <ArrowRight className="w-3 h-3" />
+            Get this for {TIER_PRICES[tierNeeded]}/mo <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       </div>

@@ -397,7 +397,7 @@ export default function Advisor() {
           <p className="text-sm text-slate-500 max-w-sm mx-auto mb-2">Get a personalized health score, spending insights, and action items tailored to your accounts.</p>
           <p className="text-sm font-medium text-indigo-600 mb-6">Most members find $50-200/mo in savings.</p>
           <Link to="/pricing" className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg shadow-indigo-500/25">
-            Unlock for $7.99/mo
+            Get this for $7.99/mo
           </Link>
         </div>
       )}

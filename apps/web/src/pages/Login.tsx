@@ -11,11 +11,11 @@ const FEATURES = [
   {
     icon: Clock,
     title: 'Know your runway',
-    desc: 'See exactly how many days your money will last — no guessing.',
+    desc: 'See how many days your money will last at your current pace.',
   },
   {
     icon: BrainCircuit,
-    title: 'AI-powered advisor',
+    title: 'Personal advisor',
     desc: 'Get personalized insights that actually make sense for your situation.',
   },
   {
@@ -31,7 +31,7 @@ const FEATURES = [
 ];
 
 const CHECKLIST = [
-  '7-day free trial — full access, no card required',
+  '7-day free trial, full access, no card required',
   'Connect your bank in 2 minutes',
   'AI analyzes your spending automatically',
   'Cancel anytime, keep your data',
@@ -93,7 +93,7 @@ export default function Login() {
             <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">every dollar</span>
           </h2>
           <p className="text-slate-300 text-lg leading-relaxed mb-12 max-w-lg">
-            Connect your bank and see exactly where your money goes — then make it go further.
+            Connect your bank and see exactly where your money goes. Then make it go further.
           </p>
 
           {/* Feature grid */}

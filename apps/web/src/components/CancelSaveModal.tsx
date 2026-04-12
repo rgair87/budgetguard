@@ -96,7 +96,7 @@ export default function CancelSaveModal({ tier, onContinue, onClose }: CancelSav
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-                  Received AI-powered spending insights
+                  Received personalized spending insights
                 </li>
               </ul>
             </div>

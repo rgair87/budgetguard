@@ -112,7 +112,7 @@ export default function CutThis() {
             <div>
               <h1 className="text-xl font-bold">Cut This</h1>
               <p className="text-sm text-rose-100">
-                AI-powered scan of your spending. 3 specific recommendations.
+                We scanned your spending. Here are 3 things you can cut.
               </p>
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function CutThis() {
           <p className="text-sm text-slate-500 max-w-sm mx-auto mb-2">AI analyzes your transactions and finds subscriptions, services, and habits you can eliminate.</p>
           <p className="text-sm font-medium text-rose-600 mb-6">Average member savings: $89/month.</p>
           <a href="/pricing" className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-700 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-violet-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-500/25">
-            Unlock for $14.99/mo
+            Get this for $14.99/mo
           </a>
         </div>
       )}

@@ -1,220 +1,225 @@
 import { Link } from 'react-router-dom';
 import {
-  TrendingUp, Shield, BrainCircuit, CreditCard, Scissors,
-  Phone, BarChart3, Target, MessageCircle, CheckCircle,
-  ArrowRight, Sparkles, Zap,
+  TrendingUp, BarChart3, CreditCard, Scissors,
+  Phone, MessageCircle, CheckCircle,
+  ArrowRight, Target,
 } from 'lucide-react';
-
-const FEATURES = [
-  {
-    icon: BarChart3,
-    title: 'Financial Dashboard',
-    desc: 'See exactly how many days your money will last at your current spending rate.',
-    color: 'from-indigo-500 to-indigo-600',
-  },
-  {
-    icon: BrainCircuit,
-    title: 'AI Financial Advisor',
-    desc: 'Get a personalized health score and actionable recommendations tailored to your accounts.',
-    color: 'from-violet-500 to-violet-600',
-  },
-  {
-    icon: Scissors,
-    title: 'Cut Wasteful Spending',
-    desc: 'AI finds subscriptions you forgot about and spending habits you can change.',
-    color: 'from-rose-500 to-rose-600',
-  },
-  {
-    icon: Phone,
-    title: 'Bill Negotiation Scripts',
-    desc: 'Get word-for-word scripts and phone numbers to lower your bills. 60% success rate.',
-    color: 'from-blue-500 to-cyan-500',
-  },
-  {
-    icon: CreditCard,
-    title: 'Smart Debt Payoff',
-    desc: 'See which debt to attack first, how much interest you\'ll save, and when you\'ll be free.',
-    color: 'from-amber-500 to-orange-500',
-  },
-  {
-    icon: MessageCircle,
-    title: 'Ask Anything',
-    desc: '"Can I afford this?" "How much did I spend on food?" Get instant answers from your real data.',
-    color: 'from-emerald-500 to-emerald-600',
-  },
-];
-
-const STEPS = [
-  { num: '1', title: 'Connect your bank', desc: 'Link in 2 minutes. We read transactions, never move money.' },
-  { num: '2', title: 'AI analyzes everything', desc: 'Spending categorized, bills detected, patterns found — automatically.' },
-  { num: '3', title: 'Get your game plan', desc: 'A personalized dashboard showing exactly where to save and what to cut.' },
-];
-
-const CHECKLIST = [
-  '7-day free trial with full access',
-  'No credit card required',
-  'Bank-level security',
-  'Cancel anytime, keep your data',
-];
 
 export default function Landing() {
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-indigo-600" strokeWidth={2.25} />
-            <span className="text-[15px] font-bold tracking-[0.15em] uppercase text-slate-900">Spenditure</span>
+            <TrendingUp className="w-5 h-5 text-indigo-600" strokeWidth={2.25} />
+            <span className="text-[14px] font-bold tracking-[0.15em] uppercase text-slate-900">Spenditure</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+            <Link to="/login" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">
               Sign in
             </Link>
-            <Link to="/login?register=true" className="text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors">
-              Start free trial
+            <Link to="/login?register=true" className="text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">
+              Try it free
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/20" />
-        <div className="absolute top-20 right-20 w-96 h-96 bg-indigo-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-20 w-72 h-72 bg-violet-200/20 rounded-full blur-3xl" />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-20 pb-24 text-center">
-          <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-            <Sparkles className="w-3.5 h-3.5" />
-            AI-powered personal finance
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 tracking-tight leading-[1.1] mb-6 max-w-3xl mx-auto">
-            Take control of{' '}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">every dollar</span>
+      {/* Hero - simple, direct, no fluff */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-24 pb-20">
+        <div className="max-w-2xl">
+          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-[1.15] mb-5">
+            See where your money goes.
+            <br />
+            <span className="text-slate-400">Then fix it.</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Connect your bank and see exactly where your money goes.
-            AI finds what to cut, what to negotiate, and how to make every paycheck last longer.
+          <p className="text-lg text-slate-600 leading-relaxed mb-8 max-w-lg">
+            Spenditure connects to your bank, categorizes your spending, and shows you
+            exactly what to cut, what to negotiate, and how long your money will actually last.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
+          <div className="flex flex-col sm:flex-row items-start gap-3 mb-8">
             <Link
               to="/login?register=true"
-              className="inline-flex items-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/25"
+              className="inline-flex items-center gap-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 px-6 py-3 rounded-lg transition-colors"
             >
-              Start free trial <ArrowRight className="w-5 h-5" />
+              Start your free trial <ArrowRight className="w-4 h-4" />
             </Link>
-            <p className="text-sm text-slate-500">No credit card required</p>
-          </div>
-
-          {/* Trust signals */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            {CHECKLIST.map(item => (
-              <div key={item} className="flex items-center gap-1.5">
-                <CheckCircle className="w-4 h-4 text-emerald-500" />
-                <span className="text-sm text-slate-600">{item}</span>
-              </div>
-            ))}
+            <span className="text-sm text-slate-400 pt-2.5">7 days free. No credit card.</span>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">How it works</h2>
-            <p className="text-slate-500">Set up in minutes. Insights in seconds.</p>
-          </div>
+      {/* What it does - not "features", just plain English */}
+      <section className="border-t border-slate-100 bg-slate-50/50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Here's what happens when you sign up</h2>
+          <p className="text-slate-500 mb-12 max-w-lg">You link your bank. We do the rest. Takes about 2 minutes.</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            {STEPS.map(step => (
-              <div key={step.num} className="text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-lg font-bold flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/25">
-                  {step.num}
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">{step.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-20 bg-slate-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">Everything you need to master your money</h2>
-            <p className="text-slate-500">Powered by AI. Built for real people.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map(f => (
-              <div key={f.title} className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-4 shadow-sm`}>
-                  <f.icon className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-base font-semibold text-slate-900 mb-2">{f.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing preview */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-3xl font-bold text-slate-900 mb-3">Simple pricing</h2>
-          <p className="text-slate-500 mb-10">Start free. Upgrade when you're ready.</p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-            <div className="rounded-2xl border-2 border-slate-200 p-6">
-              <p className="text-sm font-bold text-slate-900">Free</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">$0</p>
-              <p className="text-xs text-slate-500 mt-1">Basic dashboard + 5 AI chats/day</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
+            <div>
+              <div className="text-sm font-bold text-indigo-600 mb-2">Step 1</div>
+              <h3 className="text-base font-semibold text-slate-900 mb-2">Your spending gets organized</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Every transaction gets categorized. Recurring bills get flagged. You see exactly
+                where your money is going each month, broken down by category.
+              </p>
             </div>
-            <div className="rounded-2xl border-2 border-indigo-300 bg-indigo-50/30 p-6">
-              <p className="text-sm font-bold text-slate-900">Plus</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">$7.99<span className="text-sm text-slate-500 font-normal">/mo</span></p>
-              <p className="text-xs text-slate-500 mt-1">Bank sync + AI Advisor + trends</p>
+            <div>
+              <div className="text-sm font-bold text-indigo-600 mb-2">Step 2</div>
+              <h3 className="text-base font-semibold text-slate-900 mb-2">We find what you can save</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Subscriptions you forgot about. Bills you're overpaying. Spending habits that are
+                quietly draining your account. We surface all of it.
+              </p>
             </div>
-            <div className="rounded-2xl border-2 border-violet-300 bg-violet-50/30 p-6 relative">
-              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold bg-violet-600 text-white px-3 py-0.5 rounded-full">
-                Best value
-              </span>
-              <p className="text-sm font-bold text-slate-900">Pro</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">$14.99<span className="text-sm text-slate-500 font-normal">/mo</span></p>
-              <p className="text-xs text-slate-500 mt-1">Cut This + Negotiate + unlimited AI</p>
+            <div>
+              <div className="text-sm font-bold text-indigo-600 mb-2">Step 3</div>
+              <h3 className="text-base font-semibold text-slate-900 mb-2">You get a plan that works</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                How many days your money will last. Which debt to pay off first.
+                A budget based on your actual spending, not guesswork.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Specifics - what exactly you get */}
+      <section className="border-t border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
+          <h2 className="text-2xl font-bold text-slate-900 mb-12">What's inside</h2>
+
+          <div className="space-y-8">
+            <div className="flex gap-4 items-start">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                <BarChart3 className="w-4.5 h-4.5 text-slate-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1">Financial runway</h3>
+                <p className="text-sm text-slate-500">How many days your money will last at your current burn rate. Updates daily.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-start">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                <Scissors className="w-4.5 h-4.5 text-slate-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1">Spending cuts</h3>
+                <p className="text-sm text-slate-500">Three specific things you can cancel or reduce right now, with dollar amounts.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-start">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                <Phone className="w-4.5 h-4.5 text-slate-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1">Bill negotiation scripts</h3>
+                <p className="text-sm text-slate-500">Word-for-word scripts and phone numbers to call and lower your bills. 60% success rate on the first try.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-start">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                <CreditCard className="w-4.5 h-4.5 text-slate-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1">Debt payoff plan</h3>
+                <p className="text-sm text-slate-500">Which debt to attack first, how much interest you'll save, and exactly when you'll be debt-free.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-start">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                <MessageCircle className="w-4.5 h-4.5 text-slate-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1">Ask anything</h3>
+                <p className="text-sm text-slate-500">"Can I afford this?" "How much did I spend on food last month?" Answers from your real numbers, not generic advice.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-start">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                <Target className="w-4.5 h-4.5 text-slate-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1">Goals and budgets</h3>
+                <p className="text-sm text-slate-500">Set savings goals and spending limits. Get nudged when you're close to going over, not after it's too late.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust / safety */}
+      <section className="border-t border-slate-100 bg-slate-50/50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+          <div className="flex flex-wrap gap-x-10 gap-y-4 justify-center">
+            {[
+              'Bank-level encryption',
+              'We never move your money',
+              'Delete your data anytime',
+              'No selling your info to advertisers',
+            ].map(item => (
+              <div key={item} className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span className="text-sm text-slate-700">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="border-t border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 text-center">
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Simple pricing</h2>
+          <p className="text-slate-500 mb-10">Start free. Upgrade if it's worth it to you.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
+            <div className="rounded-xl border border-slate-200 p-5">
+              <p className="text-sm font-semibold text-slate-900">Free</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">$0</p>
+              <p className="text-xs text-slate-500 mt-2">Dashboard, transactions, 5 chats per day, 1 savings goal</p>
+            </div>
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5">
+              <p className="text-sm font-semibold text-slate-900">Plus</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">$7.99<span className="text-sm text-slate-500 font-normal">/mo</span></p>
+              <p className="text-xs text-slate-500 mt-2">Bank sync, advisor, trends, 15 chats/day, 5 goals</p>
+            </div>
+            <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-5">
+              <p className="text-sm font-semibold text-slate-900">Pro</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">$14.99<span className="text-sm text-slate-500 font-normal">/mo</span></p>
+              <p className="text-xs text-slate-500 mt-2">Everything, plus spending cuts, bill negotiation, family sharing</p>
             </div>
           </div>
 
           <Link
             to="/login?register=true"
-            className="inline-flex items-center gap-2 mt-10 text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/25"
+            className="inline-flex items-center gap-2 mt-10 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 px-6 py-3 rounded-lg transition-colors"
           >
-            Start your 7-day free trial <ArrowRight className="w-5 h-5" />
+            Start your free trial <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-10 bg-slate-950 text-center">
+      <footer className="border-t border-slate-100 py-10 text-center">
         <div className="flex items-center justify-center gap-2 mb-3">
-          <TrendingUp className="w-5 h-5 text-indigo-400" strokeWidth={2.25} />
-          <span className="text-sm font-bold tracking-[0.15em] uppercase text-slate-300">Spenditure</span>
+          <TrendingUp className="w-4 h-4 text-slate-400" strokeWidth={2.25} />
+          <span className="text-xs font-bold tracking-[0.15em] uppercase text-slate-400">Spenditure</span>
         </div>
-        <p className="text-xs text-slate-500 mb-4">Stop guessing, start knowing.</p>
-        <div className="flex items-center justify-center gap-4 text-xs text-slate-500">
-          <Link to="/terms" className="hover:text-slate-300 transition-colors">Terms</Link>
-          <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy</Link>
-          <Link to="/login" className="hover:text-slate-300 transition-colors">Sign in</Link>
+        <div className="flex items-center justify-center gap-4 text-xs text-slate-400">
+          <Link to="/terms" className="hover:text-slate-600 transition-colors">Terms</Link>
+          <Link to="/privacy" className="hover:text-slate-600 transition-colors">Privacy</Link>
+          <Link to="/login" className="hover:text-slate-600 transition-colors">Sign in</Link>
         </div>
-        <p className="text-xs text-slate-600 mt-6">&copy; {new Date().getFullYear()} Spenditure. All rights reserved.</p>
+        <p className="text-xs text-slate-300 mt-4">&copy; {new Date().getFullYear()} Initium Professional Services LLC</p>
       </footer>
     </div>
   );

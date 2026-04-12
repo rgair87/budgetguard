@@ -351,7 +351,7 @@ export default function Home() {
               </div>
             </div>
             <Link to="/pricing" className="text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors shrink-0">
-              Keep access — $7.99/mo
+              Keep access for $7.99/mo
             </Link>
           </div>
         </div>
@@ -617,7 +617,7 @@ export default function Home() {
             <BrainCircuit className="w-5 h-5 text-white/80" />
             <p className="text-sm font-bold text-white">Get your Financial Health Report</p>
           </div>
-          <p className="text-xs text-indigo-100">AI-powered analysis of your spending, debt, and savings.</p>
+          <p className="text-xs text-indigo-100">Personalized analysis of your spending, debt, and savings.</p>
         </Link>
       )}
 

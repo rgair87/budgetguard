@@ -118,7 +118,7 @@ export default function Negotiate() {
         <p className="text-sm text-slate-500 max-w-sm mx-auto mb-2">Get custom negotiation scripts, success rates, and direct phone numbers for every bill.</p>
         <p className="text-sm font-medium text-blue-600 mb-6">60% success rate on the first call.</p>
         <a href="/pricing" className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-700 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-violet-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-500/25">
-          Unlock for $14.99/mo
+            Get this for $14.99/mo
         </a>
       </div>
     );

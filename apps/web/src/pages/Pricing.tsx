@@ -145,10 +145,10 @@ export default function Pricing() {
             </div>
             {interval === 'year' ? (
               <p className="text-xs text-emerald-600 font-semibold mt-1">
-                {PRICING.yearTotal.plus}/year — {PRICING.yearSavings.plus}
+                {PRICING.yearTotal.plus}/year ({PRICING.yearSavings.plus})
               </p>
             ) : (
-              <p className="text-xs text-slate-500 mt-1">Bank sync + AI insights</p>
+              <p className="text-xs text-slate-500 mt-1">Bank sync, advisor, trends</p>
             )}
           </div>
           <div className="space-y-2.5 mb-6">
@@ -183,10 +183,10 @@ export default function Pricing() {
             </div>
             {interval === 'year' ? (
               <p className="text-xs text-emerald-600 font-semibold mt-1">
-                {PRICING.yearTotal.pro}/year — {PRICING.yearSavings.pro}
+                {PRICING.yearTotal.pro}/year ({PRICING.yearSavings.pro})
               </p>
             ) : (
-              <p className="text-xs text-slate-500 mt-1">Unlimited AI + premium tools</p>
+              <p className="text-xs text-slate-500 mt-1">Everything, plus cuts and negotiation</p>
             )}
           </div>
           <div className="space-y-2.5 mb-6">
