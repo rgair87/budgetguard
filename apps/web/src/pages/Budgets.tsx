@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Sparkles, Check, AlertTriangle, TrendingUp, ArrowRight, XCircle } from 'lucide-react';
+import { Target, Sparkles, Check, AlertTriangle, TrendingUp, ArrowRight, XCircle, Receipt } from 'lucide-react';
 import api from '../api/client';
 import { BUDGETABLE_CATEGORIES } from '@spenditure/shared';
 import type { BudgetWithSuggestion } from '@spenditure/shared';
@@ -214,11 +214,21 @@ export default function Budgets() {
                 />
               </div>
 
-              {/* Bottom row: spent + status */}
+              {/* Bottom row: spent + status + drilldown */}
               <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-500">
-                  <span className="font-medium text-slate-700">${b.currentSpend.toLocaleString()}</span> spent this month
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-slate-500">
+                    <span className="font-medium text-slate-700">${b.currentSpend.toLocaleString()}</span> spent
+                  </p>
+                  {b.currentSpend > 0 && (
+                    <Link
+                      to={`/transactions?search=${encodeURIComponent(b.category)}`}
+                      className="text-[11px] text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-0.5 transition-colors"
+                    >
+                      <Receipt className="w-3 h-3" /> View
+                    </Link>
+                  )}
+                </div>
                 {isOver ? (
                   <span className="text-[11px] font-semibold text-red-600 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> ${Math.round(b.currentSpend - budgetVal).toLocaleString()} over
@@ -244,8 +254,8 @@ export default function Budgets() {
       )}
 
       {/* Save bar */}
-      <div className="sticky bottom-20 z-10">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200 px-4 py-3 flex items-center justify-between">
+      <div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-3 flex items-center justify-between">
           <p className="text-xs text-slate-500">
             {saved ? (
               <span className="text-emerald-600 font-medium flex items-center gap-1">
