@@ -98,10 +98,10 @@ export default function RunwayScore({ score, plan }: Props) {
             <p className="text-sm font-medium text-white/80 uppercase tracking-wider">Your Runway</p>
           </div>
 
-          <p className="text-6xl font-extrabold text-white tracking-tight leading-none">
+          <p className="text-5xl sm:text-6xl lg:text-5xl font-extrabold text-white tracking-tight leading-none">
             {score.runwayDays >= 730 ? '2yr+' : score.runwayDays >= 365 ? `${Math.round(score.runwayDays / 30)}mo` : score.runwayDays}
           </p>
-          <p className="text-lg font-medium text-white/80 mt-1 flex items-center gap-1.5">
+          <p className="text-base sm:text-lg lg:text-base font-medium text-white/80 mt-1 flex items-center gap-1.5">
             {score.runwayDays >= 365
               ? `${score.runwayDays} days of runway`
               : `day${score.runwayDays !== 1 ? 's' : ''} of runway`}
@@ -113,7 +113,7 @@ export default function RunwayScore({ score, plan }: Props) {
               if (isGood && incomeCoversExpenses) {
                 return "You're in great shape. Income covers spending, bills, and upcoming events. Keep it up!";
               } else if (isGood || score.runwayDays >= 180) {
-                return `Your savings give you a strong cushion.${plan?.isShortfall ? ' Your income doesn\'t fully cover expenses yet — your cash reserves are making up the difference.' : ''}`;
+                return `Your savings give you a strong cushion.${plan?.isShortfall ? ' Your income doesn\'t fully cover expenses yet. Your cash reserves are making up the difference.' : ''}`;
               } else if (score.runwayDays >= 365) {
                 return "You have solid savings, but you're spending more than you earn. Consider trimming expenses.";
               } else if (score.runoutDate) {

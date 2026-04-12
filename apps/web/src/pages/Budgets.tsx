@@ -170,64 +170,68 @@ export default function Budgets() {
         </div>
       )}
 
-      {/* Category list */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="divide-y divide-slate-100">
-          {budgets.map(b => {
-            const catDef = BUDGETABLE_CATEGORIES.find(c => c.name === b.category);
-            const isNecessity = catDef?.type === 'necessity';
-            const budgetVal = edits[b.category] || 0;
-            const pctUsed = budgetVal > 0 ? Math.min(100, Math.round((b.currentSpend / budgetVal) * 100)) : 0;
-            const isOver = budgetVal > 0 && b.currentSpend > budgetVal;
-            const barColor = CATEGORY_COLORS[b.category] || 'bg-gray-400';
+      {/* Category cards */}
+      <div className="space-y-3">
+        {budgets.map(b => {
+          const catDef = BUDGETABLE_CATEGORIES.find(c => c.name === b.category);
+          const isNecessity = catDef?.type === 'necessity';
+          const budgetVal = edits[b.category] || 0;
+          const pctUsed = budgetVal > 0 ? Math.min(100, Math.round((b.currentSpend / budgetVal) * 100)) : 0;
+          const isOver = budgetVal > 0 && b.currentSpend > budgetVal;
+          const barColor = CATEGORY_COLORS[b.category] || 'bg-gray-400';
 
-            return (
-              <div key={b.category} className="px-4 py-3.5">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-2.5 h-2.5 rounded-full ${barColor}`} />
-                    <p className="text-sm font-medium text-slate-700 truncate">{b.category}</p>
-                    {isNecessity && (
-                      <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full shrink-0">need</span>
-                    )}
-                    {isOver && (
-                      <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full shrink-0 flex items-center gap-0.5">
-                        <AlertTriangle className="w-2.5 h-2.5" /> over
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-xs text-slate-400">$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="25"
-                      value={edits[b.category] ?? ''}
-                      placeholder={b.suggested ? String(b.suggested) : '0'}
-                      onChange={e => setEditValue(b.category, e.target.value)}
-                      className="w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
-                    />
-                    <span className="text-xs text-slate-400">/mo</span>
-                  </div>
+          return (
+            <div key={b.category} className={`bg-white rounded-2xl shadow-sm border p-4 transition-all ${isOver ? 'border-red-200 bg-red-50/30' : 'border-slate-200'}`}>
+              {/* Top row: name + budget input */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-3 h-3 rounded-full ${barColor} shrink-0`} />
+                  <p className="text-sm font-semibold text-slate-800 truncate">{b.category}</p>
+                  {isNecessity && (
+                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full shrink-0">essential</span>
+                  )}
                 </div>
-
-                {/* Progress bar */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full transition-all ${isOver ? 'bg-red-500' : barColor}`}
-                      style={{ width: `${Math.min(100, budgetVal > 0 ? (b.currentSpend / budgetVal) * 100 : 0)}%` }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-400 shrink-0 w-28 text-right">
-                    ${b.currentSpend.toLocaleString()} spent
-                    {b.suggested ? ` · ~$${b.suggested} avg` : ''}
-                  </p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs text-slate-400">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={edits[b.category] ?? ''}
+                    placeholder={b.suggested ? String(b.suggested) : '0'}
+                    onChange={e => setEditValue(b.category, e.target.value)}
+                    className="w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+                  />
+                  <span className="text-xs text-slate-400">/mo</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Progress bar - thicker and more visual */}
+              <div className="bg-slate-100 rounded-full h-2.5 mb-2">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-500 ${isOver ? 'bg-red-500' : barColor}`}
+                  style={{ width: `${Math.min(100, budgetVal > 0 ? (b.currentSpend / budgetVal) * 100 : 0)}%` }}
+                />
+              </div>
+
+              {/* Bottom row: spent + status */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-500">
+                  <span className="font-medium text-slate-700">${b.currentSpend.toLocaleString()}</span> spent this month
+                </p>
+                {isOver ? (
+                  <span className="text-[11px] font-semibold text-red-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> ${Math.round(b.currentSpend - budgetVal).toLocaleString()} over
+                  </span>
+                ) : budgetVal > 0 ? (
+                  <span className="text-[11px] text-slate-400">{pctUsed}% used</span>
+                ) : b.suggested ? (
+                  <span className="text-[11px] text-slate-400">avg ~${b.suggested}/mo</span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Upgrade prompt when at free tier budget limit */}
@@ -245,7 +249,7 @@ export default function Budgets() {
           <p className="text-xs text-slate-500">
             {saved ? (
               <span className="text-emerald-600 font-medium flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" /> Budgets saved — alerts are active
+                <Check className="w-3.5 h-3.5" /> Budgets saved. Alerts are active.
               </span>
             ) : hasEdits ? (
               'You have unsaved changes'
