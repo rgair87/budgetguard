@@ -205,7 +205,7 @@ export default function Transactions() {
         <div className="bg-white rounded-lg border border-amber-200 shadow-sm">
           <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center justify-between rounded-t-lg">
             <div>
-              <h2 className="text-sm font-semibold text-amber-900">Bulk Review — {unclassified.length} unclassified merchants</h2>
+              <h2 className="text-sm font-semibold text-amber-900">Bulk Review: {unclassified.length} unclassified merchants</h2>
               <p className="text-xs text-amber-700 mt-0.5">Select a category for each merchant, then save all at once.</p>
             </div>
             <div className="flex items-center gap-2">
@@ -345,16 +345,23 @@ export default function Transactions() {
           ))}
         </div>
       ) : transactions.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-sm">{search || categoryFilter ? 'No transactions match your filters.' : 'No transactions yet.'}</p>
-          {!search && !categoryFilter && (
-            <p className="text-gray-400 text-xs mt-2">Import a CSV or link your bank account to get started.</p>
-          )}
+        <div className="text-center py-16">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">📋</span>
+          </div>
+          <h3 className="text-base font-semibold text-slate-900 mb-1">
+            {search || categoryFilter ? 'No transactions match your filters' : 'No transactions yet'}
+          </h3>
+          <p className="text-sm text-slate-500 mb-4 max-w-xs mx-auto">
+            {search || categoryFilter
+              ? 'Try adjusting your search or clearing the filters.'
+              : 'Import a CSV or connect your bank account to see your spending here.'}
+          </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {transactions.map(tx => (
-            <div key={tx.id} className="px-4 py-3 flex items-center justify-between gap-3">
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+          {transactions.map((tx, i) => (
+            <div key={tx.id} className={`px-4 py-3.5 flex items-center justify-between gap-3 ${i % 2 === 1 ? 'bg-slate-50/50' : ''} ${i > 0 ? 'border-t border-slate-100' : ''}`}>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <button
@@ -386,7 +393,7 @@ export default function Transactions() {
                   ) : (
                     <button
                       onClick={() => { setEditingId(tx.id); setEditCategory(tx.category || 'Other'); }}
-                      className="text-xs text-gray-500 hover:text-indigo-600"
+                      className="text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 px-2 py-0.5 rounded-full transition-colors"
                       title="Click to recategorize"
                     >
                       {tx.category || 'Uncategorized'}

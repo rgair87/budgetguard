@@ -424,7 +424,7 @@ function StepIncome({ income, onChange }: { income: IncomeData; onChange: (i: In
 
         {income.isVariable && (
           <p className="text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            No problem — we'll use your deposit history to calculate a rolling average. Enter your best estimate above and we'll adjust as we see your actual deposits.
+            No problem. We'll use your deposit history to calculate a rolling average. Enter your best estimate above and we'll adjust as we see your actual deposits.
           </p>
         )}
       </div>

@@ -151,8 +151,8 @@ export default function Privacy() {
               <h2 className="text-lg font-semibold text-gray-900 mb-2">5. Data Accuracy Disclaimer</h2>
               <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
                 <p>
-                  Financial data displayed in the Service — including account balances, transaction
-                  amounts, spending categories, projections, and AI-generated insights — may be
+                  Financial data displayed in the Service (including account balances, transaction
+                  amounts, spending categories, projections, and generated insights) may be
                   inaccurate, incomplete, or delayed. We rely on third-party providers for financial
                   data and cannot guarantee its accuracy.
                 </p>

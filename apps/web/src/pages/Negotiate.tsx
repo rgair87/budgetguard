@@ -355,7 +355,7 @@ export default function Negotiate() {
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fade-in">
                       <div className="flex items-center gap-2">
                         <RefreshCw className="w-4 h-4 text-slate-500" />
-                        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Don't give up yet — try this</p>
+                        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Don't give up yet. Try this instead.</p>
                       </div>
                       <ul className="space-y-2">
                         <li className="text-sm text-slate-600 flex items-start gap-2">
@@ -364,7 +364,7 @@ export default function Negotiate() {
                         </li>
                         <li className="text-sm text-slate-600 flex items-start gap-2">
                           <span className="mt-1 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                          <span><strong>Ask for the retention or loyalty department.</strong> Front-line agents often can't offer discounts — retention teams can.</span>
+                          <span><strong>Ask for the retention or loyalty department.</strong> Front-line agents often can't offer discounts. Retention teams can.</span>
                         </li>
                         <li className="text-sm text-slate-600 flex items-start gap-2">
                           <span className="mt-1 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">3</span>

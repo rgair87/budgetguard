@@ -314,7 +314,7 @@ const LOADING_STEPS = [
   { delay: 0, text: 'Analyzing your transactions...' },
   { delay: 5000, text: 'Calculating spending patterns...' },
   { delay: 12000, text: 'Generating personalized insights...' },
-  { delay: 22000, text: 'Almost done — first reports take a bit longer...' },
+  { delay: 22000, text: 'Almost done. First reports take a bit longer...' },
 ];
 
 function AdvisorLoadingProgress() {

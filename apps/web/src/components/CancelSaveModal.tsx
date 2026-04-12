@@ -105,7 +105,7 @@ export default function CancelSaveModal({ tier, onContinue, onClose }: CancelSav
           {tier === 'pro' && (
             <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
               <p className="text-sm font-semibold text-indigo-900">Need a lower price?</p>
-              <p className="text-xs text-indigo-700 mt-1">Switch to Plus at $7.99/mo — keep bank sync, AI Advisor, and trends.</p>
+              <p className="text-xs text-indigo-700 mt-1">Switch to Plus at $7.99/mo. Keep bank sync, advisor, and trends.</p>
               <a href="/pricing" className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors">
                 Switch to Plus <ArrowRight className="w-3 h-3" />
               </a>

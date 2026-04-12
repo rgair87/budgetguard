@@ -492,7 +492,7 @@ export default function DebtPayoff() {
           <div className="space-y-1.5">
             {detectedDebts.slice(0, 5).map(d => (
               <div key={d.displayName} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-indigo-700">{d.displayName} — ${Math.round(d.monthlyAmount)}/mo</span>
+                <span className="text-xs text-indigo-700">{d.displayName} (${Math.round(d.monthlyAmount)}/mo)</span>
                 <button onClick={() => addDetectedDebt(d)} disabled={addingDetected === d.displayName}
                   className="text-[10px] font-medium text-indigo-600 bg-indigo-100 hover:bg-indigo-200 px-2 py-1 rounded-lg disabled:opacity-50">
                   {addingDetected === d.displayName ? 'Adding...' : 'Add'}
