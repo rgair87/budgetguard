@@ -48,7 +48,19 @@ if (env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://api.teller.io", "https://*.sentry.io"],
+      frameSrc: ["'self'", "https://js.stripe.com"],
+    },
+  },
+}));
 app.use(cors({
   origin: env.CORS_ORIGINS.split(','),
   credentials: true,
