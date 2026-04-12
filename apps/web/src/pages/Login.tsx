@@ -88,11 +88,11 @@ export default function Login() {
 
           {/* Headline */}
           <h2 className="text-4xl xl:text-5xl font-bold text-white tracking-tight leading-tight mb-4">
-            Know when you'll<br />
-            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">run out of money</span>
+            Take control of<br />
+            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">every dollar</span>
           </h2>
           <p className="text-slate-300 text-lg leading-relaxed mb-12 max-w-lg">
-            Connect your bank, and Spenditure tells you exactly how many days your cash will last — then helps you make it last longer.
+            Connect your bank and see exactly where your money goes — then make it go further.
           </p>
 
           {/* Feature grid */}

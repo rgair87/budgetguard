@@ -104,7 +104,7 @@ function StepWelcome({
               Welcome to Spenditure
             </h1>
             <p className="text-indigo-200 text-base leading-relaxed max-w-sm mx-auto">
-              Know exactly when you'll run out of money - and what to do about it
+              See where your money goes and make every dollar count
             </p>
           </div>
         </div>
