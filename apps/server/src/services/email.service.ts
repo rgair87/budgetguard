@@ -1,10 +1,11 @@
 import { Resend } from 'resend';
+import logger from '../config/logger';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 // Use onboarding@resend.dev for testing (no domain verification needed)
-// Set EMAIL_FROM=Runway <noreply@yourdomain.com> once you verify a domain in Resend
-const FROM_ADDRESS = process.env.EMAIL_FROM || 'Runway <onboarding@resend.dev>';
+// Set EMAIL_FROM=Spenditure <noreply@yourdomain.com> once you verify a domain in Resend
+const FROM_ADDRESS = process.env.EMAIL_FROM || 'Spenditure <onboarding@resend.dev>';
 
 let resend: Resend | null = null;
 if (RESEND_API_KEY) {
@@ -24,7 +25,7 @@ function wrapHtml(body: string): string {
         <!-- Header -->
         <tr>
           <td style="background:#4f46e5;padding:24px 32px;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">Runway</h1>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">Spenditure</h1>
           </td>
         </tr>
         <!-- Body -->
@@ -37,8 +38,8 @@ function wrapHtml(body: string): string {
         <tr>
           <td style="padding:24px 32px;border-top:1px solid #e4e4e7;">
             <p style="margin:0;color:#a1a1aa;font-size:13px;line-height:1.5;">
-              &copy; ${new Date().getFullYear()} Runway Finance. All rights reserved.<br/>
-              You received this email because you have an account with Runway.
+              &copy; ${new Date().getFullYear()} Spenditure Finance. All rights reserved.<br/>
+              You received this email because you have an account with Spenditure.
             </p>
           </td>
         </tr>
@@ -59,12 +60,13 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   if (resend) {
     try {
       await resend.emails.send({ from: FROM_ADDRESS, to, subject, html });
-      console.log(`[EMAIL] Sent "${subject}" to ${to}`);
+      logger.info({ to, subject }, 'Email sent');
     } catch (err) {
-      console.error(`[EMAIL] Failed to send "${subject}" to ${to}:`, err);
+      logger.error({ to, subject, err }, 'Failed to send email');
+      throw new Error(`Failed to send email to ${to}`);
     }
   } else {
-    console.log(`\n[EMAIL PREVIEW] To: ${to}\n  Subject: ${subject}\n  (Set RESEND_API_KEY to send real emails)\n`);
+    logger.info({ to, subject }, 'Email preview (no RESEND_API_KEY configured)');
   }
 }
 
@@ -75,17 +77,17 @@ export async function sendVerificationEmail(email: string, token: string): Promi
   const html = wrapHtml(`
     <h2 style="margin:0 0 16px;color:#18181b;font-size:20px;font-weight:600;">Verify your email address</h2>
     <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
-      Thanks for signing up for Runway! Please confirm your email address by clicking the button below.
+      Thanks for signing up for Spenditure! Please confirm your email address by clicking the button below.
     </p>
     ${buttonHtml(verifyUrl, 'Verify Email')}
     <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.5;">
-      If you didn't create a Runway account, you can safely ignore this email.
+      If you didn't create a Spenditure account, you can safely ignore this email.
     </p>
     <p style="margin:16px 0 0;color:#a1a1aa;font-size:12px;word-break:break-all;">
       Or copy this link: ${verifyUrl}
     </p>
   `);
-  await sendEmail(email, 'Verify your email — Runway', html);
+  await sendEmail(email, 'Verify your email — Spenditure', html);
 }
 
 export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
@@ -93,7 +95,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   const html = wrapHtml(`
     <h2 style="margin:0 0 16px;color:#18181b;font-size:20px;font-weight:600;">Reset your password</h2>
     <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
-      We received a request to reset the password for your Runway account. Click the button below to choose a new password.
+      We received a request to reset the password for your Spenditure account. Click the button below to choose a new password.
     </p>
     ${buttonHtml(resetUrl, 'Reset Password')}
     <p style="margin:24px 0 0;color:#ef4444;font-size:13px;font-weight:500;">
@@ -106,7 +108,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
       Or copy this link: ${resetUrl}
     </p>
   `);
-  await sendEmail(email, 'Reset your password — Runway', html);
+  await sendEmail(email, 'Reset your password — Spenditure', html);
 }
 
 export async function sendFamilyInviteEmail(email: string, inviterName: string, token: string): Promise<void> {
@@ -114,7 +116,7 @@ export async function sendFamilyInviteEmail(email: string, inviterName: string, 
   const html = wrapHtml(`
     <h2 style="margin:0 0 16px;color:#18181b;font-size:20px;font-weight:600;">You've been invited to a family plan</h2>
     <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
-      <strong>${inviterName}</strong> has invited you to join their Runway family plan. Collaborate on budgets, share financial goals, and keep everyone on the same page.
+      <strong>${inviterName}</strong> has invited you to join their Spenditure family plan. Collaborate on budgets, share financial goals, and keep everyone on the same page.
     </p>
     ${buttonHtml(joinUrl, 'Join Family Plan')}
     <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.5;">
@@ -124,5 +126,5 @@ export async function sendFamilyInviteEmail(email: string, inviterName: string, 
       Or copy this link: ${joinUrl}
     </p>
   `);
-  await sendEmail(email, `${inviterName} invited you to Runway`, html);
+  await sendEmail(email, `${inviterName} invited you to Spenditure`, html);
 }

@@ -111,13 +111,14 @@ export default function Negotiate() {
   if (error === 'upgrade_required') {
     return (
       <div className="text-center py-16">
-        <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-          <Phone className="w-8 h-8 text-blue-600" />
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
+          <Phone className="w-8 h-8 text-white" />
         </div>
-        <h2 className="text-xl font-semibold text-slate-900 mb-2">Bill Negotiation requires Pro</h2>
-        <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">Get phone scripts, success rates, and step-by-step guides to lower your bills.</p>
-        <a href="/pricing" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
-          View plans
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Lower your bills with one phone call</h2>
+        <p className="text-sm text-slate-500 max-w-sm mx-auto mb-2">Get custom negotiation scripts, success rates, and direct phone numbers for every bill.</p>
+        <p className="text-sm font-medium text-blue-600 mb-6">60% success rate on the first call.</p>
+        <a href="/pricing" className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-700 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-violet-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-500/25">
+          Unlock for $14.99/mo
         </a>
       </div>
     );

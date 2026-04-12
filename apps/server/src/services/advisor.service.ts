@@ -2,11 +2,12 @@ import crypto from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '../config/env';
 import db from '../config/db';
+import logger from '../config/logger';
 import { calculateRunway } from './runway.service';
 import { getPaycheckPlan } from './paycheck.service';
 import { getDebtPayoffPlan, getLumpSumRecommendation } from './debt.service';
 import { calculateHealthScore } from './healthscore.service';
-import type { AdvisorReport, AdvisorInsight } from '@runway/shared';
+import type { AdvisorReport, AdvisorInsight } from '@spenditure/shared';
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 const CACHE_KEY = 'advisor_report';
@@ -590,7 +591,7 @@ export async function generateAdvisorReport(userId: string, forceRefresh = false
     return emptyReport('No transaction data yet. Import a CSV or link a bank account to get your financial health report.');
   }
 
-  console.log('[Advisor] Gathering financial data...');
+  logger.debug('[Advisor] Gathering financial data...');
 
   // Gather data from existing services
   const runway = calculateRunway(userId);
@@ -609,10 +610,9 @@ export async function generateAdvisorReport(userId: string, forceRefresh = false
   // Log key merchants for debugging
   const geicoData = spendingContext.spending.filter(s => s.merchant.toLowerCase().includes('geico'));
   const sofiData = spendingContext.spending.filter(s => s.merchant.toLowerCase().includes('sofi'));
-  if (geicoData.length) console.log('[Advisor] Geico data:', JSON.stringify(geicoData));
-  if (sofiData.length) console.log('[Advisor] SoFi data:', JSON.stringify(sofiData));
-  console.log('[Advisor] Actual monthly income:', spendingContext.totalMonthlyIncome);
-  console.log('[Advisor] Data gathered. Calling Claude...');
+  if (geicoData.length) logger.debug({ geicoData }, 'Advisor Geico data');
+  if (sofiData.length) logger.debug({ sofiData }, 'Advisor SoFi data');
+  logger.debug({ monthlyIncome: spendingContext.totalMonthlyIncome }, 'Advisor data gathered, calling Claude');
 
   // Build data payload for Claude
   const dataPayload = {
@@ -756,14 +756,12 @@ Generate 6-10 insights covering different categories. Include exactly 3 what-if 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
     } catch (parseErr: any) {
-      console.log('[Advisor] JSON parse error:', parseErr.message);
-      console.log('[Advisor] Raw response (first 500 chars):', text.substring(0, 500));
+      logger.debug({ error: parseErr.message, preview: text.substring(0, 500) }, 'Advisor JSON parse error');
       parsed = null;
     }
 
     if (!parsed || !parsed.healthScore) {
-      console.log('[Advisor] Failed to parse AI response, using fallback');
-      console.log('[Advisor] Stop reason:', response.stop_reason);
+      logger.debug({ stopReason: response.stop_reason }, 'Advisor failed to parse AI response, using fallback');
       return buildFallbackReport(runway.status, dataAsOf);
     }
 
@@ -816,10 +814,10 @@ Generate 6-10 insights covering different categories. Include exactly 3 what-if 
        VALUES (?, ?, ?, ?, datetime('now'))`
     ).run(crypto.randomUUID(), userId, CACHE_KEY, JSON.stringify(report));
 
-    console.log(`[Advisor] Report generated: score=${report.healthScore}, insights=${report.insights.length}`);
+    logger.debug(`[Advisor] Report generated: score=${report.healthScore}, insights=${report.insights.length}`);
     return report;
   } catch (err: any) {
-    console.error('[Advisor] Claude API error:', err.message);
+    logger.error('[Advisor] Claude API error:', err.message);
     return buildFallbackReport(runway.status, dataAsOf);
   }
 }

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Mail, Lock, ArrowRight, Shield, TrendingDown, Calculator,
   Zap, Clock, BrainCircuit, CreditCard, Target, BarChart3,
-  CheckCircle,
+  CheckCircle, TrendingUp,
 } from 'lucide-react';
 
 const FEATURES = [
@@ -80,20 +80,19 @@ export default function Login() {
 
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-20 w-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">R</span>
-            </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Runway</h1>
+          <div className="flex items-center gap-3 mb-3">
+            <TrendingUp className="w-8 h-8 text-indigo-400" strokeWidth={2.25} />
+            <h1 className="text-2xl font-bold tracking-[0.15em] uppercase text-white">Spenditure</h1>
           </div>
+          <p className="text-xs tracking-[0.2em] uppercase text-indigo-300/70 mb-8 ml-11">Stop guessing, start knowing</p>
 
           {/* Headline */}
           <h2 className="text-4xl xl:text-5xl font-bold text-white tracking-tight leading-tight mb-4">
             Know when you'll<br />
             <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">run out of money</span>
           </h2>
-          <p className="text-slate-400 text-lg leading-relaxed mb-12 max-w-lg">
-            Connect your bank, and Runway tells you exactly how many days your cash will last — then helps you make it last longer.
+          <p className="text-slate-300 text-lg leading-relaxed mb-12 max-w-lg">
+            Connect your bank, and Spenditure tells you exactly how many days your cash will last — then helps you make it last longer.
           </p>
 
           {/* Feature grid */}
@@ -131,13 +130,11 @@ export default function Login() {
       <div className="w-full lg:w-[45%] flex flex-col items-center justify-center bg-white px-6 py-12">
         {/* Mobile-only brand header */}
         <div className="lg:hidden text-center mb-8">
-          <div className="flex items-center justify-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">R</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Runway</h1>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <TrendingUp className="w-6 h-6 text-indigo-600" strokeWidth={2.25} />
+            <h1 className="text-xl font-bold tracking-[0.15em] uppercase text-slate-900">Spenditure</h1>
           </div>
-          <p className="text-slate-500 text-sm">Know when you'll run out of money</p>
+          <p className="text-[10px] tracking-[0.2em] uppercase text-slate-400">Stop guessing, start knowing</p>
         </div>
 
         <div className="w-full max-w-md">
@@ -148,7 +145,7 @@ export default function Login() {
             <p className="text-slate-500 text-sm">
               {isRegister
                 ? '7 days free. No credit card required.'
-                : 'Sign in to your Runway account.'}
+                : 'Sign in to your Spenditure account.'}
             </p>
           </div>
 

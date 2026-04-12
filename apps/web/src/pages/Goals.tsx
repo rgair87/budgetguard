@@ -25,6 +25,8 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import api from '../api/client';
 import useTrack from '../hooks/useTrack';
+import useTier from '../hooks/useTier';
+import UpgradeCard from '../components/UpgradeCard';
 
 interface Goal {
   id: string;
@@ -86,6 +88,7 @@ const INSIGHT_STYLES: Record<string, { bg: string; border: string; icon: LucideI
 
 export default function Goals() {
   const track = useTrack('goals');
+  const { tier } = useTier();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [insights, setInsights] = useState<Record<string, GoalInsight[]>>({});
   const [loading, setLoading] = useState(true);
@@ -340,6 +343,15 @@ export default function Goals() {
             Create your first goal
           </button>
         </div>
+      )}
+
+      {/* Upgrade prompt when at free tier goal limit */}
+      {tier === 'free' && goals.length >= 1 && !showAdd && (
+        <UpgradeCard
+          feature="Track up to 5 savings goals"
+          description="Free accounts get 1 goal. Upgrade to track multiple goals and stay on top of every financial target."
+          tierNeeded="plus"
+        />
       )}
 
       {/* Goals list */}

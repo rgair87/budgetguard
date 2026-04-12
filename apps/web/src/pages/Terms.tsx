@@ -13,15 +13,10 @@ export default function Terms() {
           <p className="text-sm text-gray-500 mb-8">Last updated: March 2026</p>
 
           <div className="space-y-6 text-gray-700 text-sm leading-relaxed">
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 text-xs">
-              This is a template Terms of Service. You should have a qualified attorney review and
-              customize these terms before using them in production.
-            </div>
-
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">1. Acceptance of Terms</h2>
               <p>
-                By accessing or using Runway ("the Service"), you agree to be bound by these Terms of
+                By accessing or using Spenditure ("the Service"), you agree to be bound by these Terms of
                 Service. If you do not agree to these terms, please do not use the Service. We reserve
                 the right to update these terms at any time, and your continued use of the Service
                 constitutes acceptance of any changes.
@@ -31,7 +26,7 @@ export default function Terms() {
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">2. Description of Service</h2>
               <p>
-                Runway is a personal finance management application that helps users track expenses,
+                Spenditure is a personal finance management application that helps users track expenses,
                 manage budgets, monitor subscriptions, and plan their financial future. The Service
                 may include features such as bank account connections via third-party providers,
                 transaction categorization, spending analysis, and AI-powered financial insights.
@@ -83,7 +78,7 @@ export default function Terms() {
               <h2 className="text-lg font-semibold text-gray-900 mb-2">6. Financial Disclaimers</h2>
               <p>
                 <strong>The Service does not provide financial advice.</strong> All information,
-                analysis, suggestions, and insights provided through Runway are for informational
+                analysis, suggestions, and insights provided through Spenditure are for informational
                 purposes only and should not be construed as professional financial, investment, tax,
                 or legal advice.
               </p>
@@ -98,7 +93,7 @@ export default function Terms() {
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">7. Limitation of Liability</h2>
               <p>
-                To the maximum extent permitted by law, Runway and its operators shall not be liable
+                To the maximum extent permitted by law, Spenditure and its operators shall not be liable
                 for any indirect, incidental, special, consequential, or punitive damages, including
                 but not limited to loss of profits, data, or financial losses, arising from your use
                 of or inability to use the Service.

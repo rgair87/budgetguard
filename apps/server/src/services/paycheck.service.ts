@@ -1,8 +1,8 @@
 import db from '../config/db';
 import { calculateRunway, SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from './runway.service';
 import { getMonthlyIncome } from './income.service';
-import { NECESSITY_NAMES, DISCRETIONARY_NAMES } from '@runway/shared';
-import type { PaycheckPlan, SpendingCategory } from '@runway/shared';
+import { NECESSITY_NAMES, DISCRETIONARY_NAMES } from '@spenditure/shared';
+import type { PaycheckPlan, SpendingCategory } from '@spenditure/shared';
 
 function getPaychecksPerMonth(freq: string | null): number {
   switch (freq) {

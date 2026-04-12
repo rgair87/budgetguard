@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import db from '../config/db';
 import { env } from '../config/env';
+import logger from '../config/logger';
 import { guessCategoryFromMerchant, detectAndFlagRecurring } from './csv.service';
 import { classifyMerchantsWithAI } from './ai-categorize.service';
 import { invalidateCache } from '../utils/cache';
@@ -40,15 +41,13 @@ function loadCerts(): { cert: Buffer; key: Buffer } {
     const keyStr = normalizePem(env.TELLER_PRIVATE_KEY);
     cert = Buffer.from(certStr);
     key = Buffer.from(keyStr);
-    console.log('Teller certs loaded from environment variables');
-    console.log('Cert starts with:', certStr.substring(0, 30));
-    console.log('Key starts with:', keyStr.substring(0, 30));
+    logger.info('Teller certs loaded from environment variables');
   } else {
     const certsDir = env.TELLER_CERT_PATH || path.resolve(__dirname, '../../certs');
     try {
       cert = fs.readFileSync(path.join(certsDir, 'certificate.pem'));
       key = fs.readFileSync(path.join(certsDir, 'private_key.pem'));
-      console.log('Teller certs loaded from', certsDir);
+      logger.info({ certsDir }, 'Teller certs loaded from disk');
     } catch {
       throw new Error(
         'Teller certificates not found. Set TELLER_CERTIFICATE and TELLER_PRIVATE_KEY env vars, or place cert files at ' +
@@ -259,7 +258,7 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
           totalTransactions += result.transactions;
           if (result.pendingTransactions) anyPending = true;
         } catch (err: any) {
-          console.warn(`[Teller] Sync failed for one enrollment:`, err.message);
+          logger.warn(`[Teller] Sync failed for one enrollment:`, err.message);
           messages.push(err.message);
         }
       }
@@ -318,7 +317,7 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       balance = parseFloat(bal.ledger || '0');
       available = bal.available ? parseFloat(bal.available) : null;
     } catch (err) {
-      console.warn(`Failed to fetch balance for ${acct.id}, keeping existing balance:`, (err as Error).message);
+      logger.warn({ accountId: acct.id, error: (err as Error).message }, 'Failed to fetch balance, keeping existing');
     }
 
     const institutionName = acct.institution?.name || null;
@@ -374,10 +373,7 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
         accessToken!,
       );
 
-      console.log(`Teller: fetched ${transactions.length} transactions for account ${acct.id}`);
-      if (transactions.length > 0) {
-        console.log('Sample transaction:', JSON.stringify(transactions[0]));
-      }
+      logger.info({ accountId: acct.id, count: transactions.length }, 'Teller fetched transactions');
 
       for (const txn of transactions) {
         const rawAmount = parseFloat(txn.amount);
@@ -447,19 +443,19 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
       const msg = err.message || '';
       if (msg.includes('504') || msg.includes('gateway_timeout') || msg.includes('taking too long')) {
         pendingTransactions = true;
-        console.warn(`Transactions still processing for account ${acct.id} (bank is slow)`);
+        logger.warn(`Transactions still processing for account ${acct.id} (bank is slow)`);
       } else {
-        console.warn(`Failed to fetch transactions for account ${acct.id}:`, err);
+        logger.warn(`Failed to fetch transactions for account ${acct.id}:`, err);
       }
     }
   }
 
-  console.log(`Teller sync: ${totalInserted} transactions imported, ${unclassifiedMerchants.size} unclassified merchants, pending=${pendingTransactions}`);
+  logger.info(`Teller sync: ${totalInserted} transactions imported, ${unclassifiedMerchants.size} unclassified merchants, pending=${pendingTransactions}`);
 
   // ── AI-classify unknown merchants ──
   if (unclassifiedMerchants.size > 0) {
     try {
-      console.log(`Teller: AI-classifying ${unclassifiedMerchants.size} unknown merchants...`);
+      logger.info(`Teller: AI-classifying ${unclassifiedMerchants.size} unknown merchants...`);
       const classifications = await classifyMerchantsWithAI([...unclassifiedMerchants]);
 
       const upsertMerchant = db.prepare(
@@ -485,16 +481,16 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
         if (c.isBill) markRecurring.run(userId, norm);
         classified++;
       }
-      console.log(`Teller: AI classified ${classified} merchants`);
+      logger.info(`Teller: AI classified ${classified} merchants`);
     } catch (err) {
-      console.warn('Teller: AI classification failed, transactions saved without categories:', err);
+      logger.warn({ err }, 'Teller: AI classification failed, transactions saved without categories');
     }
   }
 
   // Run recurring detection on all transactions (catches bills that AI didn't flag)
   if (totalInserted > 0) {
     const recurringCount = detectAndFlagRecurring(userId);
-    console.log(`Teller: flagged ${recurringCount} recurring transactions`);
+    logger.info(`Teller: flagged ${recurringCount} recurring transactions`);
   }
 
   // Invalidate all caches so dashboard/advisor/trends reflect new data
@@ -514,11 +510,11 @@ export async function syncAccounts(userId: string, accessToken?: string): Promis
   if (pendingTransactions) {
     setTimeout(async () => {
       try {
-        console.log(`[Teller] Auto-retrying sync for user ${userId}...`);
+        logger.info(`[Teller] Auto-retrying sync for user ${userId}...`);
         await syncAccounts(userId);
-        console.log(`[Teller] Auto-retry sync complete for user ${userId}`);
+        logger.info(`[Teller] Auto-retry sync complete for user ${userId}`);
       } catch (err) {
-        console.warn(`[Teller] Auto-retry sync failed for user ${userId}:`, err);
+        logger.warn({ userId, err }, 'Teller auto-retry sync failed');
       }
     }, 60_000);
   }

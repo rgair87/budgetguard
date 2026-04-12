@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Sparkles, Check, AlertTriangle, TrendingUp, ArrowRight } from 'lucide-react';
+import { Target, Sparkles, Check, AlertTriangle, TrendingUp, ArrowRight, XCircle } from 'lucide-react';
 import api from '../api/client';
-import { BUDGETABLE_CATEGORIES } from '@runway/shared';
-import type { BudgetWithSuggestion } from '@runway/shared';
+import { BUDGETABLE_CATEGORIES } from '@spenditure/shared';
+import type { BudgetWithSuggestion } from '@spenditure/shared';
 import useTrack from '../hooks/useTrack';
+import useTier from '../hooks/useTier';
+import UpgradeCard from '../components/UpgradeCard';
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Housing': 'bg-slate-500', 'Groceries': 'bg-green-500', 'Utilities': 'bg-teal-500',
@@ -19,6 +21,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function Budgets() {
   const track = useTrack('budgets');
+  const { tier } = useTier();
   const [budgets, setBudgets] = useState<BudgetWithSuggestion[]>([]);
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -61,9 +64,12 @@ export default function Budgets() {
     setEdits(next);
   }
 
+  const [saveError, setSaveError] = useState(false);
+
   async function saveBudgets() {
     setSaving(true);
     setSaved(false);
+    setSaveError(false);
     try {
       const allCategories = new Set([
         ...budgets.map(b => b.category),
@@ -76,7 +82,10 @@ export default function Budgets() {
       await api.put('/runway/budgets', { budgets: payload });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch {}
+    } catch {
+      setSaveError(true);
+      setTimeout(() => setSaveError(false), 5000);
+    }
     setSaving(false);
   }
 
@@ -221,6 +230,15 @@ export default function Budgets() {
         </div>
       </div>
 
+      {/* Upgrade prompt when at free tier budget limit */}
+      {tier === 'free' && budgetCount >= 3 && (
+        <UpgradeCard
+          feature="Unlimited budget categories"
+          description="Free accounts can track 3 categories. Upgrade to set budgets for every spending category."
+          tierNeeded="plus"
+        />
+      )}
+
       {/* Save bar */}
       <div className="sticky bottom-20 z-10">
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200 px-4 py-3 flex items-center justify-between">
@@ -237,13 +255,20 @@ export default function Budgets() {
               'Set limits to get budget alerts'
             )}
           </p>
-          <button
-            onClick={saveBudgets}
-            disabled={saving || !hasEdits}
-            className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-xl disabled:opacity-40 transition-colors"
-          >
-            {saving ? 'Saving...' : 'Save Budgets'}
-          </button>
+          <div className="flex items-center gap-3">
+            {saveError && (
+              <span className="flex items-center gap-1 text-sm text-red-600">
+                <XCircle className="w-4 h-4" /> Failed to save
+              </span>
+            )}
+            <button
+              onClick={saveBudgets}
+              disabled={saving || !hasEdits}
+              className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-xl disabled:opacity-40 transition-colors"
+            >
+              {saving ? 'Saving...' : 'Save Budgets'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

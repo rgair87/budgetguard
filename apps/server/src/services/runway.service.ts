@@ -1,6 +1,7 @@
 import db from '../config/db';
 import { getMonthlyIncome } from './income.service';
-import type { RunwayScore } from '@runway/shared';
+import { roundCurrency as rc } from '../utils/currency';
+import type { RunwayScore } from '@spenditure/shared';
 
 // Shared WHERE clause fragments for excluding non-spend transactions
 export const SPEND_EXCLUSION_CATEGORIES = `('Transfers', 'Transfer', 'Debt Payments', 'Income', 'Payroll', 'Direct Deposit', 'Credit', 'Loans', 'Loan Payment', 'Loan Payments', 'Credit Card Payments', 'Credit Card Payment', 'Mortgage', 'Mortgages')`;
@@ -84,7 +85,7 @@ export function getSpendBreakdown(userId: string, days: number = 90): SpendBreak
     const earliest = new Date(dates[0] + 'T00:00:00');
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    calendarDays = Math.max(1, Math.round((now.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    calendarDays = Math.max(1, Math.floor((now.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)) + 1);
   }
 
   const amounts = txns.map(t => t.amt);
@@ -422,32 +423,32 @@ export function calculateRunway(userId: string): RunwayScore {
     .filter(m => m.monthlyAmount >= 5);
 
   return {
-    amount: Math.round(currentRunway * 100) / 100,
+    amount: rc(currentRunway),
     status,
     hasUrgentWarning: urgentEvents.length > 0,
     urgentEvents,
-    spentThisMonth: Math.round(spentThisMonth * 100) / 100,
-    remainingBudget: Math.round(remainingBudget * 100) / 100,
+    spentThisMonth: rc(spentThisMonth),
+    remainingBudget: rc(remainingBudget),
     daysToPayday,
     runwayDays,
     runoutDate,
-    dailyBurnRate: Math.round(dailyBurnRate * 100) / 100,
-    totalDebt: Math.round(totalDebt * 100) / 100,
-    spendableBalance: Math.round(spendableBalance * 100) / 100,
+    dailyBurnRate: rc(dailyBurnRate),
+    totalDebt: rc(totalDebt),
+    spendableBalance: rc(spendableBalance),
     cuttableMerchants,
     // Spend breakdown for advisor and debugging
     spendBreakdown: {
-      recurringMonthly: Math.round((breakdown.recurring / calendarDays) * 30 * 100) / 100,
-      variableMonthly: Math.round((breakdown.variable / calendarDays) * 30 * 100) / 100,
-      oneOffTotal: Math.round(breakdown.oneOff * 100) / 100,
-      refundOffset: Math.round(breakdown.refundOffset * 100) / 100,
+      recurringMonthly: rc((breakdown.recurring / calendarDays) * 30),
+      variableMonthly: rc((breakdown.variable / calendarDays) * 30),
+      oneOffTotal: rc(breakdown.oneOff),
+      refundOffset: rc(breakdown.refundOffset),
       outlierCount: breakdown.outlierTransactions.length,
       outlierTransactions: breakdown.outlierTransactions.map(t => ({
         merchant: t.merchant,
-        amount: Math.round(t.amount * 100) / 100,
+        amount: rc(t.amount),
         date: t.date,
       })),
-      rawDailyBurn: Math.round((rawTotalSpend / calendarDays) * 100) / 100,
+      rawDailyBurn: rc(rawTotalSpend / calendarDays),
     },
     noIncomeConfigured: spendableIncome === 0 && !user.take_home_pay,
   };

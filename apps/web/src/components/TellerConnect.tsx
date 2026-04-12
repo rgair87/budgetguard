@@ -4,7 +4,7 @@ import api from '../api/client';
 
 // Teller Connect application ID
 const TELLER_APP_ID = 'app_pq8bujpq2bv1virlra000';
-const TELLER_ENV = 'development'; // 'sandbox' | 'development' | 'production'
+const TELLER_ENV = import.meta.env.VITE_TELLER_ENV || 'development';
 
 interface TellerConnectButtonProps {
   onSuccess?: () => void;

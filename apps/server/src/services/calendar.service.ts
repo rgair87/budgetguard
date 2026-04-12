@@ -2,7 +2,7 @@ import db from '../config/db';
 import { getPaycheckPlan } from './paycheck.service';
 import { getMonthlyIncome } from './income.service';
 import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from './runway.service';
-import type { CalendarMonth, CalendarDay, CalendarWeek } from '@runway/shared';
+import type { CalendarMonth, CalendarDay, CalendarWeek } from '@spenditure/shared';
 
 export function getCalendarMonth(userId: string, month: string): CalendarMonth {
   const [year, mon] = month.split('-').map(Number);

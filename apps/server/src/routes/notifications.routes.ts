@@ -24,13 +24,13 @@ router.get('/unread-count', (req: AuthRequest, res: Response) => {
   res.json({ count });
 });
 
-router.post('/:id/read', (req: AuthRequest, res: Response) => {
-  markRead(req.userId!, req.params.id);
+router.post('/read-all', (req: AuthRequest, res: Response) => {
+  markAllRead(req.userId!);
   res.json({ ok: true });
 });
 
-router.post('/read-all', (req: AuthRequest, res: Response) => {
-  markAllRead(req.userId!);
+router.post('/:id/read', (req: AuthRequest, res: Response) => {
+  markRead(req.userId!, req.params.id as string);
   res.json({ ok: true });
 });
 

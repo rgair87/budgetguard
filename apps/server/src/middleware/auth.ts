@@ -2,9 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
-export interface AuthRequest extends Request {
-  userId?: string;
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
 }
+
+export type AuthRequest = Request;
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;

@@ -8,7 +8,7 @@ import InfoTip from '../components/InfoTip';
 import { SkeletonDashboard } from '../components/Skeleton';
 import TellerConnectButton from '../components/TellerConnect';
 import useTrack from '../hooks/useTrack';
-import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@runway/shared';
+import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType, Account, IncomingEvent, AdvisorInsight, InsightSeverity } from '@spenditure/shared';
 
 interface CategorySpend {
   category: string;
@@ -238,6 +238,7 @@ export default function Home() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [tier, setTier] = useState<string>('pro');
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [streak, setStreak] = useState(0);
 
   // Detect demo data by checking for the exact set of demo account names
   const DEMO_ACCOUNT_NAMES = ['Main Checking', 'Emergency Savings', 'Chase Visa', 'Car Loan'];
@@ -260,7 +261,7 @@ export default function Home() {
     setLoadError(null);
     let errorCount = 0;
     await Promise.all([
-      api.get('/runway').then((r) => setScore(r.data)).catch(() => { errorCount++; }),
+      api.get('/runway').then((r) => { setScore(r.data); if (r.data.streak) setStreak(r.data.streak); }).catch(() => { errorCount++; }),
       api.get('/runway/paycheck-plan').then((r) => setPlan(r.data)).catch(() => {}),
       api.get('/accounts').then((r) => {
         setAccounts(r.data.accounts);
@@ -305,7 +306,20 @@ export default function Home() {
   const daysOld = latestTransactionDate
     ? Math.floor((Date.now() - new Date(latestTransactionDate + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24))
     : null;
-  const isStale = !freshnessDismissed && !hasLinkedBank && accounts.length > 0 && (daysOld === null || daysOld > 7);
+
+  // Days since last bank sync (most recent across all linked accounts)
+  const lastSyncDates = accounts
+    .filter(a => a.last_synced_at)
+    .map(a => new Date(a.last_synced_at!).getTime());
+  const daysSinceSync = lastSyncDates.length > 0
+    ? Math.floor((Date.now() - Math.max(...lastSyncDates)) / (1000 * 60 * 60 * 24))
+    : null;
+
+  // Show stale banner if: no bank + data > 7 days old, OR bank linked but sync > 2 days old
+  const isStale = !freshnessDismissed && accounts.length > 0 && (
+    (!hasLinkedBank && (daysOld === null || daysOld > 7)) ||
+    (hasLinkedBank && daysSinceSync !== null && daysSinceSync >= 2)
+  );
 
   return (
     <div className="space-y-4">
@@ -323,31 +337,51 @@ export default function Home() {
       )}
       {/* Trial banner */}
       {trialDaysLeft !== null && trialDaysLeft > 0 && trialDaysLeft <= 7 && (
-        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Sparkles className="w-4 h-4 text-white shrink-0" />
-            <p className="text-sm font-medium text-white">
-              {trialDaysLeft === 1 ? 'Last day of your free trial!' : `${trialDaysLeft} days left in your free trial`}
-            </p>
+        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Sparkles className="w-4 h-4 text-white shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {trialDaysLeft === 1 ? 'Last day of your free trial!' : `${trialDaysLeft} days left in your free trial`}
+                </p>
+                <p className="text-xs text-white/80 mt-0.5">
+                  You'll lose AI Advisor, bank sync, and 50 daily chat messages.
+                </p>
+              </div>
+            </div>
+            <Link to="/pricing" className="text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+              Keep access — $7.99/mo
+            </Link>
           </div>
-          <Link to="/pricing" className="text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors shrink-0">
-            Choose a plan
-          </Link>
         </div>
       )}
 
       {/* Trial expired banner */}
       {trialDaysLeft !== null && trialDaysLeft === 0 && tier === 'free' && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4" role="alert">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-red-800">Your free trial has ended</p>
-              <p className="text-xs text-red-600 mt-0.5">Subscribe to keep using AI insights, bank sync, and more.</p>
+              <p className="text-xs text-red-600 mt-1 leading-relaxed">
+                You've lost access to AI Advisor, bank sync, spending trends, and more.
+                Keep your financial momentum going.
+              </p>
             </div>
             <Link to="/pricing" className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors shrink-0">
               View plans
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* Streak badge */}
+      {streak > 1 && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200/60 rounded-xl px-4 py-2.5">
+          <span className="text-lg">🔥</span>
+          <p className="text-sm font-medium text-amber-800">
+            {streak}-day streak! {streak >= 30 ? 'Incredible discipline.' : streak >= 7 ? 'Building great habits.' : 'Keep it going!'}
+          </p>
         </div>
       )}
 
@@ -377,7 +411,7 @@ export default function Home() {
       {accounts.length === 0 && (
         <div className="space-y-5 animate-fade-in">
           <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-6 shadow-lg shadow-indigo-200/50 text-center">
-            <h2 className="text-xl font-bold text-white mb-1">Welcome to Runway</h2>
+            <h2 className="text-xl font-bold text-white mb-1">Welcome to Spenditure</h2>
             <p className="text-sm text-indigo-100">Connect your bank to see how long your money will last. It takes about 2 minutes.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -411,7 +445,7 @@ export default function Home() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <p className="text-sm font-semibold text-slate-800 mb-0.5">{loadingDemo ? 'Loading...' : 'Try Sample Data'}</p>
-              <p className="text-xs text-slate-400">See how Runway works first</p>
+              <p className="text-xs text-slate-400">See how Spenditure works first</p>
               <div className="flex items-center justify-center gap-1 mt-2 text-xs text-violet-500 font-medium">
                 Explore demo <ArrowRight className="w-3 h-3" />
               </div>
@@ -440,12 +474,26 @@ export default function Home() {
 
       {/* Stale data warning */}
       {isStale && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between" role="alert">
           <p className="text-xs text-amber-800">
-            {daysOld !== null ? `Data is ${daysOld} days old. ` : 'No transactions. '}
-            <Link to="/settings" className="font-medium text-indigo-600">Link bank</Link> or <Link to="/csv-upload" className="font-medium text-indigo-600">upload CSV</Link>
+            {hasLinkedBank && daysSinceSync !== null ? (
+              <>
+                Bank hasn't synced in {daysSinceSync} {daysSinceSync === 1 ? 'day' : 'days'}.{' '}
+                <Link to="/settings" className="font-medium text-indigo-600">Check connection</Link>
+              </>
+            ) : daysOld !== null ? (
+              <>
+                Data is {daysOld} {daysOld === 1 ? 'day' : 'days'} old.{' '}
+                <Link to="/settings" className="font-medium text-indigo-600">Link bank</Link> or <Link to="/csv-upload" className="font-medium text-indigo-600">upload CSV</Link>
+              </>
+            ) : (
+              <>
+                No transactions yet.{' '}
+                <Link to="/settings" className="font-medium text-indigo-600">Link bank</Link> or <Link to="/csv-upload" className="font-medium text-indigo-600">upload CSV</Link>
+              </>
+            )}
           </p>
-          <button onClick={() => setFreshnessDismissed(true)} className="text-amber-400 hover:text-amber-600 text-sm ml-2">&times;</button>
+          <button onClick={() => setFreshnessDismissed(true)} className="text-amber-400 hover:text-amber-600 text-sm ml-2" aria-label="Dismiss">&times;</button>
         </div>
       )}
 

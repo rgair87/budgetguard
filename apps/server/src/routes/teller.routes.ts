@@ -4,6 +4,8 @@ import { attachTier, requirePlus, TieredRequest } from '../middleware/tier';
 import { enrollBank, syncAccounts, recleanMerchantNames, type SyncResult } from '../services/teller.service';
 import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
 import { detectAndFlagRecurring } from '../services/csv.service';
+import { env } from '../config/env';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -69,9 +71,13 @@ router.post('/sync', authenticate, async (req: AuthRequest, res: Response) => {
 
 /**
  * GET /api/teller/status
- * Debug: check what Teller has synced for this user.
+ * Debug: check what Teller has synced for this user. Dev only.
  */
 router.get('/status', authenticate, async (req: AuthRequest, res: Response) => {
+  if (env.NODE_ENV === 'production') {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
   try {
     const db = (await import('../config/db')).default;
     const userId = req.userId!;
@@ -273,7 +279,7 @@ router.post('/reclassify', authenticate, async (req: AuthRequest, res: Response)
       return;
     }
 
-    console.log(`[Reclassify] ${merchantNames.length} merchants to classify for user ${userId}`);
+    logger.info(`[Reclassify] ${merchantNames.length} merchants to classify for user ${userId}`);
 
     // Run AI classification
     const results = await classifyMerchantsWithAI(merchantNames);
@@ -314,7 +320,7 @@ router.post('/reclassify', authenticate, async (req: AuthRequest, res: Response)
     invalidateCache(`trends:${userId}`);
     invalidateCache(`predictions:${userId}`);
 
-    console.log(`[Reclassify] Classified ${classified} of ${merchantNames.length} merchants`);
+    logger.info(`[Reclassify] Classified ${classified} of ${merchantNames.length} merchants`);
     res.json({ success: true, classified, total: merchantNames.length, message: `Reclassified ${classified} merchants` });
   } catch (err: any) {
     console.error('Reclassify error:', err);

@@ -15,11 +15,16 @@ const router = Router();
 router.get('/', authenticate, (req: AuthRequest, res: Response) => {
   const key = `runway:${req.userId}`;
   const cached = getCached(key);
-  if (cached) return res.json(cached);
+
+  // Always include fresh streak (not cached)
+  const streakRow = db.prepare('SELECT streak_days FROM users WHERE id = ?').get(req.userId!) as { streak_days: number } | undefined;
+  const streak = streakRow?.streak_days || 0;
+
+  if (cached) return res.json({ ...cached, streak });
 
   const score = calculateRunway(req.userId!);
   setCache(key, score, 60);
-  res.json(score);
+  res.json({ ...score, streak });
 });
 
 router.get('/paycheck-plan', authenticate, (req: AuthRequest, res: Response) => {

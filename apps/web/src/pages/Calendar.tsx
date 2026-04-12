@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
-import type { CalendarMonth, CalendarDay } from '@runway/shared';
+import type { CalendarMonth, CalendarDay } from '@spenditure/shared';
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
   Download,
 } from 'lucide-react';
 import InfoTip from '../components/InfoTip';
+import useTier from '../hooks/useTier';
 import useTrack from '../hooks/useTrack';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -32,8 +34,8 @@ function generateICS(data: CalendarMonth, monthLabel: string): string {
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Runway//Financial Calendar//EN',
-    `X-WR-CALNAME:Runway - ${monthLabel}`,
+    'PRODID:-//Spenditure//Financial Calendar//EN',
+    `X-WR-CALNAME:Spenditure - ${monthLabel}`,
   ];
 
   const datestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
@@ -113,6 +115,7 @@ function downloadFile(content: string, filename: string, mime: string) {
 }
 
 export default function Calendar() {
+  const { tier } = useTier();
   const track = useTrack('calendar');
   const [data, setData] = useState<CalendarMonth | null>(null);
   const [loading, setLoading] = useState(true);
@@ -327,16 +330,23 @@ export default function Calendar() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => navigateMonth(1)}
-            disabled={!canGoForward}
-            className={`p-2 rounded-xl transition-all duration-200 ${
-              canGoForward ? 'hover:bg-slate-100 text-slate-500' : 'text-slate-200 cursor-not-allowed'
-            }`}
-            aria-label="Next month"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {!canGoForward && tier === 'free' && (
+              <Link to="/pricing" className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
+                See further ahead with Plus
+              </Link>
+            )}
+            <button
+              onClick={() => navigateMonth(1)}
+              disabled={!canGoForward}
+              className={`p-2 rounded-xl transition-all duration-200 ${
+                canGoForward ? 'hover:bg-slate-100 text-slate-500' : 'text-slate-200 cursor-not-allowed'
+              }`}
+              aria-label="Next month"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 

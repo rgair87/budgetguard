@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
-import type { PaycheckPlan as PaycheckPlanType } from '@runway/shared';
+import type { PaycheckPlan as PaycheckPlanType } from '@spenditure/shared';
 
 function fmt(n: number): string {
   return Math.round(n).toLocaleString('en-US');

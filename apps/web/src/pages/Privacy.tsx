@@ -13,14 +13,9 @@ export default function Privacy() {
           <p className="text-sm text-gray-500 mb-8">Last updated: March 2026</p>
 
           <div className="space-y-6 text-gray-700 text-sm leading-relaxed">
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 text-xs">
-              This is a template Privacy Policy. You should have a qualified attorney review and
-              customize this policy before using it in production.
-            </div>
-
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">1. Information We Collect</h2>
-              <p>We collect the following types of information when you use Runway:</p>
+              <p>We collect the following types of information when you use Spenditure:</p>
               <ul className="list-disc pl-6 mt-2 space-y-1">
                 <li>
                   <strong>Account information:</strong> Email address and password when you register
@@ -73,7 +68,7 @@ export default function Privacy() {
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">4. Third-Party Services</h2>
               <p>
-                Runway integrates with the following third-party services to provide its functionality:
+                Spenditure integrates with the following third-party services to provide its functionality:
               </p>
 
               <div className="mt-3 space-y-3">
@@ -81,7 +76,7 @@ export default function Privacy() {
                   <h3 className="font-semibold text-gray-900 mb-1">Teller</h3>
                   <p>
                     We use Teller to securely connect your bank accounts and retrieve financial data.
-                    When you link a bank account, Teller facilitates the connection between Runway and
+                    When you link a bank account, Teller facilitates the connection between Spenditure and
                     your financial institution. Teller may collect and process your banking credentials
                     and financial data in accordance with their own{' '}
                     <a
@@ -92,7 +87,7 @@ export default function Privacy() {
                     >
                       privacy policy
                     </a>
-                    . Your bank credentials are never stored by Runway directly.
+                    . Your bank credentials are never stored by Spenditure directly.
                   </p>
                 </div>
 
@@ -166,7 +161,7 @@ export default function Privacy() {
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">7. Cookies & Local Storage</h2>
               <p>
-                Runway uses browser local storage to maintain your authentication session and
+                Spenditure uses browser local storage to maintain your authentication session and
                 application preferences. We do not use third-party tracking cookies. Essential
                 storage is required for the Service to function properly.
               </p>

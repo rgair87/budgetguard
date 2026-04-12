@@ -21,7 +21,7 @@ router.post('/', validate(createGoalSchema), (req: AuthRequest, res: Response) =
 
 router.patch('/:id', (req: AuthRequest, res: Response) => {
   try {
-    const goal = updateGoal(req.userId!, req.params.id, req.body);
+    const goal = updateGoal(req.userId!, req.params.id as string, req.body);
     res.json(goal);
   } catch (e) {
     if (e instanceof NotFoundError) { res.status(404).json({ error: e.message }); return; }
@@ -31,7 +31,7 @@ router.patch('/:id', (req: AuthRequest, res: Response) => {
 
 router.delete('/:id', (req: AuthRequest, res: Response) => {
   try {
-    deleteGoal(req.userId!, req.params.id);
+    deleteGoal(req.userId!, req.params.id as string);
     res.json({ ok: true });
   } catch (e) {
     if (e instanceof NotFoundError) { res.status(404).json({ error: e.message }); return; }
@@ -42,7 +42,7 @@ router.delete('/:id', (req: AuthRequest, res: Response) => {
 router.post('/:id/add', validate(addToGoalSchema), (req: AuthRequest, res: Response) => {
   const { amount } = req.body;
   try {
-    const goal = addToGoal(req.userId!, req.params.id, amount);
+    const goal = addToGoal(req.userId!, req.params.id as string, amount);
     res.json(goal);
   } catch (e) {
     if (e instanceof NotFoundError) { res.status(404).json({ error: e.message }); return; }

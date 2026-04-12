@@ -5,7 +5,7 @@ import {
   Plus, Trash2, ChevronRight, ChevronLeft, Sparkles, Shield,
 } from 'lucide-react';
 import api from '../api/client';
-import { BUDGETABLE_CATEGORIES } from '@runway/shared';
+import { BUDGETABLE_CATEGORIES } from '@spenditure/shared';
 
 /* ── Types ──────────────────────────────────────────────── */
 

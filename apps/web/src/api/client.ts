@@ -74,6 +74,9 @@ api.interceptors.response.use(
     try {
       const { data } = await axios.post('/api/auth/refresh', { refreshToken });
       localStorage.setItem('runway_token', data.token);
+      if (data.refreshToken) {
+        localStorage.setItem('runway_refresh_token', data.refreshToken);
+      }
       processQueue(null, data.token);
       originalRequest.headers.Authorization = `Bearer ${data.token}`;
       return api(originalRequest);

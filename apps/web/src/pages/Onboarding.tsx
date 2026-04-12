@@ -101,7 +101,7 @@ function StepWelcome({
               Personal finance, reimagined
             </div>
             <h1 className="text-4xl font-bold text-white tracking-tight mb-3">
-              Welcome to Runway
+              Welcome to Spenditure
             </h1>
             <p className="text-indigo-200 text-base leading-relaxed max-w-sm mx-auto">
               Know exactly when you'll run out of money - and what to do about it
@@ -187,7 +187,7 @@ function StepConnect({ onNext }: { onNext: () => void }) {
           <div>
             <h2 className="text-xl font-bold text-gray-900">Connect your bank</h2>
             <p className="text-sm text-gray-500">
-              Link your bank so Runway can track spending and calculate your runway.
+              Link your bank so Spenditure can track spending and calculate your runway.
             </p>
           </div>
         </div>
@@ -274,7 +274,7 @@ function StepEvents({ onNext, onBack }: { onNext: () => void; onBack: () => void
           <div>
             <h2 className="text-xl font-bold text-gray-900">Add upcoming expenses</h2>
             <p className="text-sm text-gray-500">
-              Big expenses you know are coming. This is what makes Runway different.
+              Big expenses you know are coming. This is what makes Spenditure different.
             </p>
           </div>
         </div>
@@ -416,7 +416,7 @@ function StepPaycheck({ onDone, onBack }: { onDone: () => void; onBack: () => vo
           <div>
             <h2 className="text-xl font-bold text-gray-900">Paycheck info</h2>
             <p className="text-sm text-gray-500">
-              Helps Runway count down to payday and calculate your daily budget.
+              Helps Spenditure count down to payday and calculate your daily budget.
             </p>
           </div>
         </div>

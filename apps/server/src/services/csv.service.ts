@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import db from '../config/db';
+import logger from '../config/logger';
 import { classifyMerchantsWithAI } from './ai-categorize.service';
 import { cleanMerchantName, titleCase, normalizeMerchantName } from './merchant-utils';
 
@@ -1620,7 +1621,7 @@ export async function classifyUnknownMerchantsWithAI(
     return { classified: 0, results: [] };
   }
 
-  console.log(`[AI Categorize] ${unknownMerchants.length} unknown merchants to classify`);
+  logger.info(`[AI Categorize] ${unknownMerchants.length} unknown merchants to classify`);
 
   // 4. Call AI service
   const classifications = await classifyMerchantsWithAI(unknownMerchants);
@@ -1660,6 +1661,6 @@ export async function classifyUnknownMerchantsWithAI(
     appliedResults.push({ merchant: c.merchantName, category: c.category, isBill: c.isBill });
   }
 
-  console.log(`[AI Categorize] Successfully classified ${classified} merchants`);
+  logger.info(`[AI Categorize] Successfully classified ${classified} merchants`);
   return { classified, results: appliedResults };
 }

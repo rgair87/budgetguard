@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { attachTier, TieredRequest, TIER_LIMITS } from '../middleware/tier';
 import db from '../config/db';
+import { env } from '../config/env';
 import { validate } from '../middleware/validate';
 import { deleteAccountSchema } from '../validation/schemas';
 import { invalidateCache } from '../utils/cache';
@@ -26,18 +27,31 @@ router.get('/', authenticate, attachTier, (req: TieredRequest, res: Response) =>
   res.json({ user, accounts, tier, limits, trialDaysLeft: req.trialDaysLeft ?? null });
 });
 
-// Upgrade (placeholder — in production this would go through Stripe)
-router.post('/upgrade', authenticate, (req: AuthRequest, res: Response) => {
-  const tier = req.body?.tier || 'plus';
-  const status = tier === 'pro' ? 'pro' : 'plus';
-  db.prepare('UPDATE users SET subscription_status = ? WHERE id = ?').run(status, req.userId!);
-  res.json({ success: true, message: `Upgraded to ${status}!` });
-});
+// Downgrade to free — cancels Stripe subscription if active
+router.post('/downgrade', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const user = db.prepare('SELECT stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?').get(userId) as any;
 
-// Downgrade to free
-router.post('/downgrade', authenticate, (req: AuthRequest, res: Response) => {
-  db.prepare("UPDATE users SET subscription_status = 'trial' WHERE id = ?").run(req.userId!);
-  res.json({ success: true, message: 'Downgraded to free tier.' });
+    // Cancel Stripe subscription if one exists
+    if (user?.stripe_subscription_id && env.STRIPE_SECRET_KEY) {
+      const Stripe = (await import('stripe')).default;
+      const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+      try {
+        await stripe.subscriptions.cancel(user.stripe_subscription_id);
+      } catch (err: any) {
+        // Subscription may already be canceled — log but don't block downgrade
+        console.error('[DOWNGRADE] Stripe cancellation error:', err.message);
+      }
+      db.prepare('UPDATE users SET subscription_status = ?, stripe_subscription_id = NULL WHERE id = ?').run('trial', userId);
+    } else {
+      db.prepare("UPDATE users SET subscription_status = 'trial' WHERE id = ?").run(userId);
+    }
+
+    res.json({ success: true, message: 'Downgraded to free tier.' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'server_error', message: 'Failed to downgrade' });
+  }
 });
 
 // Add a manual account

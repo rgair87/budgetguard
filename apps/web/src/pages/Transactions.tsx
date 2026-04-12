@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
-import { CATEGORY_NAMES } from '@runway/shared';
+import { CATEGORY_NAMES } from '@spenditure/shared';
 import useTrack from '../hooks/useTrack';
 
 interface Transaction {

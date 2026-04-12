@@ -5,8 +5,12 @@ import { getAlerts } from '../services/alerts.service';
 const router = Router();
 
 router.get('/', authenticate, (req: AuthRequest, res: Response) => {
-  const alerts = getAlerts(req.userId!);
-  res.json({ alerts, count: alerts.length });
+  try {
+    const alerts = getAlerts(req.userId!);
+    res.json({ alerts, count: alerts.length });
+  } catch (err: any) {
+    res.status(500).json({ error: 'server_error', message: 'Failed to load alerts' });
+  }
 });
 
 export default router;

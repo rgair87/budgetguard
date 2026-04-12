@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '../config/env';
+import logger from '../config/logger';
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
@@ -59,7 +60,7 @@ export async function classifyMerchantsWithAI(
       const batch = merchantNames.slice(i, i + BATCH_SIZE);
       const numbered = batch.map((name, idx) => `${idx + 1}. ${name}`).join('\n');
 
-      console.log(`[AI Categorize] Classifying ${batch.length} merchants via Claude Haiku...`);
+      logger.info(`[AI Categorize] Classifying ${batch.length} merchants via Claude Haiku...`);
 
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
@@ -73,7 +74,7 @@ export async function classifyMerchantsWithAI(
       // Extract JSON from response (handle possible markdown code blocks)
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        console.warn('[AI Categorize] Could not extract JSON from response');
+        logger.warn('[AI Categorize] Could not extract JSON from response');
         continue;
       }
 
@@ -81,7 +82,7 @@ export async function classifyMerchantsWithAI(
       try {
         parsed = JSON.parse(jsonMatch[0]);
       } catch {
-        console.warn('[AI Categorize] Failed to parse JSON response');
+        logger.warn('[AI Categorize] Failed to parse JSON response');
         continue;
       }
 
@@ -95,12 +96,12 @@ export async function classifyMerchantsWithAI(
         });
       }
 
-      console.log(`[AI Categorize] Batch classified: ${Math.min(parsed.length, batch.length)} merchants`);
+      logger.info(`[AI Categorize] Batch classified: ${Math.min(parsed.length, batch.length)} merchants`);
     }
 
     return results;
   } catch (err: any) {
-    console.warn('[AI Categorize] Failed to classify merchants, falling back to manual:', err.message || err);
+    logger.warn('[AI Categorize] Failed to classify merchants, falling back to manual:', err.message || err);
     return [];
   }
 }

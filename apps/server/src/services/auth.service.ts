@@ -3,8 +3,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '../config/db';
 import { env } from '../config/env';
+import logger from '../config/logger';
 import { sendVerificationEmail, sendPasswordResetEmail } from './email.service';
-import type { User } from '@runway/shared';
+import type { User } from '@spenditure/shared';
 
 const USER_SELECT_COLS = 'id, email, subscription_status, pay_frequency, next_payday, take_home_pay, email_verified, created_at';
 
@@ -30,7 +31,7 @@ export function generateRefreshToken(userId: string): string {
   return token;
 }
 
-export function refreshAccessToken(refreshToken: string): { token: string; user: Omit<User, 'password_hash'> } {
+export function refreshAccessToken(refreshToken: string): { token: string; refreshToken: string; user: Omit<User, 'password_hash'> } {
   const row = db.prepare(
     'SELECT rt.user_id, rt.expires_at FROM refresh_tokens rt WHERE rt.token = ?'
   ).get(refreshToken) as unknown as { user_id: string; expires_at: string } | undefined;
@@ -53,8 +54,11 @@ export function refreshAccessToken(refreshToken: string): { token: string; user:
     throw new Error('User not found');
   }
 
+  // Rotate: invalidate old token and issue a new one
+  db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
   const token = generateAccessToken(user.id);
-  return { token, user };
+  const newRefreshToken = generateRefreshToken(user.id);
+  return { token, refreshToken: newRefreshToken, user };
 }
 
 export function revokeRefreshToken(refreshToken: string): void {
@@ -119,7 +123,7 @@ export function verifyEmail(token: string): { success: boolean; message: string 
     'UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?'
   ).run(row.id);
 
-  console.log(`[EMAIL VERIFICATION] Email verified for ${row.email}`);
+  logger.info({ email: row.email }, 'Email verified');
   return { success: true, message: 'Email verified successfully' };
 }
 

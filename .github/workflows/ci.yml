@@ -37,10 +37,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build shared package
-        run: pnpm --filter @runway/shared build
+        run: pnpm --filter @spenditure/shared build
 
       - name: Build server (typecheck)
-        run: pnpm --filter @runway/server build
+        run: pnpm --filter @spenditure/server build
 
       - name: Build web
-        run: pnpm --filter @runway/web build
+        run: pnpm --filter @spenditure/web build

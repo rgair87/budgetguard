@@ -1,10 +1,24 @@
 import path from 'path';
+import * as Sentry from '@sentry/node';
 import express from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import { env } from './config/env';
 import logger from './config/logger';
+import db from './config/db';
+
+// Initialize Sentry before anything else
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  });
+  logger.info('Sentry initialized');
+}
 import { errorHandler } from './middleware/errorHandler';
 import { generalLimiter, authLimiter, aiLimiter } from './middleware/rateLimiter';
+import { updateStreak } from './middleware/streak';
 import authRoutes from './routes/auth.routes';
 import tellerRoutes from './routes/teller.routes';
 import accountsRoutes from './routes/accounts.routes';
@@ -34,6 +48,7 @@ if (env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
+app.use(helmet());
 app.use(cors({
   origin: env.CORS_ORIGINS.split(','),
   credentials: true,
@@ -53,6 +68,9 @@ app.use((req, res, next) => {
 
 // Rate limiting
 app.use(generalLimiter);
+
+// Streak tracking (updates once per day per user)
+app.use(updateStreak);
 
 // Routes
 app.use('/api/auth', authLimiter, authRoutes);
@@ -79,20 +97,35 @@ app.use('/api/stripe', stripeRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  let dbStatus = 'connected';
+  try {
+    db.prepare('SELECT 1').get();
+  } catch {
+    dbStatus = 'error';
+  }
+  res.json({
+    status: dbStatus === 'connected' ? 'ok' : 'degraded',
+    uptime: Math.floor(process.uptime()),
+    memory: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    db: dbStatus,
+  });
 });
 
 // In production, serve the web app
 if (process.env.NODE_ENV === 'production') {
   const webDist = path.resolve(__dirname, '../../web/dist');
-  app.use(express.static(webDist));
+  app.use(express.static(webDist, { maxAge: '1y', immutable: true }));
   app.get('*', (_req, res) => {
     res.sendFile(path.join(webDist, 'index.html'));
   });
 }
 
+// Sentry error handler must come before custom error handler
+if (env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 app.use(errorHandler);
 
 app.listen(env.PORT, () => {
-  logger.info(`Runway API running on http://localhost:${env.PORT}`);
+  logger.info(`Spenditure API running on http://localhost:${env.PORT}`);
 });

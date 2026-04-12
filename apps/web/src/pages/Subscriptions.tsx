@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
-import { USER_CATEGORY_NAMES } from '@runway/shared';
+import { USER_CATEGORY_NAMES } from '@spenditure/shared';
 import useTrack from '../hooks/useTrack';
 
 interface Subscription {

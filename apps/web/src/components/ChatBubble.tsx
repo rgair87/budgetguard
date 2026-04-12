@@ -154,7 +154,7 @@ export default function ChatBubble() {
             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 shrink-0">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-200" />
-                <span className="text-sm font-semibold text-white">Ask Runway</span>
+                <span className="text-sm font-semibold text-white">Ask Spenditure</span>
               </div>
               <div className="flex items-center gap-1">
                 <Link
@@ -168,6 +168,7 @@ export default function ChatBubble() {
                 <button
                   onClick={handleClose}
                   className="p-1.5 rounded-md hover:bg-white/15 transition-colors"
+                  aria-label="Close chat"
                 >
                   <X className="w-4 h-4 text-white" />
                 </button>
@@ -246,6 +247,7 @@ export default function ChatBubble() {
                 type="submit"
                 disabled={loading || !input.trim()}
                 className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 disabled:opacity-40 transition-all duration-150 shrink-0"
+                aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
               </button>

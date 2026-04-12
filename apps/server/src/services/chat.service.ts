@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { env } from '../config/env';
 import db from '../config/db';
 import { calculateRunway } from './runway.service';
+import { getMonthlyIncome } from './income.service';
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
@@ -34,12 +35,8 @@ function getFinancialSnapshot(userId: string) {
     'SELECT name, estimated_amount, expected_date FROM incoming_events WHERE user_id = ?'
   ).all(userId) as any[];
 
-  const monthlyIncome = user.take_home_pay
-    ? user.pay_frequency === 'weekly' ? user.take_home_pay * 4
-      : user.pay_frequency === 'biweekly' ? user.take_home_pay * 2
-      : user.pay_frequency === 'twice_monthly' ? user.take_home_pay * 2
-      : user.take_home_pay
-    : 0;
+  const incomeResult = getMonthlyIncome(userId);
+  const monthlyIncome = incomeResult.monthlyIncome;
 
   return {
     checking_balance: accounts.filter(a => a.type === 'checking').reduce((s, a) => s + (a.available_balance ?? a.current_balance), 0),
@@ -101,7 +98,7 @@ export async function chat(userId: string, userMessage: string): Promise<string>
   ).all(userId, OFF_TOPIC_RESPONSE) as any[];
   history.reverse();
 
-  const systemPrompt = `You are Runway, a personal finance assistant. You have access to the user's real financial data. Always answer using their specific numbers. Never give generic advice.
+  const systemPrompt = `You are Spenditure, a personal finance assistant. You have access to the user's real financial data. Always answer using their specific numbers. Never give generic advice.
 
 User's current financial snapshot:
 - Checking balance: $${snapshot.checking_balance.toFixed(2)}

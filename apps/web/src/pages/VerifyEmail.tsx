@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { TrendingUp } from 'lucide-react';
 import api from '../api/client';
 
 export default function VerifyEmail() {
@@ -29,7 +30,10 @@ export default function VerifyEmail() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
-        <h1 className="text-3xl font-bold text-indigo-600 mb-6">Runway</h1>
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <TrendingUp className="w-6 h-6 text-indigo-600" strokeWidth={2.25} />
+          <h1 className="text-xl font-bold tracking-[0.15em] uppercase text-indigo-600">Spenditure</h1>
+        </div>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           {status === 'loading' && (

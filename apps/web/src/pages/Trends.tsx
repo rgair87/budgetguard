@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Minus, Sparkles, AlertTriangle, BarChart3 } from 'lucide-react';
 import api from '../api/client';
 import useTrack from '../hooks/useTrack';
+import useTier from '../hooks/useTier';
+import UpgradeCard from '../components/UpgradeCard';
 
 interface MerchantTrend {
   merchantName: string;
@@ -80,6 +82,7 @@ function MiniBar({ months, maxVal }: { months: { month: string; amount: number }
 
 export default function Trends() {
   const track = useTrack('trends');
+  const { tier } = useTier();
   const [data, setData] = useState<TrendsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -224,6 +227,15 @@ export default function Trends() {
             );
           })}
         </div>
+      )}
+
+      {/* Upgrade prompt for limited data */}
+      {tier === 'free' && data.totalMonthlySpend.length <= 2 && (
+        <UpgradeCard
+          feature="See 6 months of spending trends"
+          description="Spot patterns, catch creeping expenses, and understand where your money really goes over time."
+          tierNeeded="plus"
+        />
       )}
 
       {/* Category trends */}

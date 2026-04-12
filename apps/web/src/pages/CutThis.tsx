@@ -141,13 +141,14 @@ export default function CutThis() {
 
       {error === 'upgrade_required' && (
         <div className="text-center py-16">
-          <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4">
-            <Scissors className="w-8 h-8 text-rose-600" />
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-rose-500/25">
+            <Scissors className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">Cut This requires Pro</h2>
-          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">AI-powered recommendations to cut unnecessary spending and save money every month.</p>
-          <a href="/pricing" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
-            View plans
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">We found spending you could cut</h2>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-2">AI analyzes your transactions and finds subscriptions, services, and habits you can eliminate.</p>
+          <p className="text-sm font-medium text-rose-600 mb-6">Average member savings: $89/month.</p>
+          <a href="/pricing" className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-700 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-violet-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-500/25">
+            Unlock for $14.99/mo
           </a>
         </div>
       )}

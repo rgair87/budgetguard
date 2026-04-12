@@ -106,7 +106,7 @@ export default function Chat() {
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">Ask Runway</h1>
+            <h1 className="text-lg font-semibold text-white">Ask Spenditure</h1>
             <p className="text-xs text-white/70">Ask anything about your finances. I use your real data.</p>
           </div>
         </div>
@@ -176,8 +176,12 @@ export default function Chat() {
       {/* Input */}
       <div className="pt-4">
         {atLimit ? (
-          <div className="text-center py-3 bg-amber-50 rounded-2xl border border-amber-200/60">
-            <p className="text-sm text-amber-600">You've used all {usage?.limit} messages for today. Resets at midnight.</p>
+          <div className="text-center py-4 bg-amber-50 rounded-2xl border border-amber-200/60 space-y-2">
+            <p className="text-sm text-amber-700 font-medium">You've used all {usage?.limit} messages for today. Resets at midnight.</p>
+            <p className="text-xs text-amber-600">Upgrade to Plus for 15 messages/day — less than a coffee.</p>
+            <a href="/pricing" className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors mt-1">
+              View Plans
+            </a>
           </div>
         ) : (
           <form onSubmit={e => { e.preventDefault(); send(); }} className="flex gap-2 items-center">

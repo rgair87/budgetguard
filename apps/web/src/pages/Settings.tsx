@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, DollarSign, Landmark, Upload, Download, Shield, Users, CreditCard, PiggyBank, Trash2, LogOut, Crown, ChevronRight, AlertTriangle, Car, GraduationCap, Home, Banknote, Settings as SettingsIcon, ChevronDown, Plus, FileText, Calendar, Repeat, Wallet, BarChart3, RefreshCw, Target, Check, Sparkles } from 'lucide-react';
 import api from '../api/client';
-import { BUDGETABLE_CATEGORIES } from '@runway/shared';
-import type { BudgetWithSuggestion } from '@runway/shared';
+import { BUDGETABLE_CATEGORIES } from '@spenditure/shared';
+import type { BudgetWithSuggestion } from '@spenditure/shared';
 import { useAuth } from '../context/AuthContext';
 import useTrack from '../hooks/useTrack';
 import TellerConnectButton from '../components/TellerConnect';
+import CancelSaveModal from '../components/CancelSaveModal';
 
 interface Account {
   id: string;
@@ -613,6 +614,7 @@ export default function Settings() {
   });
   const [editingBalance, setEditingBalance] = useState<string | null>(null);
   const [editBalance, setEditBalance] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [editingPaycheck, setEditingPaycheck] = useState(false);
   const [payFreq, setPayFreq] = useState('');
   const [payAmount, setPayAmount] = useState('');
@@ -1344,12 +1346,7 @@ export default function Settings() {
                     {tierInfo.tier === 'pro' ? '$14.99' : '$7.99'}/month
                   </p>
                 </div>
-                <button onClick={async () => {
-                    try {
-                      const { data } = await api.post('/stripe/portal');
-                      if (data.url) window.location.href = data.url;
-                    } catch {}
-                  }}
+                <button onClick={() => setShowCancelModal(true)}
                   className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
                   Manage subscription
                 </button>
@@ -1410,6 +1407,21 @@ export default function Settings() {
           Log Out
         </button>
       </div>
+
+      {/* Cancellation save modal */}
+      {showCancelModal && tierInfo && (tierInfo.tier === 'plus' || tierInfo.tier === 'pro') && (
+        <CancelSaveModal
+          tier={tierInfo.tier as 'plus' | 'pro'}
+          onClose={() => setShowCancelModal(false)}
+          onContinue={async () => {
+            setShowCancelModal(false);
+            try {
+              const { data: portal } = await api.post('/stripe/portal');
+              if (portal.url) window.location.href = portal.url;
+            } catch {}
+          }}
+        />
+      )}
     </div>
   );
 }

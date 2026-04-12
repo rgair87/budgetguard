@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import db from '../config/db';
+import logger from '../config/logger';
 
 // Stub email service — logs to console if the real module doesn't exist
 let sendFamilyInviteEmail: (email: string, inviterName: string, token: string) => void;
@@ -9,7 +10,7 @@ try {
   sendFamilyInviteEmail = emailService.sendFamilyInviteEmail;
 } catch {
   sendFamilyInviteEmail = (email: string, inviterName: string, token: string) => {
-    console.log(`[family] Invite email stub: to=${email}, from=${inviterName}, token=${token}`);
+    logger.info(`[family] Invite email stub: to=${email}, from=${inviterName}, token=${token}`);
   };
 }
 
@@ -125,7 +126,7 @@ export function inviteMember(ownerId: string, email: string): FamilyMember {
   // Send invite email
   sendFamilyInviteEmail(email, inviter.email, inviteToken);
 
-  return db.prepare('SELECT * FROM family_members WHERE id = ?').get(memberId) as FamilyMember;
+  return db.prepare('SELECT * FROM family_members WHERE id = ?').get(memberId) as unknown as FamilyMember;
 }
 
 export function acceptInvite(token: string, userId: string): FamilyMember {
@@ -151,7 +152,7 @@ export function acceptInvite(token: string, userId: string): FamilyMember {
      WHERE id = ?`
   ).run(userId, member.id);
 
-  return db.prepare('SELECT * FROM family_members WHERE id = ?').get(member.id) as FamilyMember;
+  return db.prepare('SELECT * FROM family_members WHERE id = ?').get(member.id) as unknown as FamilyMember;
 }
 
 export function removeMember(ownerId: string, memberId: string): void {
@@ -199,5 +200,5 @@ export function leaveFamily(userId: string): void {
 export function getFamilyMembers(familyId: string): FamilyMember[] {
   return db.prepare(
     'SELECT * FROM family_members WHERE family_id = ? ORDER BY role DESC, invited_at ASC'
-  ).all(familyId) as FamilyMember[];
+  ).all(familyId) as unknown as FamilyMember[];
 }

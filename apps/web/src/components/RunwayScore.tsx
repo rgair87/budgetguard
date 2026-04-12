@@ -11,7 +11,7 @@ import {
   Shield,
 } from 'lucide-react';
 import InfoTip from './InfoTip';
-import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType } from '@runway/shared';
+import type { RunwayScore as RunwayScoreType, PaycheckPlan as PaycheckPlanType } from '@spenditure/shared';
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');

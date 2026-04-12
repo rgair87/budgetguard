@@ -141,14 +141,12 @@ export default function Layout() {
 
   /* ---- Desktop sidebar ---- */
   const sidebar = (
-    <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-60 flex-col bg-slate-950 border-r border-white/[0.06]">
+    <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-60 flex-col bg-slate-950 border-r border-white/[0.06]" role="navigation" aria-label="Main navigation">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 h-16 shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-          <span className="text-white text-sm font-bold tracking-tight">R</span>
-        </div>
-        <span className="text-[17px] font-semibold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-          Runway
+      <div className="flex items-center gap-2 px-5 h-16 shrink-0">
+        <TrendingUp className="w-6 h-6 text-indigo-400" strokeWidth={2.25} />
+        <span className="text-[15px] font-bold tracking-[0.15em] uppercase text-slate-200">
+          Spenditure
         </span>
 
         {/* Notification bell */}
@@ -156,7 +154,7 @@ export default function Layout() {
           <button
             onClick={() => navigate('/settings')}
             className="ml-auto relative p-1.5 rounded-md hover:bg-white/[0.06] transition-colors"
-            title={`${unreadCount} unread notifications`}
+            aria-label={`${unreadCount} unread notifications`}
           >
             <Bell className="w-4 h-4 text-slate-400" />
             <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-slate-950">
@@ -230,7 +228,7 @@ export default function Layout() {
   ];
 
   const mobileBottomNav = (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50" aria-label="Mobile navigation">
       {/* Top edge: gradient blur border */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
       <div className="absolute inset-x-0 -top-3 h-3 bg-gradient-to-t from-white/80 to-transparent pointer-events-none" />
@@ -250,6 +248,8 @@ export default function Layout() {
                     navigate(to);
                   }
                 }}
+                aria-label={label}
+                aria-current={isActive ? 'page' : undefined}
                 className="relative flex flex-col items-center gap-[3px] py-2 px-5 transition-all duration-200 ease-out"
               >
                 {/* Active pill indicator at top */}
@@ -339,7 +339,7 @@ export default function Layout() {
 
       {mobileSubNav}
 
-      <main className="md:ml-60 min-h-screen pb-20 md:pb-0">
+      <main className="md:ml-60 min-h-screen pb-20 md:pb-0" role="main">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <ErrorBoundary>
             <Outlet />

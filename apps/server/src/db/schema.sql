@@ -78,6 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_user_id_date ON transactions(user_id
 CREATE INDEX IF NOT EXISTS idx_incoming_events_user ON incoming_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_budgets_user_id ON budgets(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_user_category ON budgets(user_id, category);
 CREATE INDEX IF NOT EXISTS idx_savings_goals_user_id ON savings_goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id_is_read ON notifications(user_id, is_read);

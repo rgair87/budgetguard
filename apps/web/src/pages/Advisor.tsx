@@ -16,7 +16,7 @@ import {
   PiggyBank,
 } from 'lucide-react';
 import api from '../api/client';
-import type { AdvisorReport, AdvisorInsight, InsightSeverity, InsightCategory } from '@runway/shared';
+import type { AdvisorReport, AdvisorInsight, InsightSeverity, InsightCategory } from '@spenditure/shared';
 import useTrack from '../hooks/useTrack';
 
 /* ── Helpers ────────────────────────────────────────────────── */
@@ -390,13 +390,14 @@ export default function Advisor() {
       {/* Upgrade required */}
       {error === 'upgrade_required' && (
         <div className="text-center py-16">
-          <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-indigo-600" />
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/25">
+            <Shield className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">AI Advisor requires Plus or Pro</h2>
-          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">Get personalized financial insights, spending analysis, and actionable recommendations powered by AI.</p>
-          <Link to="/pricing" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
-            View plans
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Your AI Financial Advisor is ready</h2>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-2">Get a personalized health score, spending insights, and action items tailored to your accounts.</p>
+          <p className="text-sm font-medium text-indigo-600 mb-6">Most members find $50-200/mo in savings.</p>
+          <Link to="/pricing" className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg shadow-indigo-500/25">
+            Unlock for $7.99/mo
           </Link>
         </div>
       )}

@@ -1,5 +1,6 @@
 import db from '../config/db';
-import type { LumpSumRecommendation, LumpSumDebtTarget } from '@runway/shared';
+import type { LumpSumRecommendation, LumpSumDebtTarget } from '@spenditure/shared';
+import { getSpendBreakdown } from './runway.service';
 
 interface DebtAccount {
   id: string;
@@ -31,7 +32,7 @@ const DEFAULT_RATES_BY_TYPE: Record<string, number> = {
 
 export function getDebtPayoffPlan(userId: string, extraMonthly: number = 0): DebtPayoffPlan {
   const accounts = db.prepare(
-    "SELECT id, name, type, current_balance, interest_rate, minimum_payment FROM accounts WHERE user_id = ? AND type IN ('credit', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan') AND current_balance > 0"
+    "SELECT id, name, type, current_balance, interest_rate, minimum_payment FROM accounts WHERE user_id = ? AND type IN ('credit', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan')"
   ).all(userId) as any[];
 
   const debts: DebtAccount[] = accounts.map(a => ({
@@ -179,19 +180,11 @@ export function getLumpSumRecommendation(userId: string): LumpSumRecommendation 
   ).all(userId) as any[];
   const availableCash = cashAccounts.reduce((s, a) => s + (a.available_balance ?? a.current_balance), 0);
 
-  // 3. Calculate monthly expenses (from 90-day spend history)
-  const spendRow = db.prepare(
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total, MIN(date) as earliest_date
-     FROM transactions WHERE user_id = ? AND amount < 0 AND date >= date('now', '-90 days')`
-  ).get(userId) as any;
-
-  let calendarDays = 90;
-  if (spendRow.earliest_date) {
-    const earliest = new Date(spendRow.earliest_date + 'T00:00:00');
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    calendarDays = Math.max(1, Math.round((now.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-  }
-  const monthlyExpenses = (spendRow.total / calendarDays) * 30;
+  // 3. Calculate monthly expenses using the shared spend breakdown (excludes outliers + refunds)
+  const breakdown = getSpendBreakdown(userId, 90);
+  const ongoingSpend = breakdown.recurring + breakdown.variable;
+  const refundAdjusted = Math.max(0, ongoingSpend - breakdown.refundOffset);
+  const monthlyExpenses = (refundAdjusted / breakdown.calendarDays) * 30;
 
   // 4. Emergency fund: 3 months of expenses (minimum safety net)
   const emergencyFund = Math.round(monthlyExpenses * 3);

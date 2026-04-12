@@ -1,5 +1,5 @@
 {
-  "name": "@runway/web",
+  "name": "@spenditure/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@runway/shared": "workspace:*",
+    "@spenditure/shared": "workspace:*",
+    "@sentry/react": "^10.48.0",
     "axios": "^1.7.9",
     "lucide-react": "^0.577.0",
     "react": "^19.0.0",

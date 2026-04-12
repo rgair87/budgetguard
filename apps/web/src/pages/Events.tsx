@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import useTrack from '../hooks/useTrack';
-import type { IncomingEvent } from '@runway/shared';
+import type { IncomingEvent } from '@spenditure/shared';
 
 export default function Events() {
   const track = useTrack('events');
@@ -56,7 +56,7 @@ export default function Events() {
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Incoming Events</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Big expenses you know are coming. These factor into your Runway score.
+          Big expenses you know are coming. These factor into your runway score.
         </p>
       </div>
 

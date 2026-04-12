@@ -1,14 +1,14 @@
 {
-  "name": "runway",
+  "name": "spenditure",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:web\"",
-    "dev:server": "pnpm --filter @runway/server dev",
-    "dev:web": "pnpm --filter @runway/web dev",
-    "build": "pnpm --filter @runway/shared build && pnpm --filter @runway/web build",
-    "db:init": "pnpm --filter @runway/server db:init",
-    "db:seed": "pnpm --filter @runway/server db:seed"
+    "dev:server": "pnpm --filter @spenditure/server dev",
+    "dev:web": "pnpm --filter @spenditure/web dev",
+    "build": "pnpm --filter @spenditure/shared build && pnpm --filter @spenditure/web build",
+    "db:init": "pnpm --filter @spenditure/server db:init",
+    "db:seed": "pnpm --filter @spenditure/server db:seed"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

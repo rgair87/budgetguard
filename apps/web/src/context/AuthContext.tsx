@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../api/client';
-import type { User } from '@runway/shared';
+import type { User } from '@spenditure/shared';
 
 interface AuthState {
   user: Omit<User, 'password_hash'> | null;
@@ -34,7 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then(() => {
           // Token is valid, try to get user info from stored data
           const stored = localStorage.getItem('runway_user');
-          if (stored) setUser(JSON.parse(stored));
+          if (stored) {
+            try { setUser(JSON.parse(stored)); } catch { localStorage.removeItem('runway_user'); }
+          }
         })
         .catch(() => {
           localStorage.removeItem('runway_token');

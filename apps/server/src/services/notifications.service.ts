@@ -80,6 +80,65 @@ export function syncNotifications(userId: string): void {
       );
     }
   }
+
+  // Trial-phase strategic notifications
+  const user = db.prepare(
+    "SELECT subscription_status, created_at FROM users WHERE id = ?"
+  ).get(userId) as { subscription_status: string; created_at: string } | undefined;
+
+  if (user && user.subscription_status === 'trial') {
+    const daysSinceSignup = Math.floor(
+      (Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    const trialNotifications: Array<{ day: number; type: string; title: string; body: string; action: string; link: string }> = [
+      {
+        day: 3,
+        type: 'trial_day3',
+        title: 'Your AI Advisor has insights ready',
+        body: 'We\'ve analyzed your spending patterns. Check your personalized financial health score and recommendations.',
+        action: 'View Advisor',
+        link: '/advisor',
+      },
+      {
+        day: 5,
+        type: 'trial_day5',
+        title: 'Your trial is halfway done',
+        body: 'You\'ve been building great financial habits. Lock in Plus ($7.99/mo) to keep AI insights, bank sync, and more.',
+        action: 'View plans',
+        link: '/pricing',
+      },
+      {
+        day: 7,
+        type: 'trial_day7',
+        title: 'Your trial ends today',
+        body: 'After today, you\'ll lose access to AI Advisor, bank sync, spending trends, and 50 daily chat messages. Subscribe to keep going.',
+        action: 'View plans',
+        link: '/pricing',
+      },
+      {
+        day: 10,
+        type: 'trial_day10',
+        title: 'Your data is still here',
+        body: 'Pick up where you left off. Your transactions, goals, and insights are waiting. Reactivate to access everything.',
+        action: 'View plans',
+        link: '/pricing',
+      },
+    ];
+
+    for (const notif of trialNotifications) {
+      if (daysSinceSignup >= notif.day) {
+        const existing = checkStmt.get(userId, notif.type, notif.title) as { cnt: number };
+        if (existing.cnt === 0) {
+          insertStmt.run(
+            crypto.randomUUID(), userId, notif.type,
+            notif.day >= 7 ? 'warning' : 'info',
+            notif.title, notif.body, notif.action, notif.link,
+          );
+        }
+      }
+    }
+  }
 }
 
 export function getNotifications(

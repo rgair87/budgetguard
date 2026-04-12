@@ -113,4 +113,11 @@ db.exec(`CREATE TABLE IF NOT EXISTS analytics_events (
 db.exec("CREATE INDEX IF NOT EXISTS idx_analytics_feature ON analytics_events(feature, created_at)");
 db.exec("CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_id, created_at)");
 
+// Migration: unique index on budgets(user_id, category) for proper upsert
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_user_category ON budgets(user_id, category)");
+
+// Migration: streak tracking
+try { db.exec("ALTER TABLE users ADD COLUMN last_active_date TEXT"); } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN streak_days INTEGER NOT NULL DEFAULT 0"); } catch {}
+
 export default db;

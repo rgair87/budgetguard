@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
+import type { NextFunction } from 'express';
 import { validate } from './validate';
 
 const mockReq = (body: any) => ({ body } as any);
@@ -17,10 +18,10 @@ const testSchema = z.object({
 });
 
 describe('validate middleware', () => {
-  let next: ReturnType<typeof vi.fn>;
+  let next: NextFunction;
 
   beforeEach(() => {
-    next = vi.fn();
+    next = vi.fn() as unknown as NextFunction;
   });
 
   it('calls next() on valid input', () => {

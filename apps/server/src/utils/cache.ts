@@ -1,3 +1,4 @@
+const MAX_CACHE_SIZE = 500;
 const cache = new Map<string, { data: any; expires: number }>();
 
 export function getCached<T>(key: string): T | null {
@@ -10,6 +11,11 @@ export function getCached<T>(key: string): T | null {
 }
 
 export function setCache(key: string, data: any, ttlSeconds: number): void {
+  // Evict oldest entry if at capacity
+  if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
   cache.set(key, { data, expires: Date.now() + ttlSeconds * 1000 });
 }
 

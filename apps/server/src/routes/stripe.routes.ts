@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { env } from '../config/env';
 import db from '../config/db';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -23,9 +24,14 @@ router.post('/create-checkout', authenticate, async (req: AuthRequest, res: Resp
   }
 
   const userId = req.userId!;
-  const { tier } = req.body; // 'plus' or 'pro'
+  const { tier, interval } = req.body; // tier: 'plus' | 'pro', interval: 'month' | 'year'
 
-  const priceId = tier === 'pro' ? env.STRIPE_PRO_PRICE_ID : env.STRIPE_PLUS_PRICE_ID;
+  let priceId: string;
+  if (interval === 'year') {
+    priceId = tier === 'pro' ? env.STRIPE_PRO_ANNUAL_PRICE_ID : env.STRIPE_PLUS_ANNUAL_PRICE_ID;
+  } else {
+    priceId = tier === 'pro' ? env.STRIPE_PRO_PRICE_ID : env.STRIPE_PLUS_PRICE_ID;
+  }
   if (!priceId) {
     res.status(500).json({ error: 'Price not configured for this tier' });
     return;
@@ -126,7 +132,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     return;
   }
 
-  console.log(`[Stripe] Webhook received: ${event.type}`);
+  logger.info({ type: event.type }, 'Stripe webhook received');
 
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -137,7 +143,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
         const status = tier === 'pro' ? 'pro' : 'plus';
         db.prepare('UPDATE users SET subscription_status = ?, stripe_subscription_id = ? WHERE id = ?')
           .run(status, session.subscription as string, userId);
-        console.log(`[Stripe] User ${userId} upgraded to ${status}`);
+        logger.info({ userId, status }, 'Stripe checkout completed');
       }
       break;
     }
@@ -149,7 +155,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
         const tier = sub.metadata?.tier || 'plus';
         const status = tier === 'pro' ? 'pro' : 'plus';
         db.prepare('UPDATE users SET subscription_status = ? WHERE id = ?').run(status, userId);
-        console.log(`[Stripe] Subscription updated for ${userId}: ${status}`);
+        logger.info({ userId, status }, 'Stripe subscription updated');
       }
       break;
     }
@@ -160,13 +166,13 @@ router.post('/webhook', async (req: Request, res: Response) => {
       if (userId) {
         db.prepare("UPDATE users SET subscription_status = 'trial', stripe_subscription_id = NULL WHERE id = ?")
           .run(userId);
-        console.log(`[Stripe] Subscription cancelled for ${userId}`);
+        logger.info({ userId }, 'Stripe subscription cancelled');
       }
       break;
     }
 
     default:
-      console.log(`[Stripe] Unhandled event: ${event.type}`);
+      logger.debug({ type: event.type }, 'Stripe unhandled event');
   }
 
   res.json({ received: true });

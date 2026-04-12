@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { TrendingUp } from 'lucide-react';
 import api from '../api/client';
 
 export default function ForgotPassword() {
@@ -25,7 +26,10 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-center text-indigo-600 mb-2">Runway</h1>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <TrendingUp className="w-6 h-6 text-indigo-600" strokeWidth={2.25} />
+          <h1 className="text-xl font-bold tracking-[0.15em] uppercase text-indigo-600">Spenditure</h1>
+        </div>
         <p className="text-center text-gray-500 mb-8 text-sm">Reset your password</p>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">

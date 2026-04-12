@@ -181,17 +181,26 @@ describe('resetPassword', () => {
 // ─── refreshAccessToken ──────────────────────────────────────────────────────
 
 describe('refreshAccessToken', () => {
-  it('returns new token for valid refresh token', async () => {
+  it('returns new access token and rotated refresh token for valid refresh token', async () => {
     const { refreshToken, user } = await createTestUser();
 
     const result = refreshAccessToken(refreshToken);
     expect(result).toHaveProperty('token');
+    expect(result).toHaveProperty('refreshToken');
+    expect(result.refreshToken).not.toBe(refreshToken); // rotated
     expect(result.user.id).toBe(user.id);
     expect(result.user.email).toBe(TEST_EMAIL);
 
-    // New token is valid
+    // New access token is valid
     const decoded = jwt.verify(result.token, JWT_SECRET) as { userId: string };
     expect(decoded.userId).toBe(user.id);
+
+    // Old refresh token is invalidated
+    expect(() => refreshAccessToken(refreshToken)).toThrow('Invalid refresh token');
+
+    // New refresh token works
+    const result2 = refreshAccessToken(result.refreshToken);
+    expect(result2).toHaveProperty('token');
   });
 
   it('throws on invalid refresh token', () => {
