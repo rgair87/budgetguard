@@ -65,17 +65,91 @@ function TrendBadge({ trend, changePercent }: { trend: string; changePercent: nu
 }
 
 function MiniBar({ months, maxVal }: { months: { month: string; amount: number }[]; maxVal: number }) {
+  const [selected, setSelected] = useState<number | null>(null);
   return (
-    <div className="flex items-end gap-0.5 h-8">
-      {months.map((m, i) => (
-        <div key={m.month} className="flex flex-col items-center gap-0.5 flex-1">
+    <div>
+      <div className="flex items-end gap-0.5 h-10">
+        {months.map((m, i) => (
           <div
-            className={`w-full rounded-sm transition-all duration-300 ${i === months.length - 1 ? 'bg-gradient-to-t from-indigo-600 to-indigo-400' : 'bg-slate-200'}`}
-            style={{ height: `${Math.max(2, (m.amount / maxVal) * 32)}px` }}
-            title={`${formatMonth(m.month)}: $${m.amount.toFixed(0)}`}
-          />
-        </div>
-      ))}
+            key={m.month}
+            className="flex flex-col items-center gap-0.5 flex-1 cursor-pointer"
+            onClick={() => setSelected(selected === i ? null : i)}
+            onMouseEnter={() => setSelected(i)}
+            onMouseLeave={() => setSelected(null)}
+          >
+            <div
+              className={`w-full rounded-sm transition-all duration-300 ${
+                selected === i
+                  ? 'bg-gradient-to-t from-indigo-700 to-indigo-500 scale-x-110'
+                  : i === months.length - 1
+                    ? 'bg-gradient-to-t from-indigo-600 to-indigo-400'
+                    : 'bg-slate-200 hover:bg-slate-300'
+              }`}
+              style={{ height: `${Math.max(3, (m.amount / maxVal) * 40)}px` }}
+            />
+          </div>
+        ))}
+      </div>
+      {/* Month labels + selected amount */}
+      <div className="flex justify-between mt-1">
+        {months.length > 0 && (
+          <>
+            <span className="text-[9px] text-gray-400">{formatMonth(months[0].month)}</span>
+            {selected !== null ? (
+              <span className="text-[10px] font-semibold text-indigo-600">
+                {formatMonth(months[selected].month)}: ${months[selected].amount.toFixed(0)}
+              </span>
+            ) : (
+              <span className="text-[9px] text-gray-300">tap a bar</span>
+            )}
+            <span className="text-[9px] text-gray-400">{formatMonth(months[months.length - 1].month)}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TotalSpendChart({ months, maxVal }: { months: { month: string; amount: number }[]; maxVal: number }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm animate-fade-in">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-gray-900">Total Monthly Spending</h2>
+        {hovered !== null && (
+          <span className="text-sm font-bold text-indigo-600">
+            ${months[hovered].amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
+        )}
+      </div>
+      <div className="flex items-end gap-1.5 h-32">
+        {months.map((m, i) => (
+          <div
+            key={m.month}
+            className="flex flex-col items-center gap-1 flex-1 cursor-pointer"
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            onClick={() => setHovered(hovered === i ? null : i)}
+          >
+            <span className={`text-[10px] font-medium transition-colors ${hovered === i ? 'text-indigo-600' : 'text-gray-400'}`}>
+              {hovered === i ? `$${(m.amount / 1000).toFixed(1)}k` : ''}
+            </span>
+            <div
+              className={`w-full rounded-t transition-all duration-300 ${
+                hovered === i
+                  ? 'bg-gradient-to-t from-indigo-700 to-indigo-500 scale-x-105'
+                  : i === months.length - 1
+                    ? 'bg-gradient-to-t from-indigo-600 to-indigo-400'
+                    : 'bg-slate-200 hover:bg-slate-300'
+              }`}
+              style={{ height: `${Math.max(4, (m.amount / maxVal) * 100)}px` }}
+            />
+            <span className={`text-[10px] transition-colors ${hovered === i ? 'text-indigo-600 font-semibold' : 'text-gray-400'}`}>
+              {formatMonth(m.month)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -136,21 +210,7 @@ export default function Trends() {
 
       {/* Total spending chart */}
       {data.totalMonthlySpend.length > 1 && (
-        <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm animate-fade-in">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Total Monthly Spending</h2>
-          <div className="flex items-end gap-1 h-32">
-            {data.totalMonthlySpend.map((m, i) => (
-              <div key={m.month} className="flex flex-col items-center gap-1 flex-1">
-                <span className="text-[10px] text-gray-500 font-medium">${(m.amount / 1000).toFixed(1)}k</span>
-                <div
-                  className={`w-full rounded-t transition-all duration-300 ${i === data.totalMonthlySpend.length - 1 ? 'bg-gradient-to-t from-indigo-600 to-indigo-400' : 'bg-slate-200'}`}
-                  style={{ height: `${Math.max(4, (m.amount / totalMax) * 100)}px` }}
-                />
-                <span className="text-[10px] text-gray-400">{formatMonth(m.month)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TotalSpendChart months={data.totalMonthlySpend} maxVal={totalMax} />
       )}
 
       {/* Tab switcher */}
@@ -214,14 +274,6 @@ export default function Trends() {
                 </div>
                 <div className="mt-3">
                   <MiniBar months={mt.months} maxVal={maxAmt} />
-                  <div className="flex justify-between mt-1">
-                    {mt.months.length > 0 && (
-                      <>
-                        <span className="text-[9px] text-gray-400">{formatMonth(mt.months[0].month)}</span>
-                        <span className="text-[9px] text-gray-400">{formatMonth(mt.months[mt.months.length - 1].month)}</span>
-                      </>
-                    )}
-                  </div>
                 </div>
               </div>
             );
@@ -260,14 +312,6 @@ export default function Trends() {
                 </div>
                 <div className="mt-3">
                   <MiniBar months={ct.months} maxVal={maxAmt} />
-                  <div className="flex justify-between mt-1">
-                    {ct.months.length > 0 && (
-                      <>
-                        <span className="text-[9px] text-gray-400">{formatMonth(ct.months[0].month)}</span>
-                        <span className="text-[9px] text-gray-400">{formatMonth(ct.months[ct.months.length - 1].month)}</span>
-                      </>
-                    )}
-                  </div>
                 </div>
               </div>
             );
