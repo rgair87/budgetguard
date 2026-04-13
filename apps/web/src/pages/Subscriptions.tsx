@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { Repeat } from 'lucide-react';
 import api from '../api/client';
 import { USER_CATEGORY_NAMES } from '@spenditure/shared';
 import useTrack from '../hooks/useTrack';
@@ -323,9 +324,14 @@ export default function Subscriptions() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <p>No recurring charges found.</p>
-          <p className="text-sm mt-1">Import bank transactions via CSV to see your subscriptions.</p>
+        <div className="text-center py-16">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <Repeat className="w-6 h-6 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900 mb-1">No recurring charges found</h3>
+          <p className="text-sm text-slate-500 max-w-xs mx-auto">
+            Import bank transactions or connect your bank to see subscriptions and recurring bills.
+          </p>
         </div>
       )}
 

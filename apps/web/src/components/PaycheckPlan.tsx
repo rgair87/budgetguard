@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../api/client';
 import type { PaycheckPlan as PaycheckPlanType } from '@spenditure/shared';
 
@@ -68,22 +69,29 @@ export default function PaycheckPlan() {
 
       {/* Bills Covered - #1 confidence signal */}
       {plan.billsCovered ? (
-        <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span className="text-emerald-600 text-lg">&#10003;</span>
+        <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3.5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+            <CheckCircle className="w-4 h-4 text-emerald-600" />
+          </div>
           <div>
             <p className="text-sm font-semibold text-emerald-900">Bills are covered</p>
-            <p className="text-xs text-emerald-700">Your income covers all your bills and debt payments.</p>
+            <p className="text-xs text-emerald-600">Your income covers all your bills and debt payments.</p>
           </div>
         </div>
       ) : (
-        <div className="mx-4 mb-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="mx-4 mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+          </div>
+          <div>
           <p className="text-sm font-semibold text-amber-900">
             We need to find ${fmt(plan.billsGap)}/mo
           </p>
-          <p className="text-sm text-amber-700 mt-1">
+          <p className="text-xs text-amber-700 mt-0.5">
             {plan.advice}{' '}
             <Link to="/cut-this" className="font-semibold underline">Check Cut This &rarr;</Link>
           </p>
+          </div>
         </div>
       )}
 

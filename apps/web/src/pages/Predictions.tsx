@@ -50,8 +50,20 @@ export default function Predictions() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-gray-500 text-center py-12">Calculating spending predictions...</div>;
-  if (error) return <div className="bg-red-50 text-red-600 text-sm p-4 rounded-2xl border border-red-200/60">{error}</div>;
+  if (loading) return (
+    <div className="text-center py-16">
+      <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
+      <p className="text-sm text-slate-500">Calculating spending predictions...</p>
+    </div>
+  );
+  if (error) return (
+    <div className="bg-white border border-red-200 rounded-2xl p-5 flex items-center gap-3 shadow-sm">
+      <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+        <span className="text-red-500 text-sm font-bold">!</span>
+      </div>
+      <p className="text-sm text-slate-700">{error}</p>
+    </div>
+  );
   if (!data) return null;
 
   const problems = data.predictions.filter(p => p.status === 'over_budget' || p.status === 'warning');

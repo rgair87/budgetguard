@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api/client';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, Clock, RefreshCw, Flame } from 'lucide-react';
 import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
 import InfoTip from '../components/InfoTip';
@@ -325,11 +325,14 @@ export default function Home() {
     <div className="space-y-4">
       {/* Error banner */}
       {loadError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-red-700">{loadError}</p>
+        <div className="bg-white border border-red-200 rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-sm">
+          <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-red-500" />
+          </div>
+          <p className="text-sm text-slate-700 flex-1">{loadError}</p>
           <button
             onClick={() => { setLoadError(null); setRefreshKey(k => k + 1); }}
-            className="text-xs font-semibold text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors shrink-0"
           >
             Retry
           </button>
@@ -359,16 +362,18 @@ export default function Home() {
 
       {/* Trial expired banner */}
       {trialDaysLeft !== null && trialDaysLeft === 0 && tier === 'free' && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4" role="alert">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-red-800">Your free trial has ended</p>
-              <p className="text-xs text-red-600 mt-1 leading-relaxed">
-                You've lost access to AI Advisor, bank sync, spending trends, and more.
-                Keep your financial momentum going.
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl px-5 py-5 shadow-lg" role="alert">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-red-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Your free trial has ended</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Bank sync, AI Advisor, and spending trends are locked.
               </p>
             </div>
-            <Link to="/pricing" className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors shrink-0">
+            <Link to="/pricing" className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-lg transition-colors shrink-0 shadow-sm">
               View plans
             </Link>
           </div>
@@ -377,11 +382,16 @@ export default function Home() {
 
       {/* Streak badge */}
       {streak > 1 && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200/60 rounded-xl px-4 py-2.5">
-          <span className="text-lg">🔥</span>
-          <p className="text-sm font-medium text-amber-800">
-            {streak}-day streak! {streak >= 30 ? 'Incredible discipline.' : streak >= 7 ? 'Building great habits.' : 'Keep it going!'}
-          </p>
+        <div className="bg-white border border-slate-200/60 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+          <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+            <Flame className="w-4 h-4 text-orange-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">{streak}-day streak</p>
+            <p className="text-xs text-slate-500">
+              {streak >= 30 ? 'Incredible discipline.' : streak >= 7 ? 'Building great habits.' : 'Keep it going!'}
+            </p>
+          </div>
         </div>
       )}
 
@@ -474,26 +484,29 @@ export default function Home() {
 
       {/* Stale data warning */}
       {isStale && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between" role="alert">
-          <p className="text-xs text-amber-800">
-            {hasLinkedBank && daysSinceSync !== null ? (
-              <>
-                Bank hasn't synced in {daysSinceSync} {daysSinceSync === 1 ? 'day' : 'days'}.{' '}
-                <Link to="/settings" className="font-medium text-indigo-600">Check connection</Link>
-              </>
-            ) : daysOld !== null ? (
-              <>
-                Data is {daysOld} {daysOld === 1 ? 'day' : 'days'} old.{' '}
-                <Link to="/settings" className="font-medium text-indigo-600">Link bank</Link> or <Link to="/csv-upload" className="font-medium text-indigo-600">upload CSV</Link>
-              </>
-            ) : (
-              <>
-                No transactions yet.{' '}
-                <Link to="/settings" className="font-medium text-indigo-600">Link bank</Link> or <Link to="/csv-upload" className="font-medium text-indigo-600">upload CSV</Link>
-              </>
-            )}
-          </p>
-          <button onClick={() => setFreshnessDismissed(true)} className="text-amber-400 hover:text-amber-600 text-sm ml-2" aria-label="Dismiss">&times;</button>
+        <div className="bg-white border border-amber-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm" role="alert">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <RefreshCw className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-800">
+              {hasLinkedBank && daysSinceSync !== null
+                ? `Bank hasn't synced in ${daysSinceSync} ${daysSinceSync === 1 ? 'day' : 'days'}`
+                : daysOld !== null
+                  ? `Data is ${daysOld} ${daysOld === 1 ? 'day' : 'days'} old`
+                  : 'No transactions yet'}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {hasLinkedBank ? (
+                <Link to="/settings" className="text-indigo-600 hover:text-indigo-700 font-medium">Check connection</Link>
+              ) : (
+                <><Link to="/settings" className="text-indigo-600 hover:text-indigo-700 font-medium">Link bank</Link> or <Link to="/csv-upload" className="text-indigo-600 hover:text-indigo-700 font-medium">upload CSV</Link></>
+              )}
+            </p>
+          </div>
+          <button onClick={() => setFreshnessDismissed(true)} className="text-slate-300 hover:text-slate-500 transition-colors shrink-0" aria-label="Dismiss">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

@@ -149,8 +149,11 @@ export default function Simulator() {
 
   if (!runway) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-5 rounded-2xl">
-        Failed to load runway data. Please try again.
+      <div className="bg-white border border-red-200 rounded-2xl p-5 flex items-center gap-3 shadow-sm">
+        <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+          <span className="text-red-500 text-sm font-bold">!</span>
+        </div>
+        <p className="text-sm text-slate-700">Failed to load data. Please try again.</p>
       </div>
     );
   }
