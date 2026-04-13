@@ -250,7 +250,7 @@ export default function DebtPayoff() {
   const [plan, setPlan] = useState<DebtPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [extraPayment, setExtraPayment] = useState(100);
-  const [showComparison, setShowComparison] = useState(false);
+  const [showComparison, setShowComparison] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ balance: string; rate: string; minPay: string }>({ balance: '', rate: '', minPay: '' });
 

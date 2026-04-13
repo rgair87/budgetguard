@@ -495,10 +495,14 @@ export default function Goals() {
                     onClick={() => toggleInsights(goal.id)}
                     className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50/50 transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm font-semibold text-slate-700">Smart Recommendations</span>
-                      <span className="text-[10px] font-bold bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">{goalInsights.length}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
+                      {isExpanded ? (
+                        <span className="text-sm font-semibold text-slate-700">Smart Recommendations</span>
+                      ) : (
+                        <span className="text-xs text-slate-500 truncate">{goalInsights[0].title}</span>
+                      )}
+                      <span className="text-[10px] font-bold bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full shrink-0">{goalInsights.length}</span>
                     </div>
                     {isExpanded
                       ? <ChevronDown className="w-4 h-4 text-slate-400" />

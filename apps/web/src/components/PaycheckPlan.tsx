@@ -103,6 +103,13 @@ export default function PaycheckPlan() {
           {savingsPct > 0 && <div className="bg-emerald-400" style={{ width: `${savingsPct}%` }} />}
           {spendingPct > 0 && <div className="bg-purple-400" style={{ width: `${spendingPct}%` }} />}
         </div>
+        {/* Legend */}
+        <div className="flex items-center gap-4 mt-2">
+          <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-blue-500" />Bills</span>
+          <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-amber-400" />Debt</span>
+          <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-emerald-400" />Savings</span>
+          <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-purple-400" />Spending</span>
+        </div>
       </div>
 
       {/* Bucket rows */}

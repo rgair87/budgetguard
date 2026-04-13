@@ -452,18 +452,19 @@ export default function Calendar() {
                       </div>
                     </div>
 
-                    {/* Projected balance */}
-                    <p className={`text-[11px] sm:text-xs font-semibold ${
+                    {/* Projected balance - hero of the cell */}
+                    <p className={`text-xs sm:text-sm font-bold mt-0.5 ${
                       day.projectedBalance < 0 ? 'text-red-600' :
                       day.status === 'yellow' ? 'text-amber-600' :
-                      'text-slate-600'
+                      day.status === 'red' ? 'text-red-500' :
+                      'text-slate-800'
                     }`}>
                       ${fmt(day.projectedBalance)}
                     </p>
 
                     {/* Payday indicator */}
                     {day.isPayday && (
-                      <p className="text-[9px] sm:text-[10px] text-emerald-600 font-semibold mt-0.5 truncate">
+                      <p className="text-[9px] sm:text-[10px] text-emerald-600 font-bold mt-0.5 truncate">
                         +${fmt(day.incomeAmount)}
                       </p>
                     )}

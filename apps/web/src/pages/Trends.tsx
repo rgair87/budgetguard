@@ -246,7 +246,9 @@ export default function Trends() {
           {data.merchantTrends.map(mt => {
             const maxAmt = Math.max(...mt.months.map(m => m.amount), 1);
             return (
-              <div key={mt.merchantName} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <div key={mt.merchantName} className={`rounded-2xl border p-4 shadow-sm hover:shadow-md transition-shadow duration-200 ${
+                mt.trend === 'up' && mt.changePercent > 20 ? 'bg-red-50/40 border-red-200/60' : 'bg-white border-slate-200/60'
+              }`}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -299,7 +301,9 @@ export default function Trends() {
           {data.categoryTrends.map(ct => {
             const maxAmt = Math.max(...ct.months.map(m => m.amount), 1);
             return (
-              <div key={ct.category} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <div key={ct.category} className={`rounded-2xl border p-4 shadow-sm hover:shadow-md transition-shadow duration-200 ${
+                ct.trend === 'up' && ct.changePercent > 20 ? 'bg-red-50/40 border-red-200/60' : 'bg-white border-slate-200/60'
+              }`}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Link to={`/transactions?search=${encodeURIComponent(ct.category)}`} className="font-medium text-gray-900 text-sm hover:text-indigo-600 hover:underline transition-colors">{ct.category}</Link>

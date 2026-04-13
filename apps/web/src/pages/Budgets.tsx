@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Target, Sparkles, Check, AlertTriangle, TrendingUp, ArrowRight, XCircle, Receipt } from 'lucide-react';
 import api from '../api/client';
@@ -65,8 +65,28 @@ export default function Budgets() {
   }
 
   const [saveError, setSaveError] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialEdits = useRef<Record<string, number>>({});
 
-  async function saveBudgets() {
+  // Track initial state to detect real changes
+  useEffect(() => {
+    if (budgets.length > 0 && Object.keys(initialEdits.current).length === 0) {
+      const initial: Record<string, number> = {};
+      for (const b of budgets) {
+        if (b.monthly_limit > 0) initial[b.category] = b.monthly_limit;
+      }
+      initialEdits.current = initial;
+    }
+  }, [budgets]);
+
+  const hasEdits = budgets.some(b => {
+    const edited = edits[b.category];
+    const original = b.monthly_limit || 0;
+    return (edited || 0) !== original;
+  });
+
+  // Auto-save with 1.5s debounce
+  const doSave = useCallback(async () => {
     setSaving(true);
     setSaved(false);
     setSaveError(false);
@@ -87,13 +107,14 @@ export default function Budgets() {
       setTimeout(() => setSaveError(false), 5000);
     }
     setSaving(false);
-  }
+  }, [budgets, edits]);
 
-  const hasEdits = budgets.some(b => {
-    const edited = edits[b.category];
-    const original = b.monthly_limit || 0;
-    return (edited || 0) !== original;
-  });
+  useEffect(() => {
+    if (!hasEdits || budgets.length === 0) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(doSave, 1500);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [edits, hasEdits, doSave]);
 
   const hasSuggestions = budgets.some(b => b.suggested && !edits[b.category]);
   const totalBudget = Object.values(edits).reduce((s, v) => s + v, 0);
@@ -253,38 +274,22 @@ export default function Budgets() {
         />
       )}
 
-      {/* Save bar */}
-      <div>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-3 flex items-center justify-between">
-          <p className="text-xs text-slate-500">
-            {saved ? (
-              <span className="text-emerald-600 font-medium flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" /> Budgets saved. Alerts are active.
-              </span>
-            ) : hasEdits ? (
-              'You have unsaved changes'
-            ) : budgetCount > 0 ? (
-              `${budgetCount} budget${budgetCount !== 1 ? 's' : ''} active`
-            ) : (
-              'Set limits to get budget alerts'
-            )}
-          </p>
-          <div className="flex items-center gap-3">
-            {saveError && (
-              <span className="flex items-center gap-1 text-sm text-red-600">
-                <XCircle className="w-4 h-4" /> Failed to save
-              </span>
-            )}
-            <button
-              onClick={saveBudgets}
-              disabled={saving || !hasEdits}
-              className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-xl disabled:opacity-40 transition-colors"
-            >
-              {saving ? 'Saving...' : 'Save Budgets'}
-            </button>
-          </div>
+      {/* Auto-save status toast */}
+      {(saving || saved || saveError) && (
+        <div className={`text-center py-2 rounded-xl text-xs font-medium transition-all ${
+          saveError ? 'bg-red-50 text-red-600' :
+          saved ? 'bg-emerald-50 text-emerald-600' :
+          'bg-slate-50 text-slate-400'
+        }`}>
+          {saveError ? (
+            <span className="flex items-center justify-center gap-1"><XCircle className="w-3.5 h-3.5" /> Failed to save. Try again.</span>
+          ) : saved ? (
+            <span className="flex items-center justify-center gap-1"><Check className="w-3.5 h-3.5" /> Saved</span>
+          ) : (
+            'Saving...'
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
