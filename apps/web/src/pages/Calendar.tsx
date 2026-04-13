@@ -351,42 +351,37 @@ export default function Calendar() {
       </div>
 
       {/* ---- Month Summary Stat Cards ---- */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {/* Left to spend */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-sm">
-          <div className="absolute top-2 right-2">
-            <InfoTip text="How much you have left to spend this month based on your budget or available cash, minus what you've already spent on everyday purchases. Bills are tracked separately." />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-100">Left to Spend</p>
-          <p className="text-xl font-bold mt-1">${fmt(Math.max(0, data.monthlyBudget - data.spentSoFar))}</p>
-          <p className="text-[10px] text-emerald-200 mt-0.5">${fmt(data.spentSoFar)} of ${fmt(data.monthlyBudget)} spent</p>
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5">
+          <p className="text-xs text-slate-500 font-medium mb-1">Left to spend</p>
+          <p className="text-xl font-bold text-emerald-700">${fmt(Math.max(0, data.monthlyBudget - data.spentSoFar))}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">${fmt(data.spentSoFar)} of ${fmt(data.monthlyBudget)}</p>
         </div>
 
         {/* Spent so far */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 p-4 text-white shadow-sm">
-          <div className="absolute top-2 right-2">
-            <InfoTip text="How much you've spent this month on everyday purchases like groceries, dining out, shopping, etc. This doesn't include your fixed bills like rent or subscriptions." />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-300">Spent So Far</p>
-          <p className="text-xl font-bold mt-1">${fmt(data.spentSoFar)}</p>
-          <p className="text-[10px] text-slate-300 mt-0.5">this month</p>
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5">
+          <p className="text-xs text-slate-500 font-medium mb-1">Spent so far</p>
+          <p className="text-xl font-bold text-slate-900">${fmt(data.spentSoFar)}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">this month</p>
         </div>
 
         {/* On track or over */}
-        <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-sm ${
+        <div className={`rounded-2xl border shadow-sm px-4 py-5 ${
           data.monthStatus === 'red'
-            ? 'bg-gradient-to-br from-red-500 to-red-600'
+            ? 'bg-red-50/50 border-red-200/60'
             : data.monthStatus === 'yellow'
-            ? 'bg-gradient-to-br from-amber-500 to-amber-600'
-            : 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+            ? 'bg-amber-50/50 border-amber-200/60'
+            : 'bg-white border-slate-200/60'
         }`}>
-          <div className="absolute top-2 right-2">
-            <InfoTip text="Based on your spending pace so far, this is how much you'll likely spend by the end of the month. Green means you're on track, yellow means watch out, red means you're over budget." />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider opacity-80">On Pace For</p>
-          <p className="text-xl font-bold mt-1">${fmt(data.projectedMonthlySpend)}</p>
+          <p className="text-xs text-slate-500 font-medium mb-1">On pace for</p>
+          <p className={`text-xl font-bold ${
+            data.monthStatus === 'red' ? 'text-red-700' :
+            data.monthStatus === 'yellow' ? 'text-amber-700' :
+            'text-slate-900'
+          }`}>${fmt(data.projectedMonthlySpend)}</p>
           {data.overBudget && (
-            <p className="text-[10px] opacity-80 mt-0.5">${fmt(data.projectedMonthlySpend - data.monthlyBudget)} over</p>
+            <p className="text-[11px] text-red-500 font-medium mt-0.5">${fmt(data.projectedMonthlySpend - data.monthlyBudget)} over</p>
           )}
         </div>
       </div>
@@ -429,12 +424,12 @@ export default function Calendar() {
                     key={day.date}
                     type="button"
                     onClick={() => openSidePanel(day)}
-                    className={`min-h-[76px] sm:min-h-[88px] p-1.5 sm:p-2 border-b border-r border-slate-50 text-left
-                      transition-all duration-200 hover:bg-indigo-50/60 hover:shadow-inner cursor-pointer
+                    className={`min-h-[80px] sm:min-h-[92px] p-2 sm:p-2.5 border-b border-r border-slate-100 text-left
+                      transition-all duration-200 hover:bg-indigo-50/40 cursor-pointer
                       ${cellBg}
-                      ${day.isToday ? 'ring-2 ring-inset ring-indigo-500' : ''}
-                      ${isSelected ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''}
-                      ${day.isPast ? 'opacity-50' : ''}
+                      ${day.isToday ? 'ring-2 ring-inset ring-indigo-500 bg-indigo-50/30' : ''}
+                      ${isSelected ? 'bg-indigo-50/50 ring-2 ring-inset ring-indigo-400' : ''}
+                      ${day.isPast ? 'opacity-40' : ''}
                     `}
                   >
                     {/* Day number */}

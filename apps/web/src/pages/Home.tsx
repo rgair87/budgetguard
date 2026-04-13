@@ -532,41 +532,33 @@ export default function Home() {
 
       {/* Quick stats row */}
       {score && accounts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fade-in">
-          <Link to="/transactions?dateFrom=this_month&spendingOnly=true" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-2">
-              <Wallet className="w-4 h-4 text-slate-500" />
-            </div>
-            <p className="text-lg font-bold text-slate-900 animate-count-up">${score.spentThisMonth.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">Spent this month <InfoTip text="Total amount you've spent so far this calendar month across all your accounts." /></p>
+        <div className="grid grid-cols-3 gap-3 animate-fade-in">
+          <Link to="/transactions?dateFrom=this_month&spendingOnly=true" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5 block hover:border-slate-300 hover:shadow-md transition-all">
+            <p className="text-xs text-slate-500 font-medium mb-1">Spent this month</p>
+            <p className="text-xl font-bold text-slate-900">${score.spentThisMonth.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </Link>
-          <Link to="/trends" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-2">
-              <CreditCard className="w-4 h-4 text-slate-500" />
-            </div>
-            <p className="text-lg font-bold text-slate-900 animate-count-up">${score.dailyBurnRate.toFixed(0)}</p>
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">Daily burn <InfoTip text="How much you spend per day on average, based on the last 90 days." /></p>
+          <Link to="/trends" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5 block hover:border-slate-300 hover:shadow-md transition-all">
+            <p className="text-xs text-slate-500 font-medium mb-1">Daily burn rate</p>
+            <p className="text-xl font-bold text-slate-900">${score.dailyBurnRate.toFixed(0)}<span className="text-sm font-normal text-slate-400">/day</span></p>
           </Link>
           {plan ? (
-            <Link to="/budgets" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover block hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 ${plan.buckets.spending.monthly > 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                <Target className={`w-4 h-4 ${plan.buckets.spending.monthly > 0 ? 'text-emerald-500' : 'text-red-500'}`} />
-              </div>
-              <p className={`text-lg font-bold animate-count-up ${(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                ${Math.abs(Math.round(plan.buckets.spending.monthly - score.spentThisMonth)).toLocaleString()}
+            <Link to="/budgets" className={`rounded-2xl border shadow-sm px-4 py-5 block hover:shadow-md transition-all ${
+              (plan.buckets.spending.monthly - score.spentThisMonth) >= 0
+                ? 'bg-emerald-50/50 border-emerald-200/60 hover:border-emerald-300'
+                : 'bg-red-50/50 border-red-200/60 hover:border-red-300'
+            }`}>
+              <p className="text-xs text-slate-500 font-medium mb-1">
+                {(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'Left to spend' : 'Over budget'}
               </p>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center justify-center gap-1">
-                {(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'Left to spend' : 'Over plan'} <InfoTip text="How much spending money you have left this month after bills, debt, and savings." />
+              <p className={`text-xl font-bold ${(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                ${Math.abs(Math.round(plan.buckets.spending.monthly - score.spentThisMonth)).toLocaleString()}
               </p>
             </Link>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 bg-slate-50">
-                <Target className="w-4 h-4 text-slate-400" />
-              </div>
-              <p className="text-lg font-bold text-slate-400">—</p>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">No budget set</p>
-            </div>
+            <Link to="/budgets" className="bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5 block hover:border-slate-300 hover:shadow-md transition-all">
+              <p className="text-xs text-slate-500 font-medium mb-1">Budget</p>
+              <p className="text-sm font-medium text-slate-400">Not set up yet</p>
+            </Link>
           )}
         </div>
       )}
