@@ -1307,9 +1307,6 @@ export default function Settings() {
         )}
       </div>
 
-      {/* ────────── IMPORT DATA ────────── */}
-      <ImportData />
-
       {/* ────────── SUBSCRIPTION ────────── */}
       {tierInfo?.tier !== 'pro' && (
         <>
@@ -1355,44 +1352,6 @@ export default function Settings() {
           </div>
         </>
       )}
-
-      {/* ────────── FAMILY ────────── */}
-      <SectionHeader icon={Users} label="Family" />
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
-        <SettingsRow last>
-          <a href="/family" className="flex items-center justify-between -mx-4 -my-3.5 px-4 py-3.5 active:bg-slate-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
-                <Users className="w-4 h-4 text-violet-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-900">Manage Family</p>
-                <p className="text-xs text-slate-400">Invite members to share finances</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
-          </a>
-        </SettingsRow>
-      </div>
-
-      {/* ────────── ANALYTICS ────────── */}
-      <SectionHeader icon={BarChart3} label="Analytics" />
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
-        <SettingsRow last>
-          <a href="/analytics" className="flex items-center justify-between -mx-4 -my-3.5 px-4 py-3.5 active:bg-slate-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                <BarChart3 className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-900">Feature Analytics</p>
-                <p className="text-xs text-slate-400">See which features are used most and least</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
-          </a>
-        </SettingsRow>
-      </div>
 
       {/* ────────── DATA & PRIVACY ────────── */}
       <PrivacySection />
