@@ -1069,6 +1069,9 @@ export interface SubscriptionSummary {
   monthsActive: number;      // how many months they've been paying
   isActive: boolean;         // had a payment in the last 45 days
   category: string;          // 'subscription' | 'bill' | 'debt'
+  avgAmount: number;         // average payment amount
+  minAmount: number;         // lowest payment
+  maxAmount: number;         // highest payment
 }
 
 // Get full lifetime subscription/recurring spend data for a user
@@ -1219,6 +1222,9 @@ export function getSubscriptionLifetime(userId: string): SubscriptionSummary[] {
       monthsActive,
       isActive,
       category: subCategory,
+      avgAmount: Math.round((totalSpent / data.amounts.length) * 100) / 100,
+      minAmount: Math.round(Math.min(...data.amounts) * 100) / 100,
+      maxAmount: Math.round(Math.max(...data.amounts) * 100) / 100,
     });
   }
 

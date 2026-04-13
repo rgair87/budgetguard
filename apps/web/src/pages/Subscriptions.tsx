@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Repeat, BarChart3, ChevronDown, ChevronRight } from 'lucide-react';
+import { Repeat } from 'lucide-react';
 import api from '../api/client';
 import { USER_CATEGORY_NAMES } from '@spenditure/shared';
 import useTrack from '../hooks/useTrack';
@@ -16,6 +16,9 @@ interface Subscription {
   monthsActive: number;
   isActive: boolean;
   category: string;
+  avgAmount: number;
+  minAmount: number;
+  maxAmount: number;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -307,9 +310,15 @@ export default function Subscriptions() {
                       {formatMoney(sub.monthlyAmount)}
                       <span className="text-xs font-normal text-gray-400">/mo</span>
                     </p>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      {formatMoney(sub.totalSpent)} total
-                    </p>
+                    {sub.minAmount !== sub.maxAmount ? (
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        avg {formatMoney(sub.avgAmount)} ({formatMoney(sub.minAmount)}-{formatMoney(sub.maxAmount)})
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {formatMoney(sub.totalSpent)} total
+                      </p>
+                    )}
                   </div>
                   <ActionMenu
                     sub={sub}
@@ -346,99 +355,7 @@ export default function Subscriptions() {
         </div>
       )}
 
-      {/* Monthly Averages */}
-      <MonthlyAverages />
     </div>
   );
 }
 
-/* ── Monthly Averages by Category ── */
-
-interface CategoryAverage {
-  category: string;
-  monthlyAverage: number;
-  min: number;
-  max: number;
-  monthCount: number;
-  months: { month: string; total: number }[];
-}
-
-function MonthlyAverages() {
-  const [data, setData] = useState<CategoryAverage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.get('/runway/category-averages?months=12')
-      .then(r => setData(r.data.categories || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return null;
-  if (data.length === 0) return null;
-
-  function fmtMonth(m: string) {
-    const [y, mo] = m.split('-');
-    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return `${names[parseInt(mo) - 1]} '${y.slice(2)}`;
-  }
-
-  return (
-    <div className="mt-6">
-      <div className="flex items-center gap-2 mb-3">
-        <BarChart3 className="w-4 h-4 text-slate-400" />
-        <h2 className="text-sm font-semibold text-slate-700">Monthly Averages (12 months)</h2>
-      </div>
-
-      <div className="space-y-2">
-        {data.map(cat => {
-          const isOpen = expanded === cat.category;
-          const maxMonth = cat.months.length > 0 ? Math.max(...cat.months.map(m => m.total)) : 1;
-
-          return (
-            <div key={cat.category} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-              <button
-                onClick={() => setExpanded(isOpen ? null : cat.category)}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50/50 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="text-left min-w-0">
-                    <p className="text-sm font-medium text-slate-800">{cat.category}</p>
-                    <p className="text-xs text-slate-400">{cat.monthCount} months of data</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-slate-900">${cat.monthlyAverage.toLocaleString()}<span className="text-xs font-normal text-slate-400">/mo</span></p>
-                    <p className="text-[11px] text-slate-400">${cat.min} - ${cat.max} range</p>
-                  </div>
-                  {isOpen ? <ChevronDown className="w-4 h-4 text-slate-300" /> : <ChevronRight className="w-4 h-4 text-slate-300" />}
-                </div>
-              </button>
-
-              {isOpen && cat.months.length > 0 && (
-                <div className="px-4 pb-4 border-t border-slate-100 pt-3">
-                  <div className="space-y-1.5">
-                    {cat.months.map(m => (
-                      <div key={m.month} className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500 w-16 shrink-0">{fmtMonth(m.month)}</span>
-                        <div className="flex-1 bg-slate-100 rounded-full h-2">
-                          <div
-                            className="h-2 rounded-full bg-indigo-500 transition-all duration-300"
-                            style={{ width: `${(m.total / maxMonth) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-slate-700 w-16 text-right shrink-0">${Math.round(m.total).toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
