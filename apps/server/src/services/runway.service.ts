@@ -344,6 +344,9 @@ export function calculateRunway(userId: string): RunwayScore {
   const dailyIncome = paycheckIntervalDays && spendableIncome
     ? spendableIncome / paycheckIntervalDays
     : 0;
+  const monthlyIncome = dailyIncome * 30;
+  const monthlyBurn = dailyBurnRate * 30;
+  const monthlyCashFlow = monthlyIncome - monthlyBurn;
   // No income configured but spending money = definitely losing money
   // Income configured but spending more than earning = losing money
   const isLosingMoney = dailyBurnRate > 0 && (dailyIncome === 0 || dailyBurnRate > dailyIncome);
@@ -353,6 +356,9 @@ export function calculateRunway(userId: string): RunwayScore {
     status = 'red';
   } else if (runwayDays <= 60) {
     status = 'yellow';
+  } else if (isLosingMoney && monthlyCashFlow < -200) {
+    // Spending significantly more than earning, even with long runway
+    status = runwayDays <= 120 ? 'red' : 'yellow';
   } else if (isLosingMoney) {
     status = 'yellow';
   } else {
@@ -436,6 +442,10 @@ export function calculateRunway(userId: string): RunwayScore {
     totalDebt: rc(totalDebt),
     spendableBalance: rc(spendableBalance),
     cuttableMerchants,
+    monthlyCashFlow: rc(monthlyCashFlow),
+    isLosingMoney,
+    monthlyIncome: rc(monthlyIncome),
+    monthlyBurn: rc(monthlyBurn),
     // Spend breakdown for advisor and debugging
     spendBreakdown: {
       recurringMonthly: rc((breakdown.recurring / calendarDays) * 30),

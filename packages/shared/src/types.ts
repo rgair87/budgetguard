@@ -79,6 +79,10 @@ export interface RunwayScore {
   totalDebt: number;
   spendableBalance: number;
   cuttableMerchants: { name: string; monthlyAmount: number; category: string; occurrences?: number }[];
+  monthlyCashFlow: number;
+  isLosingMoney: boolean;
+  monthlyIncome: number;
+  monthlyBurn: number;
   noIncomeConfigured?: boolean;
   spendBreakdown?: {
     recurringMonthly: number;

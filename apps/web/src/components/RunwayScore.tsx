@@ -163,6 +163,35 @@ export default function RunwayScore({ score, plan }: Props) {
         </div>
       )}
 
+      {/* ── Cash flow warning ── */}
+      {score.isLosingMoney && !score.noIncomeConfigured && score.monthlyIncome > 0 && (
+        <div className="bg-white border border-red-200 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">You're spending more than you earn</p>
+              <p className="text-xs text-slate-500">Your savings are covering the gap right now.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 bg-slate-50 rounded-xl p-3">
+            <div className="text-center">
+              <p className="text-xs text-slate-500">Income</p>
+              <p className="text-sm font-bold text-emerald-600">${Math.round(score.monthlyIncome).toLocaleString()}/mo</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500">Spending</p>
+              <p className="text-sm font-bold text-red-600">${Math.round(score.monthlyBurn).toLocaleString()}/mo</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500">Gap</p>
+              <p className="text-sm font-bold text-red-600">-${Math.abs(Math.round(score.monthlyCashFlow)).toLocaleString()}/mo</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Key Numbers Grid ── */}
       <div className="grid grid-cols-2 gap-3">
         <Link to="/settings" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow hover:shadow-md hover:border-indigo-200 block cursor-pointer">
