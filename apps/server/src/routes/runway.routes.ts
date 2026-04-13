@@ -27,6 +27,17 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
   res.json({ ...score, streak });
 });
 
+// Dashboard charts data
+router.get('/dashboard-charts', authenticate, (req: AuthRequest, res: Response) => {
+  try {
+    const { getDashboardCharts } = require('../services/dashboard.service');
+    const data = getDashboardCharts(req.userId!);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: 'server_error', message: 'Failed to load dashboard charts' });
+  }
+});
+
 // Daily action: highest-impact thing to do today
 router.get('/daily-action', authenticate, (req: AuthRequest, res: Response) => {
   try {

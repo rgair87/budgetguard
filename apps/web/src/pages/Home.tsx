@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api/client';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, Clock, RefreshCw, Flame } from 'lucide-react';
+import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, Clock, RefreshCw, Flame, PiggyBank, TrendingUp as TrendIcon } from 'lucide-react';
+import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
 import InfoTip from '../components/InfoTip';
@@ -241,6 +242,13 @@ export default function Home() {
   const [streak, setStreak] = useState(0);
   const [needsReviewCount, setNeedsReviewCount] = useState(0);
   const [dailyAction, setDailyAction] = useState<{ title: string; body: string; link: string } | null>(null);
+  const [charts, setCharts] = useState<{
+    cashFlowTimeline: Array<{ date: string; balance: number; projected?: boolean }>;
+    monthlyComparison: Array<{ month: string; income: number; expenses: number }>;
+    runwayTrend: Array<{ date: string; days: number }>;
+    savingsBalance: number;
+    checkingBalance: number;
+  } | null>(null);
 
   // Detect demo data by checking for the exact set of demo account names
   const DEMO_ACCOUNT_NAMES = ['Main Checking', 'Emergency Savings', 'Chase Visa', 'Car Loan'];
@@ -278,6 +286,7 @@ export default function Home() {
       api.get('/alerts').then((r) => setAlerts(r.data.alerts || [])).catch(() => {}),
       api.get('/runway/needs-review').then((r) => setNeedsReviewCount(r.data.count || 0)).catch(() => {}),
       api.get('/runway/daily-action').then((r) => { if (r.data.action) setDailyAction(r.data.action); }).catch(() => {}),
+      api.get('/runway/dashboard-charts').then((r) => setCharts(r.data)).catch(() => {}),
     ]).finally(() => {
       setLoading(false);
       if (errorCount > 0) setLoadError('Some data failed to load.');
@@ -507,35 +516,168 @@ export default function Home() {
         </Link>
       )}
 
-      {/* Quick stats row */}
+      {/* Key numbers row */}
       {score && accounts.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 animate-fade-in">
-          <Link to="/transactions?dateFrom=this_month&spendingOnly=true" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5 block hover:border-slate-300 hover:shadow-md transition-all">
-            <p className="text-xs text-slate-500 font-medium mb-1">Spent this month</p>
-            <p className="text-xl font-bold text-slate-900">${score.spentThisMonth.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+        <div className="grid grid-cols-4 gap-3 animate-fade-in">
+          <Link to="/transactions?dateFrom=this_month&spendingOnly=true" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-3 py-4 block hover:border-slate-300 hover:shadow-md transition-all">
+            <p className="text-[10px] text-slate-500 font-medium mb-1">Spent</p>
+            <p className="text-lg font-bold text-slate-900">${score.spentThisMonth.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </Link>
-          <Link to="/trends" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5 block hover:border-slate-300 hover:shadow-md transition-all">
-            <p className="text-xs text-slate-500 font-medium mb-1">Daily burn rate</p>
-            <p className="text-xl font-bold text-slate-900">${score.dailyBurnRate.toFixed(0)}<span className="text-sm font-normal text-slate-400">/day</span></p>
+          <Link to="/trends" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-3 py-4 block hover:border-slate-300 hover:shadow-md transition-all">
+            <p className="text-[10px] text-slate-500 font-medium mb-1">Burn rate</p>
+            <p className="text-lg font-bold text-slate-900">${score.dailyBurnRate.toFixed(0)}<span className="text-xs font-normal text-slate-400">/d</span></p>
           </Link>
+          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-3 py-4">
+            <p className="text-[10px] text-slate-500 font-medium mb-1">Savings</p>
+            <p className="text-lg font-bold text-emerald-700">${charts ? Math.round(charts.savingsBalance).toLocaleString() : '...'}</p>
+          </div>
           {plan ? (
-            <Link to="/budgets" className={`rounded-2xl border shadow-sm px-4 py-5 block hover:shadow-md transition-all ${
+            <Link to="/budgets" className={`rounded-2xl border shadow-sm px-3 py-4 block hover:shadow-md transition-all ${
               (plan.buckets.spending.monthly - score.spentThisMonth) >= 0
                 ? 'bg-emerald-50/50 border-emerald-200/60 hover:border-emerald-300'
                 : 'bg-red-50/50 border-red-200/60 hover:border-red-300'
             }`}>
-              <p className="text-xs text-slate-500 font-medium mb-1">
-                {(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'Left to spend' : 'Over budget'}
+              <p className="text-[10px] text-slate-500 font-medium mb-1">
+                {(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'Left' : 'Over'}
               </p>
-              <p className={`text-xl font-bold ${(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+              <p className={`text-lg font-bold ${(plan.buckets.spending.monthly - score.spentThisMonth) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                 ${Math.abs(Math.round(plan.buckets.spending.monthly - score.spentThisMonth)).toLocaleString()}
               </p>
             </Link>
           ) : (
-            <Link to="/budgets" className="bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm px-4 py-5 block hover:border-slate-300 hover:shadow-md transition-all">
-              <p className="text-xs text-slate-500 font-medium mb-1">Budget</p>
-              <p className="text-sm font-medium text-slate-400">Not set up yet</p>
+            <Link to="/budgets" className="bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm px-3 py-4 block hover:border-slate-300 hover:shadow-md transition-all">
+              <p className="text-[10px] text-slate-500 font-medium mb-1">Budget</p>
+              <p className="text-sm font-medium text-slate-400">Not set</p>
             </Link>
+          )}
+        </div>
+      )}
+
+      {/* === CHARTS === */}
+      {charts && accounts.length > 0 && (
+        <div className="space-y-4">
+          {/* Cash flow timeline */}
+          {charts.cashFlowTimeline.length > 5 && (
+            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-slate-800">Cash Flow</h3>
+                <span className="text-[10px] text-slate-400">Past 90 days + 30-day projection</span>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={charts.cashFlowTimeline} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="projGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.1} />
+                      <stop offset="100%" stopColor="#a78bfa" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="date" tick={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={45}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Balance']}
+                    labelFormatter={(label: any) => new Date(String(label) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey={(d: any) => d.projected ? undefined : d.balance}
+                    stroke="#4f46e5"
+                    strokeWidth={2}
+                    fill="url(#balGrad)"
+                    connectNulls={false}
+                    name="Actual"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey={(d: any) => d.projected ? d.balance : undefined}
+                    stroke="#a78bfa"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    fill="url(#projGrad)"
+                    connectNulls={false}
+                    name="Projected"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Income vs Expenses */}
+          {charts.monthlyComparison.length > 1 && (
+            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-slate-800">Income vs Expenses</h3>
+                <Link to="/trends" className="text-[10px] text-indigo-500 font-medium">View trends</Link>
+              </div>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={charts.monthlyComparison} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={(m: string) => { const [, mo] = m.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1]; }}
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={45}
+                  />
+                  <Tooltip
+                    formatter={(value: any, name: any) => [`$${Number(value).toLocaleString()}`, name === 'income' ? 'Income' : 'Expenses']}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                  />
+                  <Bar dataKey="income" fill="#059669" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex items-center justify-center gap-4 mt-2">
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-sm bg-emerald-600" />Income</span>
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-sm bg-red-500" />Expenses</span>
+              </div>
+            </div>
+          )}
+
+          {/* Runway trend */}
+          {charts.runwayTrend.length > 2 && (
+            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-slate-800">Runway Over Time</h3>
+                <span className="text-[10px] text-slate-400">Days of financial cushion</span>
+              </div>
+              <ResponsiveContainer width="100%" height={140}>
+                <LineChart data={charts.runwayTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="date" tick={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={30}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`${value} days`, 'Runway']}
+                    labelFormatter={(label: any) => new Date(String(label) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                  />
+                  <Line type="monotone" dataKey="days" stroke="#4f46e5" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       )}
