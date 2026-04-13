@@ -327,8 +327,8 @@ export default function Home() {
 
   return (
     <div className="space-y-4">
-      {/* Error banner */}
-      {loadError && (
+      {/* === TOP BANNER: Show only ONE, prioritized === */}
+      {loadError ? (
         <div className="bg-white border border-red-200 rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-sm">
           <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
             <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -341,63 +341,27 @@ export default function Home() {
             Retry
           </button>
         </div>
-      )}
-      {/* Trial banner */}
-      {trialDaysLeft !== null && trialDaysLeft > 0 && trialDaysLeft <= 7 && (
-        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 rounded-xl px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Sparkles className="w-4 h-4 text-white shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  {trialDaysLeft === 1 ? 'Last day of your free trial!' : `${trialDaysLeft} days left in your free trial`}
-                </p>
-                <p className="text-xs text-white/80 mt-0.5">
-                  You'll lose AI Advisor, bank sync, and 50 daily chat messages.
-                </p>
-              </div>
-            </div>
-            <Link to="/pricing" className="text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors shrink-0">
-              Keep access for $7.99/mo
-            </Link>
-          </div>
+      ) : trialDaysLeft !== null && trialDaysLeft > 0 && trialDaysLeft <= 7 ? (
+        <div className="flex items-center justify-between gap-3 bg-slate-900 rounded-2xl px-4 py-3">
+          <p className="text-sm text-white">
+            <span className="font-semibold">{trialDaysLeft === 1 ? 'Last day' : `${trialDaysLeft} days left`}</span>
+            <span className="text-slate-400 ml-1.5">of your free trial</span>
+          </p>
+          <Link to="/pricing" className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+            View plans
+          </Link>
         </div>
-      )}
-
-      {/* Trial expired banner */}
-      {trialDaysLeft !== null && trialDaysLeft === 0 && tier === 'free' && (
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl px-5 py-5 shadow-lg" role="alert">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-red-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Your free trial has ended</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Bank sync, AI Advisor, and spending trends are locked.
-              </p>
-            </div>
-            <Link to="/pricing" className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-lg transition-colors shrink-0 shadow-sm">
-              View plans
-            </Link>
-          </div>
+      ) : trialDaysLeft !== null && trialDaysLeft === 0 && tier === 'free' ? (
+        <div className="flex items-center justify-between gap-3 bg-slate-900 rounded-2xl px-4 py-3" role="alert">
+          <p className="text-sm text-white">
+            <span className="font-semibold">Trial ended.</span>
+            <span className="text-slate-400 ml-1.5">Bank sync, advisor, and trends are locked.</span>
+          </p>
+          <Link to="/pricing" className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+            View plans
+          </Link>
         </div>
-      )}
-
-      {/* Streak badge */}
-      {streak > 1 && (
-        <div className="bg-white border border-slate-200/60 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
-          <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <Flame className="w-4 h-4 text-orange-500" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-800">{streak}-day streak</p>
-            <p className="text-xs text-slate-500">
-              {streak >= 30 ? 'Incredible discipline.' : streak >= 7 ? 'Building great habits.' : 'Keep it going!'}
-            </p>
-          </div>
-        </div>
-      )}
+      ) : null}
 
       {/* Demo data banner */}
       {isDemoData && !demoBannerDismissed && (
@@ -487,60 +451,44 @@ export default function Home() {
       ))}
 
       {/* Stale data warning */}
-      {isStale && (
-        <div className="bg-white border border-amber-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm" role="alert">
-          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-            <RefreshCw className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-800">
+      {/* Compact secondary info row */}
+      {(isStale || streak > 1 || needsReviewCount > 3) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+          {streak > 1 && (
+            <span className="flex items-center gap-1">
+              <Flame className="w-3 h-3 text-orange-400" />
+              <span className="font-medium text-slate-700">{streak}-day streak</span>
+            </span>
+          )}
+          {isStale && (
+            <span className="flex items-center gap-1">
+              <RefreshCw className="w-3 h-3 text-amber-500" />
               {hasLinkedBank && daysSinceSync !== null
-                ? `Bank hasn't synced in ${daysSinceSync} ${daysSinceSync === 1 ? 'day' : 'days'}`
-                : daysOld !== null
-                  ? `Data is ${daysOld} ${daysOld === 1 ? 'day' : 'days'} old`
-                  : 'No transactions yet'}
-            </p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {hasLinkedBank ? (
-                <Link to="/settings" className="text-indigo-600 hover:text-indigo-700 font-medium">Check connection</Link>
-              ) : (
-                <><Link to="/settings" className="text-indigo-600 hover:text-indigo-700 font-medium">Link bank</Link> or <Link to="/csv-upload" className="text-indigo-600 hover:text-indigo-700 font-medium">upload CSV</Link></>
-              )}
-            </p>
-          </div>
-          <button onClick={() => setFreshnessDismissed(true)} className="text-slate-300 hover:text-slate-500 transition-colors shrink-0" aria-label="Dismiss">
-            <X className="w-4 h-4" />
-          </button>
+                ? <Link to="/settings" className="text-amber-600 hover:text-amber-700">Sync is {daysSinceSync}d old</Link>
+                : <Link to="/csv-upload" className="text-amber-600 hover:text-amber-700">Data needs updating</Link>
+              }
+            </span>
+          )}
+          {needsReviewCount > 3 && (
+            <span className="flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-slate-400" />
+              <Link to="/transactions" className="text-indigo-600 hover:text-indigo-700">{needsReviewCount} to review</Link>
+            </span>
+          )}
         </div>
-      )}
-
-      {/* Daily action card */}
-      {dailyAction && (
-        <Link to={dailyAction.link} className="block bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all">
-          <p className="text-xs text-indigo-200 font-medium uppercase tracking-wider mb-1">Today's top action</p>
-          <p className="text-base font-semibold text-white">{dailyAction.title}</p>
-          <p className="text-xs text-indigo-200 mt-1">{dailyAction.body}</p>
-        </Link>
-      )}
-
-      {/* Needs review card */}
-      {needsReviewCount > 3 && (
-        <Link to="/transactions?search=Uncategorized" className="block bg-white border border-amber-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-800">{needsReviewCount} transactions need your input</p>
-              <p className="text-xs text-slate-500">Help us learn your spending by reviewing these.</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
-          </div>
-        </Link>
       )}
 
       {/* === HERO: Runway Score === */}
       {score && accounts.length > 0 && <RunwayScore score={score} plan={plan} />}
+
+      {/* Daily action + secondary info (below the runway score) */}
+      {dailyAction && (
+        <Link to={dailyAction.link} className="block bg-white border border-indigo-200/60 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all">
+          <p className="text-[10px] text-indigo-500 font-semibold uppercase tracking-wider mb-1">Today's top action</p>
+          <p className="text-sm font-semibold text-slate-900">{dailyAction.title}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{dailyAction.body}</p>
+        </Link>
+      )}
 
       {/* Wizard nudge */}
       {!wizardCompleted && accounts.length > 0 && (
