@@ -579,4 +579,60 @@ router.post('/subscriptions/reclassify', authenticate, (req: AuthRequest, res: R
   res.json({ success: true, message: `${merchantName} reclassified as ${txnCategory}` });
 });
 
+// Monthly averages by category (12-month lookback)
+router.get('/category-averages', authenticate, (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const months = parseInt(req.query.months as string) || 12;
+
+    // Get monthly totals by category for the last N months
+    const rows = db.prepare(`
+      SELECT
+        category,
+        strftime('%Y-%m', date) as month,
+        SUM(ABS(amount)) as total
+      FROM transactions
+      WHERE user_id = ? AND amount < 0
+        AND date >= date('now', '-' || ? || ' months')
+        AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
+        ${SPEND_EXCLUSION_MERCHANTS}
+        AND category IS NOT NULL AND category != ''
+      GROUP BY category, strftime('%Y-%m', date)
+      ORDER BY category, month
+    `).all(userId, months) as { category: string; month: string; total: number }[];
+
+    // Group by category
+    const byCategory: Record<string, { months: { month: string; total: number }[]; totalSpent: number }> = {};
+    for (const row of rows) {
+      if (!byCategory[row.category]) {
+        byCategory[row.category] = { months: [], totalSpent: 0 };
+      }
+      byCategory[row.category].months.push({ month: row.month, total: Math.round(row.total * 100) / 100 });
+      byCategory[row.category].totalSpent += row.total;
+    }
+
+    // Calculate averages
+    const categories = Object.entries(byCategory).map(([category, data]) => {
+      const monthCount = data.months.length;
+      const avg = monthCount > 0 ? Math.round(data.totalSpent / monthCount) : 0;
+      const amounts = data.months.map(m => m.total);
+      const min = amounts.length > 0 ? Math.round(Math.min(...amounts)) : 0;
+      const max = amounts.length > 0 ? Math.round(Math.max(...amounts)) : 0;
+
+      return {
+        category,
+        monthlyAverage: avg,
+        min,
+        max,
+        monthCount,
+        months: data.months,
+      };
+    }).sort((a, b) => b.monthlyAverage - a.monthlyAverage);
+
+    res.json({ categories, lookbackMonths: months });
+  } catch (err: any) {
+    res.status(500).json({ error: 'server_error', message: 'Failed to calculate category averages' });
+  }
+});
+
 export default router;
