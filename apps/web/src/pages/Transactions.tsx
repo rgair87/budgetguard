@@ -313,6 +313,16 @@ export default function Transactions() {
         >
           {spendingOnly ? 'Spending only' : 'All txns'}
         </button>
+        <button
+          onClick={() => { setCategoryFilter(categoryFilter === 'Uncategorized' ? '' : 'Uncategorized'); setOffset(0); }}
+          className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+            categoryFilter === 'Uncategorized'
+              ? 'bg-amber-50 border-amber-300 text-amber-700 font-medium'
+              : 'border-gray-300 text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          Uncategorized
+        </button>
         <select value={sort} onChange={e => { setSort(e.target.value); setOffset(0); }}
           className="text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-500">
           <option value="date_desc">Newest first</option>

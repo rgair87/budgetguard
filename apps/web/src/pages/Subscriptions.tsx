@@ -170,7 +170,7 @@ export default function Subscriptions() {
     if (filter !== 'all' && s.category !== filter) return false;
     if (!showInactive && !s.isActive) return false;
     return true;
-  });
+  }).sort((a, b) => b.monthlyAmount - a.monthlyAmount);
 
   const activeSubs = subs.filter(s => s.isActive);
   const totalMonthly = activeSubs.reduce((s, x) => s + x.monthlyAmount, 0);
