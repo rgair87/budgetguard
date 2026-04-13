@@ -10,6 +10,7 @@ interface Transaction {
   date: string;
   merchant_name: string;
   category: string;
+  subcategory: string | null;
   is_recurring: boolean;
   account_name: string;
 }
@@ -441,7 +442,7 @@ export default function Transactions() {
                       className="text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 px-2 py-0.5 rounded-full transition-colors"
                       title="Click to recategorize"
                     >
-                      {tx.category || 'Uncategorized'}
+                      {tx.category || 'Uncategorized'}{tx.subcategory ? ` > ${tx.subcategory}` : ''}
                     </button>
                   )}
                 </div>

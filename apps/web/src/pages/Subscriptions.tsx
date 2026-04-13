@@ -269,9 +269,19 @@ export default function Subscriptions() {
         )}
       </div>
 
-      {/* Subscription list */}
-      <div className="space-y-2">
-        {filtered.map((sub, i) => {
+      {/* Subscription list - grouped by type */}
+      {['subscription', 'bill', 'debt'].map(groupKey => {
+        const groupItems = filtered.filter(s => s.category === groupKey);
+        if (groupItems.length === 0) return null;
+        const groupTotal = groupItems.reduce((s, x) => s + x.monthlyAmount, 0);
+        const groupLabel = CATEGORY_LABELS[groupKey] || groupKey;
+        return (
+        <div key={groupKey} className="space-y-2">
+          <div className="flex items-center justify-between px-1 mt-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{groupLabel}</p>
+            <p className="text-xs font-medium text-slate-500">${Math.round(groupTotal).toLocaleString()}/mo</p>
+          </div>
+        {groupItems.map((sub, i) => {
           const colors = CATEGORY_COLORS[sub.category] || CATEGORY_COLORS.bill;
           return (
             <div
@@ -330,7 +340,9 @@ export default function Subscriptions() {
             </div>
           );
         })}
-      </div>
+        </div>
+        );
+      })}
 
       {filtered.length === 0 && (
         <div className="text-center py-16">

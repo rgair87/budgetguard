@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Target, Sparkles, Check, AlertTriangle, TrendingUp, ArrowRight, XCircle, Receipt } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import api from '../api/client';
 import { BUDGETABLE_CATEGORIES } from '@spenditure/shared';
 import type { BudgetWithSuggestion } from '@spenditure/shared';
@@ -151,26 +152,57 @@ export default function Budgets() {
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
-      {/* Summary card */}
-      <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Target className="w-4 h-4 text-white/60" />
-          <p className="text-xs font-medium text-white/60 uppercase tracking-wider">Monthly Budgets</p>
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-2xl font-bold text-white">{budgetCount}</p>
-            <p className="text-xs text-white/60">categories</p>
+      {/* Summary with donut chart */}
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
+        <div className="flex items-center gap-6">
+          {/* Donut chart */}
+          <div className="w-32 h-32 shrink-0 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Spent', value: Math.min(totalSpent, totalBudget || totalSpent) },
+                    { name: 'Remaining', value: Math.max(0, (totalBudget || totalSpent) - totalSpent) },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={38}
+                  outerRadius={52}
+                  startAngle={90}
+                  endAngle={-270}
+                  dataKey="value"
+                  strokeWidth={0}
+                >
+                  <Cell fill={totalSpent > totalBudget && totalBudget > 0 ? '#ef4444' : '#4f46e5'} />
+                  <Cell fill="#f1f5f9" />
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-lg font-bold text-slate-900">{totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}%</p>
+                <p className="text-[9px] text-slate-400">used</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-2xl font-bold text-white">${totalBudget.toLocaleString()}</p>
-            <p className="text-xs text-white/60">budgeted/mo</p>
-          </div>
-          <div>
-            <p className={`text-2xl font-bold ${totalSpent > totalBudget && totalBudget > 0 ? 'text-red-200' : 'text-white'}`}>
-              ${totalSpent.toLocaleString()}
-            </p>
-            <p className="text-xs text-white/60">spent this mo</p>
+
+          {/* Key metrics */}
+          <div className="flex-1 space-y-3">
+            <div>
+              <p className="text-xs text-slate-500">Budgeted</p>
+              <p className="text-xl font-bold text-slate-900">${totalBudget.toLocaleString()}<span className="text-sm font-normal text-slate-400">/mo</span></p>
+            </div>
+            <div className="flex gap-6">
+              <div>
+                <p className="text-xs text-slate-500">Spent</p>
+                <p className={`text-base font-semibold ${totalSpent > totalBudget && totalBudget > 0 ? 'text-red-600' : 'text-slate-900'}`}>${totalSpent.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Remaining</p>
+                <p className="text-base font-semibold text-emerald-600">${Math.max(0, totalBudget - totalSpent).toLocaleString()}</p>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400">{new Date().getDate()} of ~30 days into the month</p>
           </div>
         </div>
       </div>
@@ -191,9 +223,23 @@ export default function Budgets() {
         </div>
       )}
 
-      {/* Category cards */}
-      <div className="space-y-3">
-        {budgets.map(b => {
+      {/* Category cards - grouped by needs vs wants */}
+      {[
+        { label: 'Essentials', filter: (b: BudgetWithSuggestion) => BUDGETABLE_CATEGORIES.find(c => c.name === b.category)?.type === 'necessity' },
+        { label: 'Discretionary', filter: (b: BudgetWithSuggestion) => BUDGETABLE_CATEGORIES.find(c => c.name === b.category)?.type !== 'necessity' },
+      ].map(group => {
+        const groupBudgets = budgets.filter(group.filter);
+        if (groupBudgets.length === 0) return null;
+        const groupSpent = groupBudgets.reduce((s, b) => s + b.currentSpend, 0);
+        const groupBudgeted = groupBudgets.reduce((s, b) => s + (edits[b.category] || 0), 0);
+        return (
+        <div key={group.label}>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{group.label}</p>
+            <p className="text-xs text-slate-400">${groupSpent.toLocaleString()} of ${groupBudgeted.toLocaleString()}</p>
+          </div>
+          <div className="space-y-2">
+        {groupBudgets.map(b => {
           const catDef = BUDGETABLE_CATEGORIES.find(c => c.name === b.category);
           const isNecessity = catDef?.type === 'necessity';
           const budgetVal = edits[b.category] || 0;
@@ -263,7 +309,10 @@ export default function Budgets() {
             </div>
           );
         })}
-      </div>
+          </div>
+        </div>
+        );
+      })}
 
       {/* Upgrade prompt when at free tier budget limit */}
       {tier === 'free' && budgetCount >= 3 && (

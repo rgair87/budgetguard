@@ -117,6 +117,9 @@ db.exec("CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_
 // Migration: unique index on budgets(user_id, category) for proper upsert
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_user_category ON budgets(user_id, category)");
 
+// Migration: subcategory field on transactions
+try { db.exec("ALTER TABLE transactions ADD COLUMN subcategory TEXT"); } catch {}
+
 // Daily snapshots for progress tracking
 db.exec(`CREATE TABLE IF NOT EXISTS daily_snapshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -68,7 +68,7 @@ router.get('/', authenticate, (req: TieredRequest, res: Response) => {
   ).get(...params) as unknown as any;
 
   const rows = db.prepare(
-    `SELECT t.id, t.amount, t.date, t.merchant_name, t.category, t.is_recurring, a.name as account_name
+    `SELECT t.id, t.amount, t.date, t.merchant_name, t.category, t.subcategory, t.is_recurring, a.name as account_name
      FROM transactions t
      JOIN accounts a ON t.account_id = a.id
      WHERE ${where}
@@ -97,7 +97,10 @@ router.patch('/:id', authenticate, (req: TieredRequest, res: Response) => {
     return;
   }
 
-  const { category, merchant_name } = req.body;
+  const { category, merchant_name, subcategory } = req.body;
+  if (subcategory !== undefined) {
+    db.prepare('UPDATE transactions SET subcategory = ? WHERE id = ?').run(subcategory || null, transactionId);
+  }
   if (category) {
     db.prepare('UPDATE transactions SET category = ? WHERE id = ?').run(category, transactionId);
 
