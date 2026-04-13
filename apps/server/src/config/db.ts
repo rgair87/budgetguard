@@ -70,6 +70,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS merchant_categories (
 
 // Migration: add hide_recurring to merchant_categories
 try { db.exec("ALTER TABLE merchant_categories ADD COLUMN hide_recurring INTEGER NOT NULL DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE merchant_categories ADD COLUMN confidence REAL DEFAULT 1.0"); } catch {}
 
 // Cache table for AI results
 db.exec(`CREATE TABLE IF NOT EXISTS ai_cache (
@@ -115,6 +116,30 @@ db.exec("CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_
 
 // Migration: unique index on budgets(user_id, category) for proper upsert
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_user_category ON budgets(user_id, category)");
+
+// Daily snapshots for progress tracking
+db.exec(`CREATE TABLE IF NOT EXISTS daily_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  runway_days INTEGER,
+  daily_burn REAL,
+  total_balance REAL,
+  total_debt REAL,
+  UNIQUE(user_id, date)
+)`);
+db.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_user_date ON daily_snapshots(user_id, date)");
+
+// Behavior signals for smart rules
+db.exec(`CREATE TABLE IF NOT EXISTS user_behavior_signals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  signal_type TEXT NOT NULL,
+  signal_key TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 1,
+  last_seen TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(user_id, signal_type, signal_key)
+)`);
 
 // Migration: streak tracking
 try { db.exec("ALTER TABLE users ADD COLUMN last_active_date TEXT"); } catch {}

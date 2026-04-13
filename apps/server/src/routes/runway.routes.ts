@@ -27,6 +27,62 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
   res.json({ ...score, streak });
 });
 
+// Daily action: highest-impact thing to do today
+router.get('/daily-action', authenticate, (req: AuthRequest, res: Response) => {
+  try {
+    const { getDailyAction } = require('../services/actions.service');
+    const action = getDailyAction(req.userId!);
+    res.json({ action });
+  } catch {
+    res.json({ action: null });
+  }
+});
+
+// Progress: runway change this week + spending trend
+router.get('/progress', authenticate, (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+
+    const current = db.prepare(
+      'SELECT runway_days, daily_burn FROM daily_snapshots WHERE user_id = ? AND date = ?'
+    ).get(userId, today) as { runway_days: number; daily_burn: number } | undefined;
+
+    const lastWeek = db.prepare(
+      'SELECT runway_days, daily_burn FROM daily_snapshots WHERE user_id = ? AND date <= ? ORDER BY date DESC LIMIT 1'
+    ).get(userId, weekAgo) as { runway_days: number; daily_burn: number } | undefined;
+
+    const lastMonth = db.prepare(
+      'SELECT daily_burn FROM daily_snapshots WHERE user_id = ? AND date <= ? ORDER BY date DESC LIMIT 1'
+    ).get(userId, monthAgo) as { daily_burn: number } | undefined;
+
+    const runwayChange = current && lastWeek ? current.runway_days - lastWeek.runway_days : null;
+    const spendChangeVsLastMonth = current && lastMonth && lastMonth.daily_burn > 0
+      ? Math.round(((current.daily_burn - lastMonth.daily_burn) / lastMonth.daily_burn) * 100)
+      : null;
+
+    res.json({ runwayChange, spendChangeVsLastMonth });
+  } catch {
+    res.json({ runwayChange: null, spendChangeVsLastMonth: null });
+  }
+});
+
+// Count transactions needing review (low confidence or uncategorized)
+router.get('/needs-review', authenticate, (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const row = db.prepare(`
+    SELECT COUNT(*) as count FROM transactions t
+    LEFT JOIN merchant_categories mc ON mc.user_id = t.user_id
+      AND LOWER(REPLACE(REPLACE(t.merchant_name, '  ', ' '), '''', '')) LIKE '%' || mc.merchant_pattern || '%'
+    WHERE t.user_id = ?
+      AND (t.category IS NULL OR t.category = '' OR t.category = 'Other' OR mc.confidence < 0.7)
+      AND t.date >= date('now', '-90 days')
+  `).get(userId) as { count: number };
+  res.json({ count: row.count });
+});
+
 router.get('/paycheck-plan', authenticate, (req: AuthRequest, res: Response) => {
   const plan = getPaycheckPlan(req.userId!);
   if (!plan) {

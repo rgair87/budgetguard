@@ -428,7 +428,7 @@ export function calculateRunway(userId: string): RunwayScore {
     }))
     .filter(m => m.monthlyAmount >= 5);
 
-  return {
+  const result = {
     amount: rc(currentRunway),
     status,
     hasUrgentWarning: urgentEvents.length > 0,
@@ -462,6 +462,17 @@ export function calculateRunway(userId: string): RunwayScore {
     },
     noIncomeConfigured: spendableIncome === 0 && !user.take_home_pay,
   };
+
+  // Record daily snapshot for progress tracking (fire-and-forget)
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    db.prepare(
+      `INSERT OR REPLACE INTO daily_snapshots (user_id, date, runway_days, daily_burn, total_balance, total_debt)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(userId, todayStr, runwayDays, rc(dailyBurnRate), rc(spendableBalance), rc(totalDebt));
+  } catch {}
+
+  return result;
 }
 
 function getPaycheckInterval(freq: string | null): number | null {

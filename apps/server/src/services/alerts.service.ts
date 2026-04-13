@@ -3,7 +3,7 @@ import { calculateRunway } from './runway.service';
 
 export interface Alert {
   id: string;
-  type: 'runway_low' | 'budget_exceeded' | 'bill_due' | 'unusual_spending' | 'debt_milestone' | 'debt_payoff_opportunity';
+  type: 'runway_low' | 'budget_exceeded' | 'bill_due' | 'unusual_spending' | 'debt_milestone' | 'debt_payoff_opportunity' | 'streak_milestone' | 'runway_improvement' | 'budget_underrun';
   severity: 'critical' | 'warning' | 'info' | 'win';
   title: string;
   body: string;
@@ -200,6 +200,67 @@ export function getAlerts(userId: string): Alert[] {
       action: null,
       actionLink: null,
     });
+  }
+
+  // 5b. Streak milestones
+  const user = db.prepare('SELECT streak_days FROM users WHERE id = ?').get(userId) as { streak_days: number } | undefined;
+  const streak = user?.streak_days || 0;
+  const streakMilestones = [7, 14, 30, 60, 90];
+  for (const ms of streakMilestones) {
+    if (streak >= ms && streak < ms + 7) {
+      alerts.push({
+        id: `streak_${ms}`,
+        type: 'streak_milestone',
+        severity: 'win',
+        title: `${ms}-day streak!`,
+        body: ms >= 30
+          ? `You've checked in ${ms} days in a row. That's real financial discipline.`
+          : `${ms} days in a row. You're building a great habit.`,
+        action: null,
+        actionLink: null,
+      });
+      break;
+    }
+  }
+
+  // 5c. Runway improvement (requires snapshots)
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+  const lastWeekSnapshot = db.prepare(
+    'SELECT runway_days FROM daily_snapshots WHERE user_id = ? AND date <= ? ORDER BY date DESC LIMIT 1'
+  ).get(userId, weekAgo) as { runway_days: number } | undefined;
+  if (lastWeekSnapshot && runway.runwayDays - lastWeekSnapshot.runway_days >= 5) {
+    const gained = runway.runwayDays - lastWeekSnapshot.runway_days;
+    alerts.push({
+      id: 'runway_improved',
+      type: 'runway_improvement',
+      severity: 'win',
+      title: `Runway up ${gained} days`,
+      body: `Your financial cushion grew by ${gained} days this week. Nice work.`,
+      action: null,
+      actionLink: null,
+    });
+  }
+
+  // 5d. Budget underrun (after 20th of the month)
+  const currentDay = new Date().getDate();
+  if (currentDay >= 20) {
+    const underBudget = budgets
+      .filter(b => b.monthly_limit > 0)
+      .map(b => ({ ...b, spent: spendMap.get(b.category) || 0 }))
+      .filter(b => b.spent > 0 && b.spent < b.monthly_limit * 0.8);
+    if (underBudget.length > 0) {
+      const best = underBudget.sort((a, b) => (b.monthly_limit - b.spent) - (a.monthly_limit - a.spent))[0];
+      const saved = Math.round(best.monthly_limit - best.spent);
+      alerts.push({
+        id: `budget_under_${best.category}`,
+        type: 'budget_underrun',
+        severity: 'win',
+        title: `Under budget on ${best.category}`,
+        body: `You have $${saved} left in your ${best.category} budget with ${30 - currentDay} days to go.`,
+        action: null,
+        actionLink: '/budgets',
+      });
+    }
   }
 
   // 6. Smart debt payoff opportunity — when user has excess cash and outstanding debt

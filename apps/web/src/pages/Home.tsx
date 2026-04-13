@@ -239,6 +239,8 @@ export default function Home() {
   const [tier, setTier] = useState<string>('pro');
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [streak, setStreak] = useState(0);
+  const [needsReviewCount, setNeedsReviewCount] = useState(0);
+  const [dailyAction, setDailyAction] = useState<{ title: string; body: string; link: string } | null>(null);
 
   // Detect demo data by checking for the exact set of demo account names
   const DEMO_ACCOUNT_NAMES = ['Main Checking', 'Emergency Savings', 'Chase Visa', 'Car Loan'];
@@ -274,6 +276,8 @@ export default function Home() {
       api.get('/events').then((r) => setEvents(r.data)).catch(() => {}),
       api.get('/advisor/summary').then((r) => setAdvisorSummary(r.data)).catch(() => {}),
       api.get('/alerts').then((r) => setAlerts(r.data.alerts || [])).catch(() => {}),
+      api.get('/runway/needs-review').then((r) => setNeedsReviewCount(r.data.count || 0)).catch(() => {}),
+      api.get('/runway/daily-action').then((r) => { if (r.data.action) setDailyAction(r.data.action); }).catch(() => {}),
     ]).finally(() => {
       setLoading(false);
       if (errorCount > 0) setLoadError('Some data failed to load.');
@@ -508,6 +512,31 @@ export default function Home() {
             <X className="w-4 h-4" />
           </button>
         </div>
+      )}
+
+      {/* Daily action card */}
+      {dailyAction && (
+        <Link to={dailyAction.link} className="block bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all">
+          <p className="text-xs text-indigo-200 font-medium uppercase tracking-wider mb-1">Today's top action</p>
+          <p className="text-base font-semibold text-white">{dailyAction.title}</p>
+          <p className="text-xs text-indigo-200 mt-1">{dailyAction.body}</p>
+        </Link>
+      )}
+
+      {/* Needs review card */}
+      {needsReviewCount > 3 && (
+        <Link to="/transactions?search=Uncategorized" className="block bg-white border border-amber-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-800">{needsReviewCount} transactions need your input</p>
+              <p className="text-xs text-slate-500">Help us learn your spending by reviewing these.</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+          </div>
+        </Link>
       )}
 
       {/* === HERO: Runway Score === */}

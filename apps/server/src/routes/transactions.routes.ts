@@ -5,7 +5,8 @@ import { attachTier, TieredRequest, requirePro } from '../middleware/tier';
 import { invalidateCache, invalidateUserCache } from '../utils/cache';
 import db from '../config/db';
 import logger from '../config/logger';
-import { guessCategoryFromMerchant } from '../services/csv.service';
+import { guessCategoryFromMerchant, normalizeMerchantKey } from '../services/csv.service';
+import { cleanMerchantName } from '../services/merchant-utils';
 import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
 import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from '../services/runway.service';
 
@@ -88,6 +89,31 @@ router.patch('/:id', authenticate, (req: TieredRequest, res: Response) => {
   const { category, merchant_name } = req.body;
   if (category) {
     db.prepare('UPDATE transactions SET category = ? WHERE id = ?').run(category, transactionId);
+
+    // Auto-learn: create a merchant rule and apply to all matching transactions
+    const txData = db.prepare('SELECT merchant_name FROM transactions WHERE id = ?').get(transactionId) as { merchant_name: string } | undefined;
+    if (txData?.merchant_name) {
+      const pattern = normalizeMerchantKey(cleanMerchantName(txData.merchant_name));
+      if (pattern && pattern.length >= 3) {
+        // Upsert merchant rule with confidence 1.0 (user-confirmed)
+        db.prepare(
+          `INSERT INTO merchant_categories (id, user_id, merchant_pattern, category, confidence)
+           VALUES (?, ?, ?, ?, 1.0)
+           ON CONFLICT(user_id, merchant_pattern) DO UPDATE SET category = excluded.category, confidence = 1.0`
+        ).run(crypto.randomUUID(), userId, pattern, category);
+
+        // Bulk update all matching transactions from this merchant
+        const updated = db.prepare(
+          `UPDATE transactions SET category = ?
+           WHERE user_id = ? AND id != ?
+           AND LOWER(REPLACE(REPLACE(merchant_name, '  ', ' '), '''', '')) LIKE ?`
+        ).run(category, userId, transactionId, `%${pattern}%`);
+
+        if (updated.changes > 0) {
+          logger.info({ userId, pattern, category, updated: updated.changes }, 'Merchant rule applied to past transactions');
+        }
+      }
+    }
   }
   if (merchant_name) {
     db.prepare('UPDATE transactions SET merchant_name = ? WHERE id = ?').run(merchant_name, transactionId);

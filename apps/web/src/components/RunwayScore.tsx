@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../api/client';
 import {
   Wallet,
   CreditCard,
@@ -44,6 +45,10 @@ interface Props {
 }
 
 export default function RunwayScore({ score, plan }: Props) {
+  const [progress, setProgress] = useState<{ runwayChange: number | null; spendChangeVsLastMonth: number | null } | null>(null);
+  useEffect(() => {
+    api.get('/runway/progress').then(r => setProgress(r.data)).catch(() => {});
+  }, []);
   const isGood = score.runwayDays >= 180 && score.status === 'green';
   const isTight = score.status === 'yellow';
   const isDanger = score.status === 'red';
@@ -124,7 +129,23 @@ export default function RunwayScore({ score, plan }: Props) {
             })()}
           </p>
 
-          <div className="flex flex-wrap gap-2 mt-4">
+          {/* Progress narrative */}
+          {progress && (progress.runwayChange !== null || progress.spendChangeVsLastMonth !== null) && (
+            <div className="flex flex-wrap gap-3 mt-3 text-xs text-white/70">
+              {progress.runwayChange !== null && progress.runwayChange !== 0 && (
+                <span className={progress.runwayChange > 0 ? 'text-emerald-300' : 'text-red-300'}>
+                  {progress.runwayChange > 0 ? '+' : ''}{progress.runwayChange} days this week
+                </span>
+              )}
+              {progress.spendChangeVsLastMonth !== null && progress.spendChangeVsLastMonth !== 0 && (
+                <span className={progress.spendChangeVsLastMonth < 0 ? 'text-emerald-300' : 'text-red-300'}>
+                  Spending {progress.spendChangeVsLastMonth < 0 ? 'down' : 'up'} {Math.abs(progress.spendChangeVsLastMonth)}% vs last month
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2 mt-3">
             <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm ${badgeBg}`}>
               {(() => {
                 const incomeCoversExpenses = plan && !plan.isShortfall && plan.buckets.spending.monthly > 0;

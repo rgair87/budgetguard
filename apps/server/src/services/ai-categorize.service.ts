@@ -8,6 +8,7 @@ export interface MerchantClassification {
   merchantName: string;
   category: string;
   isBill: boolean;
+  confidence: number;
 }
 
 const VALID_CATEGORIES = new Set([
@@ -43,8 +44,10 @@ Categories (use these EXACTLY):
 
 A merchant is_bill=true if it's a fixed recurring charge (subscriptions, insurance, utilities, memberships, loan payments). Variable spending like groceries, restaurants, gas, shopping, and one-time purchases are is_bill=false.
 
+Include a confidence score (0.0 to 1.0) for each classification. Use 0.9+ when you're very sure (e.g. Netflix = Entertainment). Use 0.5-0.7 when the merchant name is ambiguous. Use below 0.5 when you're guessing.
+
 Respond with ONLY a JSON array. No explanation, no markdown, just the raw JSON:
-[{"merchant": "NETFLIX", "category": "Entertainment", "is_bill": true}]`;
+[{"merchant": "NETFLIX", "category": "Entertainment", "is_bill": true, "confidence": 0.95}]`;
 
 const BATCH_SIZE = 50;
 
@@ -78,7 +81,7 @@ export async function classifyMerchantsWithAI(
         continue;
       }
 
-      let parsed: Array<{ merchant: string; category: string; is_bill: boolean }>;
+      let parsed: Array<{ merchant: string; category: string; is_bill: boolean; confidence?: number }>;
       try {
         parsed = JSON.parse(jsonMatch[0]);
       } catch {
@@ -89,10 +92,12 @@ export async function classifyMerchantsWithAI(
       // Use index-based matching — always use original merchant name
       for (let j = 0; j < parsed.length && j < batch.length; j++) {
         const item = parsed[j];
+        const confidence = typeof item.confidence === 'number' ? Math.max(0, Math.min(1, item.confidence)) : 0.5;
         results.push({
           merchantName: batch[j], // Original name, not AI's version
           category: VALID_CATEGORIES.has(item.category) ? item.category : 'Other',
           isBill: Boolean(item.is_bill),
+          confidence,
         });
       }
 
