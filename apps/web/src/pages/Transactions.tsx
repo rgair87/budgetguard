@@ -47,6 +47,8 @@ export default function Transactions() {
   });
   const [spendingOnly, setSpendingOnly] = useState(() => searchParams.get('spendingOnly') === 'true');
   const [sort, setSort] = useState('date_desc');
+  const [amountMin, setAmountMin] = useState('');
+  const [amountMax, setAmountMax] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,13 +75,15 @@ export default function Transactions() {
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (spendingOnly) params.set('spendingOnly', 'true');
     if (sort !== 'date_desc') params.set('sort', sort);
+    if (amountMin) params.set('amountMin', amountMin);
+    if (amountMax) params.set('amountMax', amountMax);
     api.get(`/transactions?${params}`)
       .then(r => {
         setTransactions(r.data.transactions);
         setTotal(r.data.total);
       })
       .finally(() => setLoading(false));
-  }, [search, categoryFilter, offset, dateFrom, spendingOnly, sort]);
+  }, [search, categoryFilter, offset, dateFrom, spendingOnly, sort, amountMin, amountMax]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -323,6 +327,24 @@ export default function Transactions() {
         >
           Uncategorized
         </button>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-gray-400">$</span>
+          <input
+            type="number"
+            placeholder="Min"
+            value={amountMin}
+            onChange={e => { setAmountMin(e.target.value); setOffset(0); }}
+            className="w-16 text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-600"
+          />
+          <span className="text-[10px] text-gray-300">-</span>
+          <input
+            type="number"
+            placeholder="Max"
+            value={amountMax}
+            onChange={e => { setAmountMax(e.target.value); setOffset(0); }}
+            className="w-16 text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-600"
+          />
+        </div>
         <select value={sort} onChange={e => { setSort(e.target.value); setOffset(0); }}
           className="text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-500">
           <option value="date_desc">Newest first</option>
@@ -337,7 +359,7 @@ export default function Transactions() {
           {search && <span className="text-sm text-gray-500">Results for "{search}"</span>}
           {dateFrom && <span className="text-sm text-slate-500 bg-indigo-50 px-2 py-0.5 rounded-md">Since {dateFrom}</span>}
           {spendingOnly && <span className="text-sm text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">Spending only</span>}
-          <button onClick={() => { setSearch(''); setSearchInput(''); setDateFrom(''); setSpendingOnly(false); setSearchParams({}); }} className="text-sm text-indigo-600">Clear filters</button>
+          <button onClick={() => { setSearch(''); setSearchInput(''); setDateFrom(''); setSpendingOnly(false); setCategoryFilter(''); setAmountMin(''); setAmountMax(''); setSearchParams({}); }} className="text-sm text-indigo-600">Clear filters</button>
         </div>
       )}
 
@@ -369,14 +391,27 @@ export default function Transactions() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-          {transactions.map((tx, i) => (
-            <div key={tx.id} className={`px-4 py-3.5 flex items-center justify-between gap-3 ${i % 2 === 1 ? 'bg-slate-50/50' : ''} ${i > 0 ? 'border-t border-slate-100' : ''}`}>
+        <div className="space-y-1">
+          {transactions.map((tx, i) => {
+            const prevDate = i > 0 ? transactions[i - 1].date : null;
+            const showDateHeader = tx.date !== prevDate;
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const dateLabel = tx.date === today ? 'Today' : tx.date === yesterday ? 'Yesterday' :
+              new Date(tx.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+            return (
+            <div key={tx.id}>
+            {showDateHeader && (
+              <p className={`text-[11px] font-semibold text-slate-400 uppercase tracking-wider ${i > 0 ? 'mt-4' : ''} mb-1 px-1`}>{dateLabel}</p>
+            )}
+            <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm px-4 py-3.5 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => { setSearchInput(tx.merchant_name || ''); setSearch(tx.merchant_name || ''); setOffset(0); }}
-                    className="text-sm font-medium text-gray-900 truncate hover:text-indigo-600 hover:underline transition-colors text-left"
+                    title={tx.merchant_name || 'Unknown'}
+                    className="text-sm font-medium text-gray-900 hover:text-indigo-600 hover:underline transition-colors text-left line-clamp-2"
                   >{tx.merchant_name || 'Unknown'}</button>
                   {tx.is_recurring ? <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Recurring</span> : null}
                 </div>
@@ -411,11 +446,13 @@ export default function Transactions() {
                   )}
                 </div>
               </div>
-              <p className={`text-sm font-semibold shrink-0 ${tx.amount >= 0 ? 'text-green-600' : 'text-gray-900'}`}>
-                {tx.amount >= 0 ? '+' : '-'}${Math.abs(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <p className={`text-base font-bold shrink-0 ${tx.amount >= 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                {tx.amount >= 0 ? '+' : ''}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
-          ))}
+            </div>
+            );
+          })}
         </div>
       )}
 

@@ -46,6 +46,17 @@ router.get('/', authenticate, (req: TieredRequest, res: Response) => {
     params.push(dateTo);
   }
 
+  const amountMin = req.query.amountMin ? parseFloat(req.query.amountMin as string) : null;
+  const amountMax = req.query.amountMax ? parseFloat(req.query.amountMax as string) : null;
+  if (amountMin !== null && !isNaN(amountMin)) {
+    where += ' AND ABS(t.amount) >= ?';
+    params.push(amountMin);
+  }
+  if (amountMax !== null && !isNaN(amountMax)) {
+    where += ' AND ABS(t.amount) <= ?';
+    params.push(amountMax);
+  }
+
   // spendingOnly: filter to only transactions counted as "spending" (exclude transfers, debt, income, etc.)
   const spendingOnly = req.query.spendingOnly === 'true';
   if (spendingOnly) {

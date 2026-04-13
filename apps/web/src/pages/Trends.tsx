@@ -252,7 +252,7 @@ export default function Trends() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <Link to={`/transactions?search=${encodeURIComponent(mt.merchantName)}`} className="font-medium text-gray-900 text-sm truncate hover:text-indigo-600 hover:underline transition-colors">{mt.merchantName}</Link>
+                      <Link to={`/transactions?search=${encodeURIComponent(mt.merchantName)}`} title={mt.merchantName} className="font-medium text-gray-900 text-sm hover:text-indigo-600 hover:underline transition-colors line-clamp-1">{mt.merchantName}</Link>
                       <TrendBadge trend={mt.trend} changePercent={mt.changePercent} />
                       {mt.isRecurring && (
                         <span className="text-[10px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full font-medium ring-1 ring-indigo-200/60">recurring</span>
