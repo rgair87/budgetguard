@@ -4,6 +4,12 @@ import fs from 'fs';
 import path from 'path';
 import db from '../config/db';
 
+// Block seed from running in production
+if (process.env.NODE_ENV === 'production') {
+  console.error('Seed script cannot run in production. Exiting.');
+  process.exit(1);
+}
+
 // Ensure schema exists
 const schema = fs.readFileSync(path.resolve(__dirname, 'schema.sql'), 'utf-8');
 db.exec(schema);
@@ -11,11 +17,11 @@ db.exec(schema);
 const hash = bcrypt.hashSync('demo1234', 10);
 const userId = crypto.randomUUID();
 
-// Create demo user
+// Create demo user (local dev only)
 db.prepare(
   `INSERT OR REPLACE INTO users (id, email, password_hash, pay_frequency, next_payday, take_home_pay)
    VALUES (?, ?, ?, 'biweekly', date('now', '+6 days'), 2800)`
-).run(userId, 'demo@runway.app', hash);
+).run(userId, 'demo@spenditure.co', hash);
 
 // Create accounts
 const checkingId = crypto.randomUUID();

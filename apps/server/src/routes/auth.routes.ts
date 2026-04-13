@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate';
 import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from '../validation/schemas';
 import { invalidateUserCache } from '../utils/cache';
 import db from '../config/db';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -62,8 +63,12 @@ router.post('/resend-verification', (req: Request, res: Response) => {
 });
 
 router.post('/forgot-password', validate(forgotPasswordSchema), async (req: Request, res: Response) => {
-  const { email } = req.body;
-  await requestPasswordReset(email);
+  try {
+    const { email } = req.body;
+    await requestPasswordReset(email);
+  } catch {
+    // Swallow errors intentionally - don't reveal whether email exists
+  }
   res.json({ message: 'If an account exists with that email, a reset link has been sent' });
 });
 
@@ -122,7 +127,7 @@ router.post('/clear-demo-data', authenticate, (req: AuthRequest, res: Response) 
     invalidateUserCache(userId);
     res.json({ success: true, message: 'Demo data cleared. Add your own accounts to get started!' });
   } catch (err: any) {
-    console.error('Clear demo data error:', err);
+    logger.error({ err }, 'Clear demo data error');
     res.status(500).json({ error: 'clear_error', message: 'Failed to clear demo data' });
   }
 });
@@ -136,7 +141,7 @@ router.post('/demo-data', authenticate, (req: AuthRequest, res: Response) => {
     invalidateUserCache(userId);
     res.json({ success: true, ...result, message: 'Sample data loaded! Explore the app to see all features in action.' });
   } catch (err: any) {
-    console.error('Demo data error:', err);
+    logger.error({ err }, 'Demo data error');
     res.status(500).json({ error: 'demo_error', message: 'Failed to load sample data' });
   }
 });

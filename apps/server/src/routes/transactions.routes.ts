@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import { attachTier, TieredRequest, requirePro } from '../middleware/tier';
 import { invalidateCache, invalidateUserCache } from '../utils/cache';
 import db from '../config/db';
+import logger from '../config/logger';
 import { guessCategoryFromMerchant } from '../services/csv.service';
 import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
 import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from '../services/runway.service';
@@ -210,7 +211,7 @@ router.post('/auto-classify', authenticate, async (req: TieredRequest, res: Resp
     invalidateUserCache(userId);
     res.json({ classified, total: merchants.length, message: `Classified ${classified} of ${merchants.length} merchants` });
   } catch (err: any) {
-    console.error('Auto-classify error:', err);
+    logger.error({ err }, 'Auto-classify error');
     res.status(500).json({ error: 'classify_error', message: err.message });
   }
 });

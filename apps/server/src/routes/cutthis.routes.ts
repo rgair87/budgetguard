@@ -1,3 +1,4 @@
+import logger from '../config/logger';
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { attachTier, requirePro, TieredRequest } from '../middleware/tier';
@@ -12,7 +13,7 @@ router.get('/', authenticate, attachTier, requirePro, async (req: TieredRequest,
     const result = await generateCutRecommendations(req.userId!, forceRefresh);
     res.json(result);
   } catch (err: any) {
-    console.error('Cut This error:', err);
+    logger.error({ err }, 'Cut This error');
     res.status(500).json({ error: 'ai_error', message: 'Failed to generate recommendations' });
   }
 });

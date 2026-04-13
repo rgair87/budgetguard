@@ -25,7 +25,7 @@ router.post('/enroll', authenticate, attachTier, requirePlus, async (req: Tiered
     const result = await enrollBank(req.userId!, accessToken);
     res.json({ success: true, ...result });
   } catch (err: any) {
-    console.error('Teller enroll error:', err);
+    logger.error({ err }, 'Teller enroll error');
     const msg = err.message || '';
     // Provide user-friendly error messages
     let userMessage = 'Failed to connect bank. Please try again.';
@@ -55,7 +55,7 @@ router.post('/sync', authenticate, async (req: AuthRequest, res: Response) => {
     const result = await syncAccounts(req.userId!);
     res.json({ success: true, ...result });
   } catch (err: any) {
-    console.error('Teller sync error:', err);
+    logger.error({ err }, 'Teller sync error');
     const msg = err.message || '';
     let userMessage = 'Failed to sync. Please try again.';
     if (msg.includes('No Teller access token')) {
@@ -142,7 +142,7 @@ router.post('/reclean', authenticate, async (req: AuthRequest, res: Response) =>
     const updated = recleanMerchantNames(req.userId!);
     res.json({ success: true, updated });
   } catch (err: any) {
-    console.error('Reclean error:', err);
+    logger.error({ err }, 'Reclean error');
     res.status(500).json({ error: 'reclean_error', message: err.message });
   }
 });
@@ -251,7 +251,7 @@ router.post('/fix-data', authenticate, async (req: AuthRequest, res: Response) =
 
     res.json({ success: true, fixes });
   } catch (err: any) {
-    console.error('Fix-data error:', err);
+    logger.error({ err }, 'Fix-data error');
     res.status(500).json({ error: 'fix_data_error', message: err.message });
   }
 });
@@ -323,7 +323,7 @@ router.post('/reclassify', authenticate, async (req: AuthRequest, res: Response)
     logger.info(`[Reclassify] Classified ${classified} of ${merchantNames.length} merchants`);
     res.json({ success: true, classified, total: merchantNames.length, message: `Reclassified ${classified} merchants` });
   } catch (err: any) {
-    console.error('Reclassify error:', err);
+    logger.error({ err }, 'Reclassify error');
     res.status(500).json({ error: 'reclassify_error', message: err.message });
   }
 });

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { attachTier, TieredRequest, TIER_LIMITS } from '../middleware/tier';
 import db from '../config/db';
+import logger from '../config/logger';
 import { env } from '../config/env';
 import { validate } from '../middleware/validate';
 import { deleteAccountSchema } from '../validation/schemas';
@@ -41,7 +42,7 @@ router.post('/downgrade', authenticate, async (req: AuthRequest, res: Response) 
         await stripe.subscriptions.cancel(user.stripe_subscription_id);
       } catch (err: any) {
         // Subscription may already be canceled — log but don't block downgrade
-        console.error('[DOWNGRADE] Stripe cancellation error:', err.message);
+        logger.error({ err: err.message }, 'Stripe cancellation error during downgrade');
       }
       db.prepare('UPDATE users SET subscription_status = ?, stripe_subscription_id = NULL WHERE id = ?').run('trial', userId);
     } else {

@@ -71,7 +71,7 @@ router.post('/create-checkout', authenticate, async (req: AuthRequest, res: Resp
 
     res.json({ url: session.url });
   } catch (err: any) {
-    console.error('[Stripe] Checkout error:', err.message);
+    logger.error({ err: err.message }, 'Stripe checkout error');
     res.status(500).json({ error: 'Failed to create checkout session' });
   }
 });
@@ -100,7 +100,7 @@ router.post('/portal', authenticate, async (req: AuthRequest, res: Response) => 
     });
     res.json({ url: session.url });
   } catch (err: any) {
-    console.error('[Stripe] Portal error:', err.message);
+    logger.error({ err: err.message }, 'Stripe portal error');
     res.status(500).json({ error: 'Failed to open billing portal' });
   }
 });
@@ -127,7 +127,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
       env.STRIPE_WEBHOOK_SECRET,
     );
   } catch (err: any) {
-    console.error('[Stripe] Webhook signature error:', err.message);
+    logger.error({ err: err.message }, 'Stripe webhook signature error');
     res.status(400).send(`Webhook Error: ${err.message}`);
     return;
   }

@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { attachTier, TieredRequest, getTierLimits } from '../middleware/tier';
 import { chat, getChatHistory, clearChatHistory } from '../services/chat.service';
 import db from '../config/db';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -55,7 +56,7 @@ router.post('/', authenticate, attachTier, async (req: TieredRequest, res: Respo
     const newUsed = used + 1;
     res.json({ reply, dailyUsage: { used: newUsed, limit, remaining: Math.max(0, limit - newUsed) } });
   } catch (err: any) {
-    console.error('Chat error:', err);
+    logger.error({ err }, 'Chat error');
     res.status(500).json({ error: 'chat_error', message: 'Failed to get AI response' });
   }
 });

@@ -1,3 +1,4 @@
+import logger from '../config/logger';
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { attachTier, requirePlus, TieredRequest } from '../middleware/tier';
@@ -13,7 +14,7 @@ router.get('/', authenticate, attachTier, requirePlus, async (req: TieredRequest
     const report = await generateAdvisorReport(req.userId!, forceRefresh);
     res.json(report);
   } catch (err: any) {
-    console.error('[Advisor] Route error:', err.message);
+    logger.error({ err: err.message }, 'Advisor route error');
     res.status(500).json({ error: 'ai_error', message: 'Failed to generate advisor report' });
   }
 });
@@ -30,7 +31,7 @@ router.get('/health-score', authenticate, (req: AuthRequest, res: Response) => {
     const score = calculateHealthScore(req.userId!);
     res.json(score);
   } catch (err: any) {
-    console.error('[HealthScore] Error:', err.message);
+    logger.error({ err: err.message }, 'HealthScore error');
     res.status(500).json({ error: 'score_error', message: 'Failed to calculate health score' });
   }
 });
