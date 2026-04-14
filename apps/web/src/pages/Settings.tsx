@@ -605,6 +605,7 @@ function PrivacySection() {
    ═══════════════════════════════════════════ */
 export default function Settings() {
   const track = useTrack('settings');
+  const [activeTab, setActiveTab] = useState<'profile' | 'accounts' | 'income' | 'data'>('profile');
   const [data, setData] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddAccount, setShowAddAccount] = useState(false);
@@ -790,6 +791,95 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* ────────── TAB NAVIGATION ────────── */}
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+        {[
+          { key: 'profile' as const, label: 'Profile' },
+          { key: 'accounts' as const, label: 'Accounts' },
+          { key: 'income' as const, label: 'Income' },
+          { key: 'data' as const, label: 'Data' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 text-xs font-medium py-2.5 rounded-lg transition-all ${
+              activeTab === tab.key
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ────────── PROFILE TAB ────────── */}
+      {activeTab === 'profile' && (
+        <>
+          {/* Subscription */}
+          {tierInfo?.tier !== 'pro' && (
+            <Link to="/pricing" className="block bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-amber-300" />
+                    {tierInfo?.trialDaysLeft && tierInfo.trialDaysLeft > 0
+                      ? `${tierInfo.trialDaysLeft} days left in your free trial`
+                      : 'Upgrade your plan'}
+                  </p>
+                  <p className="text-xs text-white/70 mt-1">Starting at $7.99/mo. Bank sync, advisor, and more.</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/50" />
+              </div>
+            </Link>
+          )}
+          {(tierInfo?.tier === 'plus' || tierInfo?.tier === 'pro') && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+              <SettingsRow>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{tierInfo.tier === 'pro' ? 'Pro' : 'Plus'} Plan</p>
+                    <p className="text-xs text-slate-400">{tierInfo.tier === 'pro' ? '$14.99' : '$7.99'}/month</p>
+                  </div>
+                  <button onClick={() => setShowCancelModal(true)}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                    Manage subscription
+                  </button>
+                </div>
+              </SettingsRow>
+            </div>
+          )}
+
+          {/* Family */}
+          <Link to="/family" className="block bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all">
+            <div className="px-4 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4 text-violet-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Family</p>
+                  <p className="text-xs text-slate-400">Invite members to share finances</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </div>
+          </Link>
+
+          {/* Budgets link */}
+          <Link to="/budgets" className="block bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all">
+            <div className="px-4 py-3.5 flex items-center justify-between">
+              <span className="text-sm text-slate-700 font-medium">Manage spending budgets</span>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </div>
+          </Link>
+        </>
+      )}
+
+      {/* ────────── INCOME TAB ────────── */}
+      {activeTab === 'income' && (
+        <>
+
       {/* ────────── PAYCHECK / INCOME ────────── */}
       <SectionHeader icon={DollarSign} label="Income" />
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
@@ -899,14 +989,12 @@ export default function Settings() {
         )}
       </div>
 
-      {/* ────────── BUDGETS ────────── */}
-      <SectionHeader icon={Target} label="Monthly Budgets" />
-      <Link to="/budgets" className="block bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all">
-        <div className="px-4 py-3.5 flex items-center justify-between">
-          <span className="text-sm text-slate-700 font-medium">Manage spending budgets by category</span>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
-        </div>
-      </Link>
+        </>
+      )}
+
+      {/* ────────── ACCOUNTS TAB ────────── */}
+      {activeTab === 'accounts' && (
+        <>
 
       {/* ────────── ACCOUNTS ────────── */}
       <SectionHeader icon={Landmark} label="Accounts" />
@@ -1310,54 +1398,16 @@ export default function Settings() {
         )}
       </div>
 
-      {/* ────────── SUBSCRIPTION ────────── */}
-      {tierInfo?.tier !== 'pro' && (
-        <>
-          <SectionHeader icon={Crown} label="Subscription" />
-          <Link to="/pricing" className="block bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-5 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-amber-300" />
-                  {tierInfo?.trialDaysLeft && tierInfo.trialDaysLeft > 0
-                    ? `${tierInfo.trialDaysLeft} days left in your free trial`
-                    : 'Upgrade your plan'}
-                </p>
-                <p className="text-xs text-white/70 mt-1">Starting at $7.99/mo. Bank sync, advisor, and more.</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-white/50" />
-            </div>
-          </Link>
         </>
       )}
 
-      {/* ────────── MANAGE SUBSCRIPTION (paid users) ────────── */}
-      {(tierInfo?.tier === 'plus' || tierInfo?.tier === 'pro') && (
+      {/* ────────── DATA TAB ────────── */}
+      {activeTab === 'data' && (
         <>
-          <SectionHeader icon={Crown} label="Subscription" />
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <SettingsRow>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">
-                    {tierInfo.tier === 'pro' ? 'Pro' : 'Plus'} Plan
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {tierInfo.tier === 'pro' ? '$14.99' : '$7.99'}/month
-                  </p>
-                </div>
-                <button onClick={() => setShowCancelModal(true)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
-                  Manage subscription
-                </button>
-              </div>
-            </SettingsRow>
-          </div>
+          <PrivacySection />
+
         </>
       )}
-
-      {/* ────────── DATA & PRIVACY ────────── */}
-      <PrivacySection />
 
       {/* ────────── LOGOUT ────────── */}
       <div className="pt-2 pb-4">
