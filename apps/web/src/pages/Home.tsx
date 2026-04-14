@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api/client';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, Clock, RefreshCw, Flame, PiggyBank, TrendingUp as TrendIcon } from 'lucide-react';
+import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, Clock, RefreshCw, Flame, PiggyBank, TrendingUp as TrendIcon, Settings2 } from 'lucide-react';
+import useDashboardConfig from '../hooks/useDashboardConfig';
+import DashboardConfig from '../components/DashboardConfig';
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
@@ -220,6 +222,8 @@ interface Alert {
 // =========================
 export default function Home() {
   const track = useTrack('home');
+  const { cards, toggleCard, moveCard, resetToDefault, isVisible } = useDashboardConfig();
+  const [showConfig, setShowConfig] = useState(false);
   const [score, setScore] = useState<RunwayScoreType | null>(null);
   const [plan, setPlan] = useState<PaycheckPlanType | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -487,11 +491,25 @@ export default function Home() {
         </div>
       )}
 
-      {/* === HERO: Runway Score === */}
-      {score && accounts.length > 0 && <RunwayScore score={score} plan={plan} />}
+      {/* Customize gear */}
+      {accounts.length > 0 && (
+        <div className="flex justify-end">
+          <button onClick={() => setShowConfig(true)} className="text-slate-300 hover:text-slate-500 transition-colors p-1" aria-label="Customize dashboard">
+            <Settings2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-      {/* Daily action + secondary info (below the runway score) */}
-      {dailyAction && (
+      {/* Config modal */}
+      {showConfig && (
+        <DashboardConfig cards={cards} onToggle={toggleCard} onMove={moveCard} onReset={resetToDefault} onClose={() => setShowConfig(false)} />
+      )}
+
+      {/* === HERO: Runway Score === */}
+      {score && accounts.length > 0 && isVisible('runway') && <RunwayScore score={score} plan={plan} />}
+
+      {/* Daily action */}
+      {dailyAction && isVisible('action') && (
         <Link to={dailyAction.link} className="block bg-white border border-indigo-200/60 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all">
           <p className="text-[10px] text-indigo-500 font-semibold uppercase tracking-wider mb-1">Today's top action</p>
           <p className="text-sm font-semibold text-slate-900">{dailyAction.title}</p>
@@ -501,7 +519,7 @@ export default function Home() {
 
 
       {/* Key numbers row */}
-      {score && accounts.length > 0 && (
+      {score && accounts.length > 0 && isVisible('stats') && (
         <div className="grid grid-cols-4 gap-3 animate-fade-in">
           <Link to="/transactions?dateFrom=this_month&spendingOnly=true" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm px-3 py-4 block hover:border-slate-300 hover:shadow-md transition-all">
             <p className="text-[10px] text-slate-500 font-medium mb-1">Spent</p>

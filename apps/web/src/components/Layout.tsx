@@ -26,7 +26,6 @@ import {
 import api from '../api/client';
 import ErrorBoundary from './ErrorBoundary';
 import ChatBubble from './ChatBubble';
-import GuidedTour from './GuidedTour';
 
 /* ------------------------------------------------------------------ */
 /*  Nav structure                                                      */
@@ -367,7 +366,6 @@ export default function Layout() {
 
       {/* Floating chat bubble - hidden on the full /chat page */}
       {location.pathname !== '/chat' && <ChatBubble />}
-      <GuidedTour />
     </div>
   );
 }
