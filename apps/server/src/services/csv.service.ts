@@ -451,6 +451,13 @@ function isBillMerchant(merchantName: string, bankCategory?: string | null): boo
 
 // Scan transactions and flag recurring ones (same merchant, similar amount, regular intervals)
 export function detectAndFlagRecurring(userId: string): number {
+  // Snapshot current recurring merchants BEFORE reset (to detect new ones)
+  const previousRecurring = new Set(
+    (db.prepare(
+      "SELECT DISTINCT LOWER(merchant_name) as name FROM transactions WHERE user_id = ? AND is_recurring = 1 AND merchant_name IS NOT NULL"
+    ).all(userId) as { name: string }[]).map(r => r.name)
+  );
+
   // Reset all recurring flags first so re-imports don't accumulate
   db.prepare('UPDATE transactions SET is_recurring = 0 WHERE user_id = ? AND is_recurring = 1').run(userId);
 
@@ -569,6 +576,40 @@ export function detectAndFlagRecurring(userId: string): number {
           flagged++;
         }
       }
+    }
+  }
+
+  // Detect NEWLY flagged merchants and create notifications
+  const currentRecurring = new Set(
+    (db.prepare(
+      "SELECT DISTINCT LOWER(merchant_name) as name FROM transactions WHERE user_id = ? AND is_recurring = 1 AND merchant_name IS NOT NULL"
+    ).all(userId) as { name: string }[]).map(r => r.name)
+  );
+
+  const newlyDetected: string[] = [];
+  for (const name of currentRecurring) {
+    if (!previousRecurring.has(name)) newlyDetected.push(name);
+  }
+
+  // Create a notification for newly detected recurring charges
+  if (newlyDetected.length > 0) {
+    const crypto = require('crypto');
+    const title = newlyDetected.length === 1
+      ? `New recurring charge detected: ${newlyDetected[0]}`
+      : `${newlyDetected.length} new recurring charges detected`;
+    const body = newlyDetected.length === 1
+      ? `We detected "${newlyDetected[0]}" as a recurring charge. Check it on the Recurring page.`
+      : `New recurring: ${newlyDetected.slice(0, 3).join(', ')}${newlyDetected.length > 3 ? ` and ${newlyDetected.length - 3} more` : ''}. Review on the Recurring page.`;
+
+    // Dedup: only notify if we haven't already for these merchants recently
+    const existing = db.prepare(
+      "SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND type = 'new_recurring' AND title = ? AND created_at > datetime('now', '-7 days')"
+    ).get(userId, title) as { cnt: number };
+
+    if (existing.cnt === 0) {
+      db.prepare(
+        "INSERT INTO notifications (id, user_id, type, severity, title, body, action, action_link) VALUES (?, ?, 'new_recurring', 'info', ?, ?, 'View recurring', '/subscriptions')"
+      ).run(crypto.randomUUID(), userId, title, body);
     }
   }
 

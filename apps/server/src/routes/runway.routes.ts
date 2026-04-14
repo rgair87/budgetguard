@@ -550,7 +550,12 @@ router.get('/detected-debts', authenticate, (req: AuthRequest, res: Response) =>
 });
 
 router.get('/subscriptions', authenticate, (req: AuthRequest, res: Response) => {
-  const subs = getSubscriptionLifetime(req.userId!);
+  // Auto-recalculate recurring flags before returning (ensures fresh data)
+  const { detectAndFlagRecurring } = require('../services/csv.service');
+  const effectiveId = getEffectiveUserId(req.userId!);
+  try { detectAndFlagRecurring(effectiveId); } catch {}
+
+  const subs = getSubscriptionLifetime(effectiveId);
   res.json(subs);
 });
 
