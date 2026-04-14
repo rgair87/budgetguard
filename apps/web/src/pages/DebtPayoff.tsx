@@ -461,26 +461,24 @@ export default function DebtPayoff() {
 
   return (
     <div className="space-y-5 pb-8">
-      {/* ---- Header ---- */}
+      {/* ---- Hero: Debt-free date ---- */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 rounded-2xl p-6 text-white">
-        <div className="flex items-center gap-2 mb-1">
-          <TrendingDown className="w-5 h-5 text-indigo-300" />
-          <h1 className="text-lg font-semibold">Debt Strategy</h1>
-        </div>
-        <p className="text-slate-300 text-sm mb-4">Your personalized path to debt freedom</p>
+        <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Debt-free by</p>
+        <p className="text-3xl font-bold">{payoffDate(activeResult.months)}</p>
+        <p className="text-sm text-slate-400 mt-1">{formatMonths(activeResult.months)} from now</p>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10">
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Debt</p>
-            <p className="text-xl font-bold mt-0.5">${totalDebt.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <p className="text-[10px] text-slate-500">Total owed</p>
+            <p className="text-lg font-bold">${totalDebt.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Accounts</p>
-            <p className="text-xl font-bold mt-0.5">{debts.length}</p>
+            <p className="text-[10px] text-slate-500">Monthly min</p>
+            <p className="text-lg font-bold">${totalMinimum.toFixed(0)}</p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Min / mo</p>
-            <p className="text-xl font-bold mt-0.5">${totalMinimum.toFixed(0)}</p>
+            <p className="text-[10px] text-slate-500">Interest</p>
+            <p className="text-lg font-bold text-amber-300">${Math.round(activeResult.totalInterest).toLocaleString()}</p>
           </div>
         </div>
       </div>
@@ -520,21 +518,13 @@ export default function DebtPayoff() {
         </div>
       )}
 
-      {/* ---- Your Best Strategy (recommendation) ---- */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-indigo-600" />
-            <h2 className="text-sm font-semibold text-gray-900">Your Best Strategy</h2>
-          </div>
-        </div>
-
-        <div className="px-5 py-4">
-          <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-              recommendation.icon === 'dollar'
-                ? 'bg-indigo-100'
-                : 'bg-purple-100'
+      {/* ---- Strategy (compact) ---- */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            recommendation.icon === 'dollar'
+              ? 'bg-indigo-100'
+              : 'bg-purple-100'
             }`}>
               {recommendation.icon === 'dollar'
                 ? <CircleDollarSign className="w-5 h-5 text-indigo-600" />
@@ -542,13 +532,12 @@ export default function DebtPayoff() {
               }
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-gray-900">{recommendation.headline}</p>
-              <p className="text-sm text-gray-600 mt-1 leading-relaxed">{recommendation.explanation}</p>
-            </div>
+            <p className="text-sm font-semibold text-gray-900">{recommendation.headline}</p>
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{recommendation.explanation}</p>
           </div>
         </div>
 
-        {/* Compare strategies toggle (power users) */}
+        {/* Compare strategies toggle */}
         {debts.length > 1 && (
           <div className="border-t border-gray-100">
             <button
@@ -705,9 +694,14 @@ export default function DebtPayoff() {
             return (
               <div key={debt.id} className="px-5 py-4">
                 <div className="flex items-start justify-between">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900 text-sm">{debt.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{debtTypeLabel((debt as any).type)}</p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                      debt.order === 1 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>{debt.order}</span>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{debt.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{debtTypeLabel((debt as any).type)}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {!isEditing && (
@@ -802,46 +796,6 @@ export default function DebtPayoff() {
         </div>
       </div>
 
-      {/* ---- Payoff Roadmap ---- */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Calendar className="w-4 h-4 text-slate-500" />
-          <h2 className="text-sm font-semibold text-gray-900">Payoff Roadmap</h2>
-        </div>
-
-        <div className="space-y-3">
-          {roadmapSteps.map((step, idx) => {
-            const isLast = idx === roadmapSteps.length - 1;
-            return (
-              <div
-                key={idx}
-                className={`rounded-xl p-4 border ${
-                  isLast
-                    ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200'
-                    : idx === 0
-                      ? 'bg-gradient-to-r from-indigo-50 to-slate-50 border-indigo-200'
-                      : 'bg-gray-50 border-gray-200'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold ${step.accent}`}>
-                    {isLast
-                      ? <PartyPopper className="w-3.5 h-3.5" />
-                      : idx + 1
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${isLast ? 'text-emerald-800' : 'text-gray-900'}`}>
-                      {step.title}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">{step.subtitle}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* ---- Bottom Insight Card ---- */}
       <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-2xl border border-gray-200 shadow-sm p-5">

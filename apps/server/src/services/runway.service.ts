@@ -481,6 +481,7 @@ function getPaycheckInterval(freq: string | null): number | null {
     case 'biweekly': return 14;
     case 'twice_monthly': return 15;
     case 'monthly': return 30;
+    case 'irregular': return 30; // Treat as monthly average
     default: return null;
   }
 }

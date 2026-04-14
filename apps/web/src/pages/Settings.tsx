@@ -750,7 +750,7 @@ export default function Settings() {
 
   const cashAccounts = data.accounts.filter(a => CASH_TYPES.includes(a.type));
   const debtAccounts = data.accounts.filter(a => isDebtType(a.type));
-  const freqLabel: Record<string, string> = { weekly: 'Weekly', biweekly: 'Every 2 weeks', twice_monthly: '1st & 15th', monthly: 'Monthly' };
+  const freqLabel: Record<string, string> = { weekly: 'Weekly', biweekly: 'Every 2 weeks', twice_monthly: '1st & 15th', monthly: 'Monthly', irregular: 'Irregular / Variable' };
   const memberSince = data.user.created_at ? new Date(data.user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '';
 
   return (
@@ -807,10 +807,13 @@ export default function Settings() {
                 <option value="biweekly">Every 2 weeks</option>
                 <option value="twice_monthly">Twice a month (1st & 15th)</option>
                 <option value="monthly">Monthly</option>
+                <option value="irregular">Irregular / Variable</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Take-home pay (per paycheck)</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">
+                {payFreq === 'irregular' ? 'Average monthly income' : 'Take-home pay (per paycheck)'}
+              </label>
               <div className="relative">
                 <span className="absolute left-3 top-3 text-sm text-slate-400">$</span>
                 <input

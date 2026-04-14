@@ -435,17 +435,29 @@ export default function Goals() {
                   </div>
                 )}
 
-                {/* Progress bar */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="font-semibold text-slate-700">{Math.min(goal.percent, 100)}%</span>
-                    <span className="text-slate-500">${goal.remaining.toLocaleString(undefined, { maximumFractionDigits: 0 })} to go</span>
+                {/* Circular progress ring */}
+                <div className="mt-4 flex items-center gap-4">
+                  <div className="w-16 h-16 shrink-0 relative">
+                    <svg viewBox="0 0 36 36" className="w-16 h-16 -rotate-90">
+                      <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                      <circle
+                        cx="18" cy="18" r="15.5" fill="none"
+                        stroke={goal.percent >= 100 ? '#059669' : goal.percent >= 50 ? '#4f46e5' : '#6366f1'}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={`${Math.min(goal.percent, 100) * 0.974} 97.4`}
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm font-bold text-slate-900">{Math.min(goal.percent, 100)}%</span>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                    <div
-                      className={`h-3 rounded-full bg-gradient-to-r ${progressGradient(goal.percent)} transition-all duration-500`}
-                      style={{ width: `${Math.min(goal.percent, 100)}%` }}
-                    />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-700">${goal.remaining.toLocaleString(undefined, { maximumFractionDigits: 0 })} to go</p>
+                    {goal.deadline && goal.daysLeft !== null && goal.daysLeft > 0 && (
+                      <p className="text-xs text-slate-400 mt-0.5">{goal.daysLeft} days left</p>
+                    )}
                   </div>
                 </div>
 
@@ -463,26 +475,37 @@ export default function Goals() {
 
                 {/* Add money */}
                 {goal.percent < 100 && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-2.5 text-sm text-slate-400">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Add savings..."
-                        value={addAmount[goal.id] || ''}
-                        onChange={e => setAddAmount(prev => ({ ...prev, [goal.id]: e.target.value }))}
-                        onKeyDown={e => e.key === 'Enter' && handleAddMoney(goal.id)}
-                        className="w-full text-sm border border-slate-200 rounded-xl bg-slate-50 pl-7 pr-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 outline-none transition"
-                      />
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      {[25, 50, 100].map(amt => (
+                        <button
+                          key={amt}
+                          onClick={() => { setAddAmount(prev => ({ ...prev, [goal.id]: String(amt) })); }}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                            addAmount[goal.id] === String(amt)
+                              ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >${amt}</button>
+                      ))}
+                      <div className="relative flex-1">
+                        <span className="absolute left-2.5 top-1.5 text-xs text-slate-400">$</span>
+                        <input
+                          type="number"
+                          placeholder="Other"
+                          value={addAmount[goal.id] || ''}
+                          onChange={e => setAddAmount(prev => ({ ...prev, [goal.id]: e.target.value }))}
+                          onKeyDown={e => e.key === 'Enter' && handleAddMoney(goal.id)}
+                          className="w-full text-xs border border-slate-200 rounded-lg bg-white pl-6 pr-2 py-1.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition"
+                        />
+                      </div>
                     </div>
                     <button
                       onClick={() => handleAddMoney(goal.id)}
                       disabled={!addAmount[goal.id]}
-                      className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/25 hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50 transition"
+                      className="w-full text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl font-medium disabled:opacity-40 transition-colors"
                     >
-                      <DollarSign className="h-4 w-4" />
-                      Add
+                      Add ${addAmount[goal.id] || '0'}
                     </button>
                   </div>
                 )}
