@@ -19,7 +19,7 @@ router.get('/', authenticate, attachTier, (req: TieredRequest, res: Response) =>
   ).get(userId) as unknown as any;
 
   const accounts = db.prepare(
-    'SELECT id, name, type, current_balance, purpose, income_allocation, interest_rate, minimum_payment, plaid_account_id, teller_account_id, institution_name, last_synced_at FROM accounts WHERE user_id = ? ORDER BY institution_name, type, name'
+    'SELECT id, name, type, current_balance, purpose, income_allocation, interest_rate, minimum_payment, credit_limit, plaid_account_id, teller_account_id, institution_name, last_synced_at FROM accounts WHERE user_id = ? ORDER BY institution_name, type, name'
   ).all(userId);
 
   const tier = req.tier!;
@@ -70,13 +70,14 @@ router.post('/accounts', authenticate, (req: AuthRequest, res: Response) => {
   const incomeAllocation = req.body.income_allocation ? parseFloat(req.body.income_allocation) : null;
   const interestRate = req.body.interest_rate ? parseFloat(req.body.interest_rate) : null;
   const minimumPayment = req.body.minimum_payment ? parseFloat(req.body.minimum_payment) : null;
+  const creditLimit = req.body.credit_limit ? parseFloat(req.body.credit_limit) : null;
 
   db.prepare(
-    `INSERT INTO accounts (id, user_id, name, type, current_balance, available_balance, purpose, income_allocation, interest_rate, minimum_payment)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, userId, name, type, bal, bal, purpose, incomeAllocation, interestRate, minimumPayment);
+    `INSERT INTO accounts (id, user_id, name, type, current_balance, available_balance, purpose, income_allocation, interest_rate, minimum_payment, credit_limit)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, userId, name, type, bal, bal, purpose, incomeAllocation, interestRate, minimumPayment, creditLimit);
 
-  res.json({ id, name, type, current_balance: bal, purpose, income_allocation: incomeAllocation, interest_rate: interestRate, minimum_payment: minimumPayment });
+  res.json({ id, name, type, current_balance: bal, purpose, income_allocation: incomeAllocation, interest_rate: interestRate, minimum_payment: minimumPayment, credit_limit: creditLimit });
 });
 
 // Update account fields
@@ -117,6 +118,10 @@ router.patch('/accounts/:id', authenticate, (req: AuthRequest, res: Response) =>
   if (req.body.minimum_payment !== undefined) {
     const min = req.body.minimum_payment ? parseFloat(req.body.minimum_payment) : null;
     db.prepare('UPDATE accounts SET minimum_payment = ? WHERE id = ?').run(min, accountId);
+  }
+  if (req.body.credit_limit !== undefined) {
+    const cl = req.body.credit_limit ? parseFloat(req.body.credit_limit) : null;
+    db.prepare('UPDATE accounts SET credit_limit = ? WHERE id = ?').run(cl, accountId);
   }
 
   res.json({ success: true });

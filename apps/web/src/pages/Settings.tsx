@@ -18,6 +18,7 @@ interface Account {
   income_allocation: number | null;
   interest_rate: number | null;
   minimum_payment: number | null;
+  credit_limit: number | null;
   plaid_account_id: string | null;
   teller_account_id: string | null;
   institution_name: string | null;
@@ -611,7 +612,7 @@ export default function Settings() {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [newAccount, setNewAccount] = useState({
     name: '', type: 'checking', balance: '', purpose: 'general',
-    income_allocation: '', interest_rate: '', minimum_payment: ''
+    income_allocation: '', interest_rate: '', minimum_payment: '', credit_limit: ''
   });
   const [editingBalance, setEditingBalance] = useState<string | null>(null);
   const [editBalance, setEditBalance] = useState('');
@@ -695,7 +696,7 @@ export default function Settings() {
     if (!newAccount.name) return;
     const { data: acct } = await api.post('/settings/accounts', newAccount);
     setData(d => d ? { ...d, accounts: [...d.accounts, { ...acct, plaid_account_id: null, teller_account_id: null, last_synced_at: null }] } : null);
-    setNewAccount({ name: '', type: 'checking', balance: '', purpose: 'general', income_allocation: '', interest_rate: '', minimum_payment: '' });
+    setNewAccount({ name: '', type: 'checking', balance: '', purpose: 'general', income_allocation: '', interest_rate: '', minimum_payment: '', credit_limit: '' });
     setShowAddAccount(false);
   }
 

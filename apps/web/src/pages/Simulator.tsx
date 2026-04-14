@@ -180,13 +180,17 @@ export default function Simulator() {
 
   const newBalance = currentBalance - totalOneTimeExpense;
   const newBurnRate = currentBurnRate + additionalDaily;
+
+  // Use consistent calculation for both baseline and scenario
+  // (simple division, not the backend's day-by-day projection which includes paydays)
+  const baselineSimple = currentBurnRate > 0 ? Math.floor(currentBalance / currentBurnRate) : 999;
   const newRunwayDays = newBurnRate > 0 ? Math.max(0, Math.floor(newBalance / newBurnRate)) : 999;
 
-  const daysDiff = newRunwayDays - currentRunwayDays;
+  const daysDiff = newRunwayDays - baselineSimple;
   const hasScenarios = scenarios.length > 0;
 
-  const maxBar = Math.max(currentRunwayDays, newRunwayDays, 1);
-  const currentBarPct = (currentRunwayDays / maxBar) * 100;
+  const maxBar = Math.max(baselineSimple, newRunwayDays, 1);
+  const currentBarPct = (baselineSimple / maxBar) * 100;
   const newBarPct = (newRunwayDays / maxBar) * 100;
 
   return (
@@ -368,7 +372,7 @@ export default function Simulator() {
             <div>
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span className="font-medium">Current</span>
-                <span className="font-bold text-gray-700">{currentRunwayDays} days</span>
+                <span className="font-bold text-gray-700">{baselineSimple} days</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-5 overflow-hidden">
                 <div
@@ -437,7 +441,7 @@ export default function Simulator() {
               <div>
                 <p className="text-sm font-semibold text-amber-800">This would cost you {Math.abs(daysDiff)} day{Math.abs(daysDiff) !== 1 ? 's' : ''}</p>
                 <p className="text-xs text-amber-600 mt-0.5">
-                  Your runway would drop from {currentRunwayDays} to {newRunwayDays} days. Make sure this is worth it.
+                  Your runway would drop from {baselineSimple} to {newRunwayDays} days. Make sure this is worth it.
                 </p>
               </div>
             </div>
