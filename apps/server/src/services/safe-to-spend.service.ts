@@ -3,41 +3,58 @@ import { roundCurrency as rc } from '../utils/currency';
 
 interface SafeToSpendResult {
   safeToSpend: number;
+  dailySafe: number;
+  daysUntilPayday: number | null;
   breakdown: {
     availableCash: number;
-    upcomingBills: number;
-    debtPayments: number;
-    savingsReserve: number;
-    buffer: number;
+    recurringBills: number;       // next 60 days of recurring charges
+    debtPayments: number;         // minimum payments due
+    essentialSpending: number;    // groceries, gas, transport based on history
+    savingsReserve: number;      // goal contributions
+    emergencyBuffer: number;     // keeps runway above 30 days
+    totalReserved: number;
   };
-  dailySafe: number; // safe amount per day until next payday
-  daysUntilPayday: number | null;
 }
 
 export function getSafeToSpend(userId: string): SafeToSpendResult {
   // 1. Available cash (checking + savings)
-  const cashAccounts = db.prepare(
-    "SELECT COALESCE(SUM(available_balance), SUM(current_balance), 0) as total FROM accounts WHERE user_id = ? AND type IN ('checking', 'savings')"
+  const cashRow = db.prepare(
+    "SELECT COALESCE(SUM(COALESCE(available_balance, current_balance)), 0) as total FROM accounts WHERE user_id = ? AND type IN ('checking', 'savings')"
   ).get(userId) as { total: number };
-  const availableCash = cashAccounts.total;
+  const availableCash = cashRow.total;
 
-  // 2. Upcoming bills in the next 30 days (from recurring transactions)
-  const recurringBills = db.prepare(`
+  // 2. Recurring bills - look at last 2 months of recurring charges to estimate next 2 months
+  // This catches monthly AND bimonthly bills
+  const recurringRow = db.prepare(`
     SELECT COALESCE(SUM(ABS(amount)), 0) as total
     FROM transactions
     WHERE user_id = ? AND is_recurring = 1 AND amount < 0
-      AND date >= date('now', '-35 days') AND date < date('now')
+      AND date >= date('now', '-60 days') AND date < date('now')
       AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer')
   `).get(userId) as { total: number };
-  // Use last month's recurring total as estimate for next month
-  const upcomingBills = recurringBills.total;
+  // This gives us ~2 months of bills. That's our reserve for the next 2 months.
+  const recurringBills = recurringRow.total;
 
-  // 3. Minimum debt payments due this month
-  const debtPayments = db.prepare(
-    "SELECT COALESCE(SUM(minimum_payment), 0) as total FROM accounts WHERE user_id = ? AND type IN ('credit', 'loan', 'auto_loan', 'student_loan', 'personal_loan') AND current_balance > 0"
+  // 3. Minimum debt payments (monthly total x2 for 2-month buffer)
+  const debtRow = db.prepare(
+    "SELECT COALESCE(SUM(minimum_payment), 0) as total FROM accounts WHERE user_id = ? AND type IN ('credit', 'loan', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan') AND current_balance > 0"
   ).get(userId) as { total: number };
+  const debtPayments = debtRow.total * 2; // 2 months of minimum payments
 
-  // 4. Savings goals - monthly contribution target
+  // 4. Essential variable spending (groceries, gas, transportation, healthcare, phone)
+  // Based on 90-day average, reserve for 2 months
+  const essentialRow = db.prepare(`
+    SELECT COALESCE(SUM(ABS(amount)), 0) as total
+    FROM transactions
+    WHERE user_id = ? AND amount < 0
+      AND date >= date('now', '-90 days')
+      AND COALESCE(category, '') IN ('Groceries', 'Gas', 'Transportation', 'Healthcare', 'Phone & Internet', 'Utilities')
+  `).get(userId) as { total: number };
+  // 90 days of essential spending / 3 = monthly, x2 = 2 month reserve
+  const monthlyEssentials = essentialRow.total / 3;
+  const essentialSpending = monthlyEssentials * 2;
+
+  // 5. Savings goal contributions (monthly target)
   const goals = db.prepare(
     "SELECT target_amount, current_amount, deadline FROM savings_goals WHERE user_id = ? AND current_amount < target_amount"
   ).all(userId) as { target_amount: number; current_amount: number; deadline: string | null }[];
@@ -52,19 +69,23 @@ export function getSafeToSpend(userId: string): SafeToSpendResult {
     }
   }
 
-  // 5. Buffer (10% of monthly spending)
-  const monthlySpend = db.prepare(`
-    SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions
-    WHERE user_id = ? AND amount < 0 AND date >= date('now', '-30 days')
+  // 6. Emergency buffer - ensure at least 30 days of runway remains after spending
+  // Daily burn = all spending over 90 days / 90
+  const burnRow = db.prepare(`
+    SELECT COALESCE(SUM(ABS(amount)), 0) as total
+    FROM transactions
+    WHERE user_id = ? AND amount < 0
+      AND date >= date('now', '-90 days')
       AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer')
   `).get(userId) as { total: number };
-  const buffer = monthlySpend.total * 0.10;
+  const dailyBurn = burnRow.total / 90;
+  const emergencyBuffer = dailyBurn * 30; // 30 days of spending as minimum floor
 
-  // Calculate safe to spend
-  const reserved = upcomingBills + debtPayments.total + savingsReserve + buffer;
-  const safeToSpend = Math.max(0, availableCash - reserved);
+  // Total reserved
+  const totalReserved = recurringBills + debtPayments + essentialSpending + savingsReserve + emergencyBuffer;
+  const safeToSpend = Math.max(0, availableCash - totalReserved);
 
-  // Days until payday
+  // Days until payday for daily budget
   const user = db.prepare(
     'SELECT pay_frequency, next_payday FROM users WHERE id = ?'
   ).get(userId) as { pay_frequency: string | null; next_payday: string | null } | undefined;
@@ -84,14 +105,16 @@ export function getSafeToSpend(userId: string): SafeToSpendResult {
 
   return {
     safeToSpend: rc(safeToSpend),
-    breakdown: {
-      availableCash: rc(availableCash),
-      upcomingBills: rc(upcomingBills),
-      debtPayments: rc(debtPayments.total),
-      savingsReserve: rc(savingsReserve),
-      buffer: rc(buffer),
-    },
     dailySafe,
     daysUntilPayday,
+    breakdown: {
+      availableCash: rc(availableCash),
+      recurringBills: rc(recurringBills),
+      debtPayments: rc(debtPayments),
+      essentialSpending: rc(essentialSpending),
+      savingsReserve: rc(savingsReserve),
+      emergencyBuffer: rc(emergencyBuffer),
+      totalReserved: rc(totalReserved),
+    },
   };
 }

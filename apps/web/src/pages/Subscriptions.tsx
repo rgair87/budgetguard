@@ -4,7 +4,6 @@ import { Repeat } from 'lucide-react';
 import api from '../api/client';
 import { USER_CATEGORY_NAMES } from '@spenditure/shared';
 import useTrack from '../hooks/useTrack';
-import BillForecast from '../components/BillForecast';
 
 interface Subscription {
   name: string;
@@ -347,8 +346,6 @@ export default function Subscriptions() {
         </div>
       )}
 
-      {/* Bill forecasts */}
-      <BillForecast />
 
       {/* Debt monthly total */}
       {monthlyByDebt > 0 && filter !== 'subscription' && filter !== 'bill' && (

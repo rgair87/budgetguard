@@ -251,7 +251,7 @@ export default function Home() {
     safeToSpend: number;
     dailySafe: number;
     daysUntilPayday: number | null;
-    breakdown: { availableCash: number; upcomingBills: number; debtPayments: number; savingsReserve: number; buffer: number };
+    breakdown: { availableCash: number; recurringBills: number; debtPayments: number; essentialSpending: number; savingsReserve: number; emergencyBuffer: number; totalReserved: number };
   } | null>(null);
   const [showSafeBreakdown, setShowSafeBreakdown] = useState(false);
   const [charts, setCharts] = useState<{
@@ -543,15 +543,19 @@ export default function Home() {
                 <span className="font-medium text-slate-700">${Math.round(safeToSpend.breakdown.availableCash).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">Reserved for bills</span>
-                <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.upcomingBills).toLocaleString()}</span>
+                <span className="text-slate-500">Bills (next 60 days)</span>
+                <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.recurringBills).toLocaleString()}</span>
               </div>
               {safeToSpend.breakdown.debtPayments > 0 && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Debt payments</span>
+                  <span className="text-slate-500">Debt payments (2 months)</span>
                   <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.debtPayments).toLocaleString()}</span>
                 </div>
               )}
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">Essentials (groceries, gas, etc.)</span>
+                <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.essentialSpending).toLocaleString()}</span>
+              </div>
               {safeToSpend.breakdown.savingsReserve > 0 && (
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">Savings goals</span>
@@ -559,8 +563,8 @@ export default function Home() {
                 </div>
               )}
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">Safety buffer (10%)</span>
-                <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.buffer).toLocaleString()}</span>
+                <span className="text-slate-500">30-day emergency buffer</span>
+                <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.emergencyBuffer).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs pt-2 border-t border-slate-100">
                 <span className="font-semibold text-slate-700">Safe to spend</span>
