@@ -126,6 +126,21 @@ export function syncNotifications(userId: string): void {
       },
     ];
 
+    // Send trial expired email once (day 8)
+    if (daysSinceSignup === 8) {
+      const alreadySent = checkStmt.get(userId, 'trial_expired_email', 'Trial expired email') as { cnt: number };
+      if (alreadySent.cnt === 0) {
+        try {
+          const { sendTrialExpiredEmail } = require('./email.service');
+          const emailRow = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+          if (emailRow) {
+            sendTrialExpiredEmail(emailRow.email);
+            insertStmt.run(crypto.randomUUID(), userId, 'trial_expired_email', 'info', 'Trial expired email', 'Sent', null, null);
+          }
+        } catch {}
+      }
+    }
+
     for (const notif of trialNotifications) {
       if (daysSinceSignup >= notif.day) {
         const existing = checkStmt.get(userId, notif.type, notif.title) as { cnt: number };

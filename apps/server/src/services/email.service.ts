@@ -111,6 +111,61 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   await sendEmail(email, 'Reset your password — Spenditure', html);
 }
 
+// ── Marketing emails ────────────────────────────────────────────────
+
+export async function sendTrialExpiredEmail(email: string): Promise<void> {
+  const html = wrapHtml(`
+    <h2 style="margin:0 0 16px;color:#18181b;font-size:20px;font-weight:600;">Your free trial has ended</h2>
+    <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
+      Your 7-day Pro trial is over. You can still log in and see your dashboard, but bank sync, spending trends, and the AI advisor are now locked.
+    </p>
+    <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
+      If Spenditure helped you understand your money better in the last week, Plus starts at $7.99/mo.
+    </p>
+    ${buttonHtml(`${APP_URL}/pricing`, 'See Plans')}
+    <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.5;">
+      No pressure. Your data is safe and waiting for you.
+    </p>
+  `);
+  await sendEmail(email, 'Your Spenditure trial has ended', html);
+}
+
+export async function sendDowngradeEmail(email: string): Promise<void> {
+  const html = wrapHtml(`
+    <h2 style="margin:0 0 16px;color:#18181b;font-size:20px;font-weight:600;">We're sorry to see you go</h2>
+    <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
+      Your subscription has been cancelled. You'll keep access until the end of your billing period, then your account will switch to the free tier.
+    </p>
+    <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
+      Your data, transactions, and goals are all still here. You can re-subscribe anytime to pick up where you left off.
+    </p>
+    ${buttonHtml(`${APP_URL}/pricing`, 'Resubscribe')}
+    <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.5;">
+      If something wasn't working for you, reply to this email. We read every response.
+    </p>
+  `);
+  await sendEmail(email, 'Your Spenditure subscription has been cancelled', html);
+}
+
+export async function sendInactiveEmail(email: string, daysSinceLogin: number): Promise<void> {
+  const html = wrapHtml(`
+    <h2 style="margin:0 0 16px;color:#18181b;font-size:20px;font-weight:600;">Your money didn't stop moving</h2>
+    <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
+      It's been ${daysSinceLogin} days since you last checked in. Your transactions are still syncing and your financial picture is up to date.
+    </p>
+    <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
+      Take 30 seconds to see where you stand.
+    </p>
+    ${buttonHtml(APP_URL, 'Check My Dashboard')}
+    <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.5;">
+      You can unsubscribe from these reminders in your Settings.
+    </p>
+  `);
+  await sendEmail(email, `It's been ${daysSinceLogin} days. Your money didn't stop.`, html);
+}
+
+// ── Family invite ───────────────────────────────────────────────────
+
 export async function sendFamilyInviteEmail(email: string, inviterName: string, token: string): Promise<void> {
   const joinUrl = `${APP_URL}/join-family?token=${token}`;
   const html = wrapHtml(`

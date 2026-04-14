@@ -49,6 +49,13 @@ router.post('/downgrade', authenticate, async (req: AuthRequest, res: Response) 
       db.prepare("UPDATE users SET subscription_status = 'trial' WHERE id = ?").run(userId);
     }
 
+    // Send downgrade email
+    try {
+      const { sendDowngradeEmail } = require('../services/email.service');
+      const userData = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+      if (userData) await sendDowngradeEmail(userData.email);
+    } catch {}
+
     res.json({ success: true, message: 'Downgraded to free tier.' });
   } catch (err: any) {
     res.status(500).json({ error: 'server_error', message: 'Failed to downgrade' });
