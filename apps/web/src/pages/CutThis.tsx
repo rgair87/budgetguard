@@ -205,9 +205,17 @@ export default function CutThis() {
                       )}
 
                       {rec.potentialSavings > 0 && (
-                        <p className="text-emerald-600 font-medium mt-2 text-sm">
-                          Save ~${rec.potentialSavings.toFixed(0)}/month (${(rec.potentialSavings * 12).toFixed(0)}/year)
-                        </p>
+                        <div className="mt-2 flex items-center gap-3 flex-wrap">
+                          <p className="text-emerald-600 font-medium text-sm">
+                            Save ~${rec.potentialSavings.toFixed(0)}/month (${(rec.potentialSavings * 12).toFixed(0)}/year)
+                          </p>
+                          <Link
+                            to={`/debt?extra=${Math.round(rec.potentialSavings)}`}
+                            className="text-[11px] font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            Apply to debt payoff
+                          </Link>
+                        </div>
                       )}
                     </div>
                   </div>

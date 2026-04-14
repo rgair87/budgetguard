@@ -254,6 +254,7 @@ export default function Home() {
     breakdown: { availableCash: number; recurringBills: number; debtPayments: number; essentialSpending: number; savingsReserve: number; emergencyBuffer: number; totalReserved: number };
   } | null>(null);
   const [showSafeBreakdown, setShowSafeBreakdown] = useState(false);
+  const [affordCheck, setAffordCheck] = useState('');
   const [charts, setCharts] = useState<{
     cashFlowTimeline: Array<{ date: string; balance: number; projected?: boolean }>;
     monthlyComparison: Array<{ month: string; income: number; expenses: number }>;
@@ -517,24 +518,56 @@ export default function Home() {
       {/* === HERO: Runway Score === */}
       {score && accounts.length > 0 && isVisible('runway') && <RunwayScore score={score} plan={plan} />}
 
-      {/* Safe-to-Spend */}
+      {/* Safe-to-Spend / Affordability Checker */}
       {safeToSpend && accounts.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-          <button
-            onClick={() => setShowSafeBreakdown(!showSafeBreakdown)}
-            className="w-full p-5 text-left hover:bg-slate-50/50 transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-500 font-medium mb-1">Safe to spend</p>
-                <p className="text-3xl font-bold text-slate-900">${Math.round(safeToSpend.safeToSpend).toLocaleString()}</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  ${safeToSpend.dailySafe}/day{safeToSpend.daysUntilPayday ? ` for ${safeToSpend.daysUntilPayday} days` : ''}
-                </p>
+          <div className="p-5">
+            {/* Can I afford this? input */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-2.5 text-sm text-slate-400">$</span>
+                <input
+                  type="number"
+                  value={affordCheck}
+                  onChange={e => setAffordCheck(e.target.value)}
+                  placeholder="Can I afford...?"
+                  className="w-full text-sm border border-slate-200 rounded-xl bg-slate-50 pl-7 pr-3 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-400 outline-none transition-all"
+                />
               </div>
-              <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform ${showSafeBreakdown ? 'rotate-180' : ''}`} />
+              {affordCheck && (() => {
+                const amount = parseFloat(affordCheck);
+                if (isNaN(amount) || amount <= 0) return null;
+                const canAfford = amount <= safeToSpend.safeToSpend;
+                const pctOfSafe = Math.round((amount / safeToSpend.safeToSpend) * 100);
+                return (
+                  <div className={`text-center px-3 py-1.5 rounded-xl text-xs font-semibold ${canAfford ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                    {canAfford ? (pctOfSafe <= 5 ? 'Easily' : pctOfSafe <= 20 ? 'Yes' : 'Tight but yes') : 'Not safely'}
+                  </div>
+                );
+              })()}
             </div>
-          </button>
+
+            {/* Context numbers */}
+            <div className="flex items-baseline justify-between">
+              <div>
+                <p className="text-xs text-slate-500 font-medium">Safe to spend</p>
+                <p className="text-2xl font-bold text-slate-900">${Math.round(safeToSpend.safeToSpend).toLocaleString()}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-400">${safeToSpend.dailySafe}/day</p>
+                {safeToSpend.daysUntilPayday && <p className="text-[10px] text-slate-300">{safeToSpend.daysUntilPayday}d to payday</p>}
+              </div>
+            </div>
+
+            {/* Expand breakdown */}
+            <button
+              onClick={() => setShowSafeBreakdown(!showSafeBreakdown)}
+              className="flex items-center gap-1 mt-3 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              {showSafeBreakdown ? 'Hide' : 'How is this calculated?'}
+              <ChevronDown className={`w-3 h-3 transition-transform ${showSafeBreakdown ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
 
           {showSafeBreakdown && (
             <div className="px-5 pb-4 border-t border-slate-100 pt-3 space-y-2">

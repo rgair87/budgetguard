@@ -223,6 +223,45 @@ export default function Budgets() {
         </div>
       )}
 
+      {/* Rebalancing suggestion */}
+      {(() => {
+        const overCategories = budgets.filter(b => {
+          const bv = edits[b.category] || 0;
+          return bv > 0 && b.currentSpend > bv;
+        });
+        const underCategories = budgets.filter(b => {
+          const bv = edits[b.category] || 0;
+          return bv > 0 && b.currentSpend < bv * 0.5 && new Date().getDate() > 15;
+        });
+        if (overCategories.length === 0 || underCategories.length === 0) return null;
+        const over = overCategories[0];
+        const under = underCategories[0];
+        const overAmount = Math.round(over.currentSpend - (edits[over.category] || 0));
+        return (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-sm font-medium text-amber-900">
+              You're ${overAmount} over on {over.category}.
+            </p>
+            <p className="text-xs text-amber-700 mt-1">
+              {under.category} is only {Math.round((under.currentSpend / (edits[under.category] || 1)) * 100)}% used. Move ${overAmount} from {under.category} to cover it?
+            </p>
+            <button
+              onClick={() => {
+                const newEdits = { ...edits };
+                newEdits[over.category] = (edits[over.category] || 0) + overAmount;
+                newEdits[under.category] = Math.max(0, (edits[under.category] || 0) - overAmount);
+                for (const [k, v] of Object.entries(newEdits)) {
+                  setEditValue(k, String(v));
+                }
+              }}
+              className="mt-2 text-xs font-medium text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Rebalance budgets
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Category cards - grouped by needs vs wants */}
       {[
         { label: 'Essentials', filter: (b: BudgetWithSuggestion) => BUDGETABLE_CATEGORIES.find(c => c.name === b.category)?.type === 'necessity' },
@@ -305,6 +344,10 @@ export default function Budgets() {
                 {isOver ? (
                   <span className="text-[11px] font-semibold text-red-600 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> ${Math.round(b.currentSpend - budgetVal).toLocaleString()} over
+                  </span>
+                ) : budgetVal > 0 && pctUsed >= 70 && new Date().getDate() < 20 ? (
+                  <span className="text-[11px] font-medium text-amber-600">
+                    {pctUsed}% used, {30 - new Date().getDate()}d left
                   </span>
                 ) : budgetVal > 0 ? (
                   <span className="text-[11px] text-slate-400">{pctUsed}% used</span>

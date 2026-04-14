@@ -249,7 +249,8 @@ export default function DebtPayoff() {
   const track = useTrack('debt_payoff');
   const [plan, setPlan] = useState<DebtPlan | null>(null);
   const [loading, setLoading] = useState(true);
-  const [extraPayment, setExtraPayment] = useState(100);
+  const urlExtra = new URLSearchParams(window.location.search).get('extra');
+  const [extraPayment, setExtraPayment] = useState(urlExtra ? parseInt(urlExtra) : 100);
   const [showComparison, setShowComparison] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ balance: string; rate: string; minPay: string }>({ balance: '', rate: '', minPay: '' });
