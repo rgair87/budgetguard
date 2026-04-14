@@ -83,13 +83,13 @@ export function getDashboardCharts(userId: string): DashboardData {
     GROUP BY strftime('%Y-%m', date)
   `).all(userId) as { month: string; total: number }[];
 
-  // Expenses: negative transactions excluding transfers/debt payments
+  // Expenses: ALL negative transactions except internal transfers
   const monthlyExpenses = db.prepare(`
     SELECT strftime('%Y-%m', date) as month, SUM(ABS(amount)) as total
     FROM transactions
     WHERE user_id = ? AND amount < 0 AND date >= date('now', '-6 months')
-      AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
-      ${SPEND_EXCLUSION_MERCHANTS}
+      AND COALESCE(category, '') NOT IN ('Transfers', 'Transfer')
+      AND LOWER(COALESCE(merchant_name, '')) NOT LIKE '%transfer%'
     GROUP BY strftime('%Y-%m', date)
   `).all(userId) as { month: string; total: number }[];
 
