@@ -142,50 +142,52 @@ export function getCalendarMonth(userId: string, month: string): CalendarMonth {
   // This catches everything: bills, subscriptions, loan payments, regular purchases —
   // anything that happened on similar days in prior months.
 
-  // Get all negative transactions grouped by merchant + day-of-month from last 3 complete months
+  // Get ONLY confirmed recurring transactions (is_recurring = 1) that appear in 2+ distinct months
+  // This prevents one-time purchases (coffee, restaurants) from being projected as bills
   const projectedBills = db.prepare(
     `SELECT merchant_name,
             CAST(strftime('%d', date) AS INTEGER) as day_of_month,
             ROUND(AVG(ABS(amount)), 2) as avg_amount,
-            COUNT(*) as months_seen,
+            COUNT(DISTINCT strftime('%Y-%m', date)) as unique_months,
             MAX(date) as last_seen,
             category
      FROM transactions
      WHERE user_id = ? AND amount < 0
+       AND is_recurring = 1
+       AND ABS(amount) >= 5
        AND merchant_name IS NOT NULL AND merchant_name != ''
        AND date >= date('now', 'start of month', '-3 months')
        AND date < date('now', 'start of month')
-       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
-       ${SPEND_EXCLUSION_MERCHANTS}
      GROUP BY LOWER(merchant_name), CAST(strftime('%d', date) AS INTEGER)
-     HAVING months_seen >= 2
+     HAVING unique_months >= 2
      ORDER BY avg_amount DESC`
   ).all(userId) as unknown as {
     merchant_name: string;
     day_of_month: number;
     avg_amount: number;
-    months_seen: number;
+    unique_months: number;
     last_seen: string;
     category: string | null;
   }[];
 
-  // Also get recurring-flagged bills that might not have 2+ months on the same day
+  // Fallback: recurring-flagged bills on varying days (picks most common day)
   const recurringBills = db.prepare(
     `SELECT merchant_name,
             ROUND(AVG(ABS(amount)), 2) as avg_amount,
             GROUP_CONCAT(DISTINCT CAST(strftime('%d', date) AS INTEGER)) as days_of_month,
-            COUNT(*) as occurrences
+            COUNT(DISTINCT strftime('%Y-%m', date)) as unique_months
      FROM transactions
      WHERE user_id = ? AND amount < 0 AND is_recurring = 1
+       AND ABS(amount) >= 5
        AND date >= date('now', '-90 days')
        AND merchant_name IS NOT NULL
      GROUP BY LOWER(merchant_name)
-     HAVING occurrences >= 2`
+     HAVING unique_months >= 2`
   ).all(userId) as unknown as {
     merchant_name: string;
     avg_amount: number;
     days_of_month: string;
-    occurrences: number;
+    unique_months: number;
   }[];
 
   // Track which merchants we've already projected (avoid duplicates)
