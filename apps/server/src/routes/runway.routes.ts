@@ -9,11 +9,13 @@ import { getCached, setCache, invalidateCache } from '../utils/cache';
 import { getMonthlyIncome } from '../services/income.service';
 import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from '../services/runway.service';
 import db from '../config/db';
+import { getEffectiveUserId } from '../utils/family';
 
 const router = Router();
 
 router.get('/', authenticate, (req: AuthRequest, res: Response) => {
-  const key = `runway:${req.userId}`;
+  const effectiveId = getEffectiveUserId(req.userId!);
+  const key = `runway:${effectiveId}`;
   const cached = getCached(key);
 
   // Always include fresh streak (not cached)
@@ -22,7 +24,7 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
 
   if (cached) return res.json({ ...cached, streak });
 
-  const score = calculateRunway(req.userId!);
+  const score = calculateRunway(effectiveId);
   setCache(key, score, 60);
   res.json({ ...score, streak });
 });
@@ -31,7 +33,7 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
 router.get('/dashboard-charts', authenticate, (req: AuthRequest, res: Response) => {
   try {
     const { getDashboardCharts } = require('../services/dashboard.service');
-    const data = getDashboardCharts(req.userId!);
+    const data = getDashboardCharts(getEffectiveUserId(req.userId!));
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: 'server_error', message: 'Failed to load dashboard charts' });
@@ -42,7 +44,7 @@ router.get('/dashboard-charts', authenticate, (req: AuthRequest, res: Response) 
 router.get('/daily-action', authenticate, (req: AuthRequest, res: Response) => {
   try {
     const { getDailyAction } = require('../services/actions.service');
-    const action = getDailyAction(req.userId!);
+    const action = getDailyAction(getEffectiveUserId(req.userId!));
     res.json({ action });
   } catch {
     res.json({ action: null });

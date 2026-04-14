@@ -7,6 +7,7 @@ import db from '../config/db';
 import logger from '../config/logger';
 import { guessCategoryFromMerchant, normalizeMerchantKey } from '../services/csv.service';
 import { cleanMerchantName } from '../services/merchant-utils';
+import { getEffectiveUserId } from '../utils/family';
 import { classifyMerchantsWithAI } from '../services/ai-categorize.service';
 import { SPEND_EXCLUSION_CATEGORIES, SPEND_EXCLUSION_MERCHANTS } from '../services/runway.service';
 
@@ -14,7 +15,7 @@ const router = Router();
 
 // GET /transactions — with search, filtering, pagination
 router.get('/', authenticate, (req: TieredRequest, res: Response) => {
-  const userId = req.userId!;
+  const userId = getEffectiveUserId(req.userId!);
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
   const offset = parseInt(req.query.offset as string) || 0;
   const search = (req.query.search as string || '').trim();

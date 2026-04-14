@@ -2,11 +2,12 @@ import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth';
 import { attachTier, TieredRequest } from '../middleware/tier';
 import db from '../config/db';
+import { getEffectiveUserId } from '../utils/family';
 
 const router = Router();
 
 router.get('/', authenticate, attachTier, (req: TieredRequest, res: Response) => {
-  const userId = req.userId!;
+  const userId = getEffectiveUserId(req.userId!);
   const rows = db.prepare(
     'SELECT id, name, type, current_balance, available_balance, plaid_account_id, teller_account_id, institution_name, last_synced_at FROM accounts WHERE user_id = ? ORDER BY institution_name, type, name'
   ).all(userId) as any[];
