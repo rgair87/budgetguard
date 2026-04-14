@@ -203,14 +203,14 @@ export default function Calendar() {
       </div>
 
       {/* Split view: Calendar grid + Detail panel */}
-      <div className="flex gap-4 flex-col lg:flex-row">
-        {/* Left: Mini calendar grid */}
-        <div className="lg:w-[340px] shrink-0">
+      <div className="flex gap-5 flex-col lg:flex-row">
+        {/* Left: Calendar grid */}
+        <div className="lg:flex-1">
           <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
             {/* Day headers */}
-            <div className="grid grid-cols-7">
+            <div className="grid grid-cols-7 border-b border-slate-100">
               {DAY_NAMES.map((d, i) => (
-                <div key={i} className="text-center text-[10px] font-semibold text-slate-400 py-2 uppercase">{d}</div>
+                <div key={i} className="text-center text-[11px] font-semibold text-slate-400 py-3 uppercase tracking-wider">{d}</div>
               ))}
             </div>
 
@@ -218,7 +218,7 @@ export default function Calendar() {
             <div className="grid grid-cols-7">
               {/* Leading empty cells */}
               {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                <div key={`e-${i}`} className="h-12 border-t border-slate-50" />
+                <div key={`e-${i}`} className="h-[72px] border-b border-r border-slate-50/80" />
               ))}
 
               {displayDays.map((day, idx) => {
@@ -231,30 +231,31 @@ export default function Calendar() {
                   <button
                     key={day.date}
                     onClick={() => { setSelectedDay(day); setWhatIfAmount(''); setShowAddForm(false); }}
-                    className={`relative h-12 flex flex-col items-center justify-center border-t border-slate-50 transition-all duration-150
-                      ${day.isPast ? 'opacity-30' : ''}
-                      ${isSelected ? 'ring-2 ring-inset ring-indigo-500 bg-indigo-50/50 shadow-sm shadow-indigo-500/10' : 'hover:bg-slate-50/80'}
-                      ${isDanger && !day.isPast ? 'bg-red-50/40' : ''}
+                    className={`relative h-[72px] p-1.5 border-b border-r border-slate-50/80 text-left transition-all duration-150
+                      ${day.isPast ? 'opacity-25' : ''}
+                      ${isSelected ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : 'hover:bg-slate-50'}
+                      ${isNegative && !day.isPast ? 'bg-red-50/60' : isDanger && !day.isPast ? 'bg-amber-50/40' : ''}
                     `}
                   >
                     {/* Day number */}
-                    <span className={`text-xs font-semibold ${
-                      day.isToday ? 'bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]'
-                      : isSelected ? 'text-indigo-600' : 'text-slate-700'
+                    <span className={`text-[11px] font-semibold block ${
+                      day.isToday ? 'bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] mx-auto'
+                      : isSelected ? 'text-indigo-600' : 'text-slate-600'
                     }`}>{dayNum}</span>
 
-                    {/* Status dot */}
+                    {/* Icons row */}
                     {!day.isPast && (
-                      <div className="flex items-center gap-0.5 mt-0.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          isNegative ? 'bg-red-500 animate-pulse' :
-                          isDanger ? 'bg-red-400' :
-                          day.projectedBalance < 1000 ? 'bg-amber-400' :
-                          'bg-emerald-400'
-                        }`} />
-                        {day.isPayday && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                        {day.events.length > 0 && <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />}
+                      <div className="flex items-center gap-1 mt-1 justify-center">
+                        {day.isPayday && <span className="text-[10px]" title="Payday">💰</span>}
+                        {day.events.length > 0 && <span className="text-[10px]" title={`${day.events.length} bill${day.events.length > 1 ? 's' : ''}`}>📄</span>}
+                        {isNegative && <span className="text-[10px]" title="Negative balance">🔴</span>}
+                        {!isNegative && isDanger && <span className="text-[10px]" title="Low balance">⚠️</span>}
                       </div>
+                    )}
+
+                    {/* Balance preview */}
+                    {!day.isPast && !isNegative && !isDanger && day.events.length === 0 && !day.isPayday && (
+                      <p className="text-[9px] text-slate-300 text-center mt-1">${(day.projectedBalance / 1000).toFixed(0)}k</p>
                     )}
                   </button>
                 );
@@ -265,24 +266,23 @@ export default function Calendar() {
                 const total = firstDayOfWeek + daysInMonth;
                 const trail = total % 7 === 0 ? 0 : 7 - (total % 7);
                 return Array.from({ length: trail }).map((_, i) => (
-                  <div key={`t-${i}`} className="h-12 border-t border-slate-50" />
+                  <div key={`t-${i}`} className="h-[72px] border-b border-r border-slate-50/80" />
                 ));
               })()}
             </div>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-4 py-2 border-t border-slate-100">
-              <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Good</span>
-              <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Watch</span>
-              <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />Low</span>
-              <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Pay</span>
-              <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-1.5 h-1.5 rounded-full bg-orange-400" />Bill</span>
+            <div className="flex items-center justify-center gap-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
+              <span className="flex items-center gap-1 text-[10px] text-slate-400">💰 Payday</span>
+              <span className="flex items-center gap-1 text-[10px] text-slate-400">📄 Bills</span>
+              <span className="flex items-center gap-1 text-[10px] text-slate-400">⚠️ Watch</span>
+              <span className="flex items-center gap-1 text-[10px] text-slate-400">🔴 Low</span>
             </div>
           </div>
         </div>
 
         {/* Right: Day detail panel */}
-        <div className="flex-1 min-w-0 max-w-xl">
+        <div className="lg:w-[380px] shrink-0">
           {selectedDay ? (
             <div className="bg-white rounded-2xl border border-slate-200/60 shadow-lg p-5 space-y-5">
               {/* Date header */}
