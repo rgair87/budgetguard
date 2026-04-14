@@ -234,9 +234,15 @@ export default function Budgets() {
         const groupBudgeted = groupBudgets.reduce((s, b) => s + (edits[b.category] || 0), 0);
         return (
         <div key={group.label}>
-          <div className="flex items-center justify-between mb-2 px-1">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{group.label}</p>
-            <p className="text-xs text-slate-400">${groupSpent.toLocaleString()} of ${groupBudgeted.toLocaleString()}</p>
+          <div className="flex items-center justify-between mb-3 mt-2">
+            <div className="flex items-center gap-2">
+              <div className={`w-1 h-5 rounded-full ${group.label === 'Essentials' ? 'bg-blue-500' : 'bg-violet-500'}`} />
+              <p className="text-sm font-semibold text-slate-800">{group.label}</p>
+              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                {groupBudgets.length} {groupBudgets.length === 1 ? 'category' : 'categories'}
+              </span>
+            </div>
+            <p className="text-xs font-medium text-slate-500">${groupSpent.toLocaleString()} of ${groupBudgeted.toLocaleString()}</p>
           </div>
           <div className="space-y-2">
         {groupBudgets.map(b => {
@@ -289,7 +295,7 @@ export default function Budgets() {
                   </p>
                   {b.currentSpend > 0 && (
                     <Link
-                      to={`/transactions?search=${encodeURIComponent(b.category)}`}
+                      to={`/transactions?category=${encodeURIComponent(b.category)}&dateFrom=this_month&spendingOnly=true`}
                       className="text-[11px] text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-0.5 transition-colors"
                     >
                       <Receipt className="w-3 h-3" /> View

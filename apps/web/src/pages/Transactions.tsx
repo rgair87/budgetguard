@@ -41,7 +41,7 @@ export default function Transactions() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') || '');
   const [dateFrom, setDateFrom] = useState(() => {
     const param = searchParams.get('dateFrom');
     return param === 'this_month' ? getMonthStart() : (param || '');
@@ -288,71 +288,75 @@ export default function Transactions() {
       )}
 
       {/* Search & filters */}
-      <div className="flex gap-2">
-        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-          <input
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            placeholder="Search merchants or categories..."
-            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button type="submit" className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-lg">
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 space-y-3">
+        {/* Search row */}
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="flex-1 relative">
+            <input
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder="Search by merchant, category, or description..."
+              className="w-full text-sm border border-slate-200 rounded-xl px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all bg-slate-50 focus:bg-white"
+            />
+            <svg className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+          <button type="submit" className="text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl transition-colors">
             Search
           </button>
         </form>
-        <select
-          value={categoryFilter}
-          onChange={e => { setCategoryFilter(e.target.value); setOffset(0); }}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2"
-        >
-          <option value="">All categories</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <button
-          onClick={() => { setSpendingOnly(!spendingOnly); setOffset(0); }}
-          className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
-            spendingOnly
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-medium'
-              : 'border-gray-300 text-gray-500 hover:bg-gray-50'
-          }`}
-        >
-          {spendingOnly ? 'Spending only' : 'All txns'}
-        </button>
-        <button
-          onClick={() => { setCategoryFilter(categoryFilter === 'Uncategorized' ? '' : 'Uncategorized'); setOffset(0); }}
-          className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
-            categoryFilter === 'Uncategorized'
-              ? 'bg-amber-50 border-amber-300 text-amber-700 font-medium'
-              : 'border-gray-300 text-gray-500 hover:bg-gray-50'
-          }`}
-        >
-          Uncategorized
-        </button>
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-gray-400">$</span>
-          <input
-            type="number"
-            placeholder="Min"
-            value={amountMin}
-            onChange={e => { setAmountMin(e.target.value); setOffset(0); }}
-            className="w-16 text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-600"
-          />
-          <span className="text-[10px] text-gray-300">-</span>
-          <input
-            type="number"
-            placeholder="Max"
-            value={amountMax}
-            onChange={e => { setAmountMax(e.target.value); setOffset(0); }}
-            className="w-16 text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-600"
+
+        {/* Filter chips row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={categoryFilter}
+            onChange={e => { setCategoryFilter(e.target.value); setOffset(0); }}
+            className="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
+          >
+            <option value="">All categories</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button
+            onClick={() => { setSpendingOnly(!spendingOnly); setOffset(0); }}
+            className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+              spendingOnly
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-medium'
+                : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            {spendingOnly ? 'Spending only' : 'All transactions'}
+          </button>
+          <button
+            onClick={() => { setCategoryFilter(categoryFilter === 'Uncategorized' ? '' : 'Uncategorized'); setOffset(0); }}
+            className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+              categoryFilter === 'Uncategorized'
+                ? 'bg-amber-50 border-amber-200 text-amber-700 font-medium'
+                : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            Needs review
+          </button>
+          <div className="flex items-center gap-1 ml-auto">
+            <span className="text-[10px] text-slate-400">Amount:</span>
+            <input
+              type="number" placeholder="Min" value={amountMin}
+              onChange={e => { setAmountMin(e.target.value); setOffset(0); }}
+              className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-2 text-slate-600 bg-white"
+            />
+            <span className="text-[10px] text-slate-300">to</span>
+            <input
+              type="number" placeholder="Max" value={amountMax}
+              onChange={e => { setAmountMax(e.target.value); setOffset(0); }}
+              className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-2 text-slate-600 bg-white"
           />
         </div>
-        <select value={sort} onChange={e => { setSort(e.target.value); setOffset(0); }}
-          className="text-xs border border-gray-300 rounded-lg px-2 py-2 text-gray-500">
-          <option value="date_desc">Newest first</option>
-          <option value="date_asc">Oldest first</option>
-          <option value="amount_desc">Largest first</option>
-          <option value="amount_asc">Smallest first</option>
-        </select>
+          <select value={sort} onChange={e => { setSort(e.target.value); setOffset(0); }}
+            className="text-xs border border-slate-200 rounded-lg px-2 py-2 text-slate-500 bg-white">
+            <option value="date_desc">Newest first</option>
+            <option value="date_asc">Oldest first</option>
+            <option value="amount_desc">Largest first</option>
+            <option value="amount_asc">Smallest first</option>
+          </select>
+        </div>
       </div>
 
       {(search || dateFrom || spendingOnly) && (

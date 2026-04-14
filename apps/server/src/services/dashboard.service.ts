@@ -75,22 +75,32 @@ export function getDashboardCharts(userId: string): DashboardData {
   }
 
   // 2. Monthly income vs expenses (6 months)
-  const monthlyData = db.prepare(`
-    SELECT strftime('%Y-%m', date) as month,
-           SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as income,
-           SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END) as expenses
+  // Income: ALL positive transactions >= $200 (excludes small refunds)
+  const monthlyIncome = db.prepare(`
+    SELECT strftime('%Y-%m', date) as month, SUM(amount) as total
     FROM transactions
-    WHERE user_id = ? AND date >= date('now', '-6 months')
+    WHERE user_id = ? AND amount >= 200 AND date >= date('now', '-6 months')
+    GROUP BY strftime('%Y-%m', date)
+  `).all(userId) as { month: string; total: number }[];
+
+  // Expenses: negative transactions excluding transfers/debt payments
+  const monthlyExpenses = db.prepare(`
+    SELECT strftime('%Y-%m', date) as month, SUM(ABS(amount)) as total
+    FROM transactions
+    WHERE user_id = ? AND amount < 0 AND date >= date('now', '-6 months')
       AND COALESCE(category, '') NOT IN ${SPEND_EXCLUSION_CATEGORIES}
       ${SPEND_EXCLUSION_MERCHANTS}
     GROUP BY strftime('%Y-%m', date)
-    ORDER BY month
-  `).all(userId) as { month: string; income: number; expenses: number }[];
+  `).all(userId) as { month: string; total: number }[];
 
-  const monthlyComparison = monthlyData.map(m => ({
-    month: m.month,
-    income: rc(m.income),
-    expenses: rc(m.expenses),
+  const incomeMap = new Map(monthlyIncome.map(m => [m.month, m.total]));
+  const expenseMap = new Map(monthlyExpenses.map(m => [m.month, m.total]));
+  const allMonths = [...new Set([...incomeMap.keys(), ...expenseMap.keys()])].sort();
+
+  const monthlyComparison = allMonths.map(month => ({
+    month,
+    income: rc(incomeMap.get(month) || 0),
+    expenses: rc(expenseMap.get(month) || 0),
   }));
 
   // 3. Runway trend from snapshots
