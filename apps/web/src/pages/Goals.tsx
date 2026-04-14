@@ -314,6 +314,23 @@ export default function Goals() {
             />
           </div>
 
+          {/* Cash flow impact preview */}
+          {form.target_amount && form.deadline && (() => {
+            const target = parseFloat(form.target_amount) - (parseFloat(form.current_amount) || 0);
+            const daysLeft = Math.max(1, Math.ceil((new Date(form.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+            const monthsLeft = Math.max(1, daysLeft / 30);
+            const monthlyNeeded = Math.round(target / monthsLeft);
+            const dailyImpact = Math.round(monthlyNeeded / 30);
+            if (monthlyNeeded > 0) return (
+              <div className="bg-indigo-50 border border-indigo-200/60 rounded-xl p-3 text-xs text-indigo-800">
+                <p className="font-medium">To reach this by {new Date(form.deadline).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}:</p>
+                <p className="mt-1">Save <span className="font-bold">${monthlyNeeded.toLocaleString()}/mo</span> ({monthsLeft.toFixed(0)} months)</p>
+                <p className="text-indigo-600">This reduces your safe-to-spend by ~${dailyImpact}/day</p>
+              </div>
+            );
+            return null;
+          })()}
+
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowAdd(false)} className="text-sm text-slate-500 px-4 py-2 rounded-xl hover:bg-slate-100 transition">Cancel</button>
             <button

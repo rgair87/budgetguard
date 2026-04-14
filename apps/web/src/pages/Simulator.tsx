@@ -26,6 +26,7 @@ interface RunwayData {
   remainingBudget: number;
   amount: string;
   daysToPayday: number;
+  cuttableMerchants?: { name: string; monthlyAmount: number; category: string }[];
 }
 
 type ScenarioKind = 'one-time-expense' | 'monthly-expense' | 'monthly-income';
@@ -234,6 +235,34 @@ export default function Simulator() {
           <span>${currentBalance.toLocaleString()} available</span>
         </div>
       </div>
+
+      {/* ── Suggested Scenarios ── */}
+      {runway && runway.cuttableMerchants && runway.cuttableMerchants.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Suggested for you</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {runway.cuttableMerchants.slice(0, 4).map(m => (
+              <button
+                key={m.name}
+                onClick={() => {
+                  setScenarios(prev => [...prev, {
+                    id: `suggested-${m.name}`,
+                    title: `Cut ${m.name}`,
+                    amount: m.monthlyAmount,
+                    kind: 'monthly-income' as ScenarioKind,
+                    templateKey: 'suggested',
+                    icon: <Scissors className="w-4 h-4" />,
+                  }]);
+                }}
+                className="flex items-center gap-2 bg-emerald-50 border border-emerald-200/60 rounded-xl px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors whitespace-nowrap shrink-0"
+              >
+                <Scissors className="w-3 h-3" />
+                Cut {m.name} (${Math.round(m.monthlyAmount)}/mo)
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Scenario Builder ── */}
       <div>

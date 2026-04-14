@@ -4,6 +4,9 @@ const US_STATES = new Set(['TX','WA','CA','NY','FL','IL','PA','OH','GA','NC','MI
 
 export function cleanMerchantName(raw: string): string {
   return raw
+    // Strip bank-specific prefixes
+    .replace(/^Orig Co Name:\s*/i, '')
+    .replace(/^(Orig|Original)\s*(Co|Company)\s*(Name|Nm):?\s*/i, '')
     // Strip transaction type prefixes
     .replace(/\s*(DEBIT CARD PURCHASE|DEBIT CARD CREDIT|RECURRING DEBIT CARD|POS DEBIT|POS PURCHASE|CHECKCARD|CHECK CARD|PURCHASE AUTHORIZED ON \d{2}\/\d{2})\s*/gi, '')
     .replace(/\s*(ACH WEB-?RECUR?|ACH WEB|ACH DEBIT|ACH CREDIT|ACH TEL|ACH DR|PPD ID:?\s*\S+|WEB ID:?\s*\S+)\s*/gi, '')
@@ -84,6 +87,7 @@ const MERCHANT_ALIASES: [RegExp, string][] = [
   [/^oil\s*ranch/i, 'Oil Ranch'],
   [/^hctra/i, 'HCTRA Toll'],
   [/^discover/i, 'Discover'],
+  [/^bank\s*of\s*a/i, 'Bank of America'],
   [/^bank\s*of\s*america/i, 'Bank of America'],
   [/^wells?\s*fargo/i, 'Wells Fargo'],
   [/^usaa/i, 'USAA'],

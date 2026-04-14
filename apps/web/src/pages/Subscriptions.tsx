@@ -110,6 +110,17 @@ function ActionMenu({ sub, onDismiss, onReclassify }: {
   );
 }
 
+function calcRunwayGain(monthlySavings: number, balance: number, burnRate: number, dailyIncome: number): number {
+  if (burnRate <= 0 || monthlySavings <= 0) return 0;
+  const netBurn = burnRate - dailyIncome;
+  if (netBurn <= 0) return 999;
+  const currentDays = balance / netBurn;
+  const cutPerDay = monthlySavings / 30;
+  const newNetBurn = Math.max(0.1, netBurn - cutPerDay);
+  const newDays = balance / newNetBurn;
+  return Math.round(Math.max(0, Math.min(newDays - currentDays, 730)));
+}
+
 export default function Subscriptions() {
   const track = useTrack('subscriptions');
   const [subs, setSubs] = useState<Subscription[]>([]);
@@ -119,6 +130,7 @@ export default function Subscriptions() {
   const [dismissed, setDismissed] = useState<{ name: string; sub: Subscription } | null>(null);
   const [acting, setActing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [runway, setRunway] = useState<{ dailyBurnRate: number; spendableBalance: number; monthlyIncome: number } | null>(null);
 
   const loadSubs = () => {
     setLoading(true);
@@ -127,7 +139,10 @@ export default function Subscriptions() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadSubs(); }, []);
+  useEffect(() => {
+    loadSubs();
+    api.get('/runway').then(r => setRunway({ dailyBurnRate: r.data.dailyBurnRate, spendableBalance: r.data.spendableBalance, monthlyIncome: r.data.monthlyIncome })).catch(() => {});
+  }, []);
 
   const handleDismiss = async (name: string) => {
     const sub = subs.find(s => s.name === name);
@@ -224,8 +239,8 @@ export default function Subscriptions() {
           <p className="text-xs text-gray-400 mt-0.5">/month</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Lifetime spent</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(totalLifetime)}</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Annual cost</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(totalMonthly * 12)}</p>
           <p className="text-xs text-gray-400 mt-0.5">all time</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -319,6 +334,12 @@ export default function Subscriptions() {
                     {sub.minAmount !== sub.maxAmount && (
                       <p className="text-[10px] text-slate-400">{formatMoney(sub.minAmount)}-{formatMoney(sub.maxAmount)}</p>
                     )}
+                    {runway && sub.isActive && sub.monthlyAmount >= 10 && (() => {
+                      const days = calcRunwayGain(sub.monthlyAmount, runway.spendableBalance, runway.dailyBurnRate, runway.monthlyIncome / 30);
+                      return days > 0 ? (
+                        <p className="text-[10px] text-emerald-600 font-medium">Cancel = +{days} days runway</p>
+                      ) : null;
+                    })()}
                   </div>
                   <ActionMenu
                     sub={sub}
