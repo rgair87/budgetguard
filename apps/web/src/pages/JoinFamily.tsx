@@ -1,37 +1,46 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { TrendingUp, CheckCircle, XCircle } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 export default function JoinFamily() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
-  const { token: authToken } = useAuth();
+  const navigate = useNavigate();
+  const token = searchParams.get('token') || localStorage.getItem('pending_family_token');
+  const { token: authToken, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'login_required'>('loading');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!token) {
       setStatus('error');
       setMessage('Invalid invite link. No token found.');
       return;
     }
+
     if (!authToken) {
+      // Save the token so it survives login/register
+      localStorage.setItem('pending_family_token', token);
       setStatus('login_required');
       return;
     }
 
+    // Logged in — accept the invite
     api.post('/family/accept', { token })
       .then(r => {
+        localStorage.removeItem('pending_family_token');
         setStatus('success');
         setMessage(r.data.message || 'You have joined the family plan!');
       })
       .catch(err => {
+        localStorage.removeItem('pending_family_token');
         setStatus('error');
         setMessage(err.response?.data?.message || 'This invite may have expired or already been used.');
       });
-  }, [token, authToken]);
+  }, [token, authToken, authLoading]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -52,10 +61,10 @@ export default function JoinFamily() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-2">Sign in to join</h2>
             <p className="text-sm text-slate-500 mb-4">
-              You need a Spenditure account to join a family plan. Sign in or create one, then click the invite link again.
+              Create a free account and you'll automatically join the family plan.
             </p>
             <Link
-              to={`/login?register=true`}
+              to="/login?register=true"
               className="inline-flex items-center gap-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-lg transition-colors"
             >
               Create account

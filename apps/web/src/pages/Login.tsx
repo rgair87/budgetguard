@@ -53,13 +53,14 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
+      const pendingFamily = localStorage.getItem('pending_family_token');
       if (isRegister) {
         await register(email, password);
         setRegistered(true);
-        navigate('/onboarding');
+        navigate(pendingFamily ? '/join-family' : '/onboarding');
       } else {
         await login(email, password);
-        navigate('/');
+        navigate(pendingFamily ? '/join-family' : '/');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Something went wrong');
