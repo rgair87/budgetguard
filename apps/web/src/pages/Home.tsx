@@ -641,13 +641,13 @@ export default function Home() {
                     formatter={(value: any, name: any) => [`$${Number(value).toLocaleString()}`, name === 'income' ? 'Income' : 'Expenses']}
                     contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
                   />
-                  <Bar dataKey="income" fill="#059669" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="income" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               <div className="flex items-center justify-center gap-4 mt-2">
-                <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-sm bg-emerald-600" />Income</span>
-                <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-sm bg-red-500" />Expenses</span>
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-sm bg-teal-600" />Income</span>
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-sm bg-indigo-500" />Expenses</span>
               </div>
             </div>
           )}
