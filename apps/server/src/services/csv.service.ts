@@ -1136,8 +1136,8 @@ export function getSubscriptionLifetime(userId: string): SubscriptionSummary[] {
   const results: SubscriptionSummary[] = [];
 
   for (const [key, data] of byMerchant) {
-    // Need at least 2 payments to be "recurring"
-    if (data.amounts.length < 2) continue;
+    // Need at least 3 payments to be "recurring" (reduces false positives)
+    if (data.amounts.length < 3) continue;
 
     const lower = data.raw.toLowerCase();
     const cat = (data.bankCategory || '').toLowerCase().trim();

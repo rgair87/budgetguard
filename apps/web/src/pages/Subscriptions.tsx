@@ -118,6 +118,7 @@ export default function Subscriptions() {
   const [showInactive, setShowInactive] = useState(false);
   const [dismissed, setDismissed] = useState<{ name: string; sub: Subscription } | null>(null);
   const [acting, setActing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadSubs = () => {
     setLoading(true);
@@ -172,6 +173,7 @@ export default function Subscriptions() {
   const filtered = subs.filter(s => {
     if (filter !== 'all' && s.category !== filter) return false;
     if (!showInactive && !s.isActive) return false;
+    if (searchTerm && !s.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   }).sort((a, b) => b.monthlyAmount - a.monthlyAmount);
 
@@ -256,8 +258,15 @@ export default function Subscriptions() {
              `Debt (${debtCount})`}
           </button>
         ))}
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Search..."
+          className="text-xs border border-slate-200 rounded-lg px-3 py-2 w-32 ml-auto"
+        />
         {inactiveCount > 0 && (
-          <label className="flex items-center gap-1.5 text-sm text-gray-500 ml-2 cursor-pointer">
+          <label className="flex items-center gap-1.5 text-sm text-gray-500 cursor-pointer">
             <input
               type="checkbox"
               checked={showInactive}
@@ -286,48 +295,29 @@ export default function Subscriptions() {
           return (
             <div
               key={i}
-              className={`rounded-lg border p-4 ${sub.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100 opacity-70'}`}
+              className={`rounded-2xl border p-4 ${sub.isActive ? 'bg-white border-slate-200/60 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-60'}`}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Link
-                      to={`/transactions?search=${encodeURIComponent(sub.name)}`}
-                      className={`font-medium hover:text-indigo-600 hover:underline transition-colors ${sub.isActive ? 'text-gray-900' : 'text-gray-500 line-through'}`}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {sub.name}
-                    </Link>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${colors.badge}`}>
-                      {CATEGORY_LABELS[sub.category]?.replace(/s$/, '') || sub.category}
-                    </span>
-                    {!sub.isActive && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
-                        Cancelled
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 flex-wrap">
-                    <span>{sub.frequency}</span>
-                    <span>{sub.totalPayments} payment{sub.totalPayments !== 1 ? 's' : ''}</span>
-                    <span>Since {formatDate(sub.firstPaymentDate)}</span>
-                    {sub.monthsActive > 1 && <span>{sub.monthsActive} months</span>}
-                  </div>
+                  <Link
+                    to={`/transactions?search=${encodeURIComponent(sub.name)}`}
+                    className={`text-sm font-medium hover:text-indigo-600 transition-colors block ${sub.isActive ? 'text-slate-900' : 'text-slate-500 line-through'}`}
+                    title={sub.name}
+                  >
+                    {sub.name}
+                  </Link>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {sub.frequency}{!sub.isActive ? ' (cancelled)' : ''}
+                    {sub.monthsActive > 1 ? ` for ${sub.monthsActive} mo` : ''}
+                  </p>
                 </div>
-                <div className="flex items-start gap-2 shrink-0">
+                <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
-                    <p className={`text-lg font-semibold ${sub.isActive ? 'text-gray-900' : 'text-gray-400'}`}>
-                      {formatMoney(sub.monthlyAmount)}
-                      <span className="text-xs font-normal text-gray-400">/mo</span>
+                    <p className={`text-base font-bold ${sub.isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                      {formatMoney(sub.monthlyAmount)}<span className="text-xs font-normal text-slate-400">/mo</span>
                     </p>
-                    {sub.minAmount !== sub.maxAmount ? (
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        avg {formatMoney(sub.avgAmount)} ({formatMoney(sub.minAmount)}-{formatMoney(sub.maxAmount)})
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        {formatMoney(sub.totalSpent)} total
-                      </p>
+                    {sub.minAmount !== sub.maxAmount && (
+                      <p className="text-[10px] text-slate-400">{formatMoney(sub.minAmount)}-{formatMoney(sub.maxAmount)}</p>
                     )}
                   </div>
                   <ActionMenu
