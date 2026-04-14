@@ -16,6 +16,7 @@ import {
   Receipt,
   Wallet,
   Settings,
+  HelpCircle,
   LayoutGrid,
   Lightbulb,
   ChevronRight,
@@ -25,6 +26,7 @@ import {
 import api from '../api/client';
 import ErrorBoundary from './ErrorBoundary';
 import ChatBubble from './ChatBubble';
+import GuidedTour from './GuidedTour';
 
 /* ------------------------------------------------------------------ */
 /*  Nav structure                                                      */
@@ -80,6 +82,7 @@ const NAV_GROUPS: Record<string, NavEntry> = {
     ],
   },
   settings: { label: 'Settings', icon: Settings, to: '/settings' },
+  help: { label: 'Help', icon: HelpCircle, to: '/help' },
 };
 
 function isGroup(entry: NavEntry): entry is NavGroup {
@@ -200,7 +203,20 @@ export default function Layout() {
       </nav>
 
       {/* Bottom user section */}
-      <div className="shrink-0 border-t border-white/[0.06] px-3 py-3">
+      <div className="shrink-0 border-t border-white/[0.06] px-3 py-3 space-y-0.5">
+        <NavLink
+          to="/help"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+              isActive
+                ? 'bg-indigo-500/15 text-indigo-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.06]'
+            }`
+          }
+        >
+          <HelpCircle className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+          <span>Help</span>
+        </NavLink>
         <NavLink
           to="/settings"
           className={({ isActive }) =>
@@ -351,6 +367,7 @@ export default function Layout() {
 
       {/* Floating chat bubble - hidden on the full /chat page */}
       {location.pathname !== '/chat' && <ChatBubble />}
+      <GuidedTour />
     </div>
   );
 }

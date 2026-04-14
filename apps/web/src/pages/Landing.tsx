@@ -138,6 +138,24 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Video walkthrough */}
+      <section className="border-b border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 text-center">
+          <p className="text-sm font-medium text-indigo-600 mb-3">See it in action</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-8">How Spenditure works</h2>
+          <div className="relative max-w-3xl mx-auto bg-slate-900 rounded-2xl overflow-hidden shadow-2xl aspect-video flex items-center justify-center">
+            {/* Replace this div with a real video embed: */}
+            {/* <iframe src="https://www.youtube.com/embed/YOUR_VIDEO_ID" ... /> */}
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+              <p className="text-sm text-slate-400">Video coming soon</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How it works */}
       <section className="border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20">

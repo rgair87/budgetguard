@@ -37,6 +37,7 @@ const Analytics = lazy(() => import('./pages/Analytics'));
 const Budgets = lazy(() => import('./pages/Budgets'));
 const BudgetWizard = lazy(() => import('./pages/BudgetWizard'));
 const JoinFamily = lazy(() => import('./pages/JoinFamily'));
+const Help = lazy(() => import('./pages/Help'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function LazyFallback() {
@@ -94,6 +95,7 @@ function AppRoutes() {
           <Route path="family" element={<Family />} />
           <Route path="settings" element={<Settings />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="help" element={<Help />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
