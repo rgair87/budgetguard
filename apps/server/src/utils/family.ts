@@ -11,7 +11,7 @@ export function getEffectiveUserId(userId: string): string {
   const membership = db.prepare(`
     SELECT f.owner_id FROM family_members fm
     JOIN families f ON f.id = fm.family_id
-    WHERE fm.user_id = ? AND fm.status = 'accepted' AND f.owner_id != ?
+    WHERE fm.user_id = ? AND fm.status = 'active' AND f.owner_id != ?
     LIMIT 1
   `).get(userId, userId) as { owner_id: string } | undefined;
 
