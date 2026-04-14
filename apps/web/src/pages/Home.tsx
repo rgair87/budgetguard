@@ -247,6 +247,13 @@ export default function Home() {
   const [streak, setStreak] = useState(0);
   const [needsReviewCount, setNeedsReviewCount] = useState(0);
   const [dailyAction, setDailyAction] = useState<{ title: string; body: string; link: string } | null>(null);
+  const [safeToSpend, setSafeToSpend] = useState<{
+    safeToSpend: number;
+    dailySafe: number;
+    daysUntilPayday: number | null;
+    breakdown: { availableCash: number; upcomingBills: number; debtPayments: number; savingsReserve: number; buffer: number };
+  } | null>(null);
+  const [showSafeBreakdown, setShowSafeBreakdown] = useState(false);
   const [charts, setCharts] = useState<{
     cashFlowTimeline: Array<{ date: string; balance: number; projected?: boolean }>;
     monthlyComparison: Array<{ month: string; income: number; expenses: number }>;
@@ -292,6 +299,7 @@ export default function Home() {
       api.get('/runway/needs-review').then((r) => setNeedsReviewCount(r.data.count || 0)).catch(() => {}),
       api.get('/runway/daily-action').then((r) => { if (r.data.action) setDailyAction(r.data.action); }).catch(() => {}),
       api.get('/runway/dashboard-charts').then((r) => setCharts(r.data)).catch(() => {}),
+      api.get('/runway/safe-to-spend').then((r) => setSafeToSpend(r.data)).catch(() => {}),
     ]).finally(() => {
       setLoading(false);
       if (errorCount > 0) setLoadError('Some data failed to load.');
@@ -508,6 +516,60 @@ export default function Home() {
 
       {/* === HERO: Runway Score === */}
       {score && accounts.length > 0 && isVisible('runway') && <RunwayScore score={score} plan={plan} />}
+
+      {/* Safe-to-Spend */}
+      {safeToSpend && accounts.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setShowSafeBreakdown(!showSafeBreakdown)}
+            className="w-full p-5 text-left hover:bg-slate-50/50 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500 font-medium mb-1">Safe to spend</p>
+                <p className="text-3xl font-bold text-slate-900">${Math.round(safeToSpend.safeToSpend).toLocaleString()}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  ${safeToSpend.dailySafe}/day{safeToSpend.daysUntilPayday ? ` for ${safeToSpend.daysUntilPayday} days` : ''}
+                </p>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform ${showSafeBreakdown ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+
+          {showSafeBreakdown && (
+            <div className="px-5 pb-4 border-t border-slate-100 pt-3 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">Available cash</span>
+                <span className="font-medium text-slate-700">${Math.round(safeToSpend.breakdown.availableCash).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">Reserved for bills</span>
+                <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.upcomingBills).toLocaleString()}</span>
+              </div>
+              {safeToSpend.breakdown.debtPayments > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Debt payments</span>
+                  <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.debtPayments).toLocaleString()}</span>
+                </div>
+              )}
+              {safeToSpend.breakdown.savingsReserve > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Savings goals</span>
+                  <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.savingsReserve).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">Safety buffer (10%)</span>
+                <span className="font-medium text-red-500">-${Math.round(safeToSpend.breakdown.buffer).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs pt-2 border-t border-slate-100">
+                <span className="font-semibold text-slate-700">Safe to spend</span>
+                <span className="font-bold text-slate-900">${Math.round(safeToSpend.safeToSpend).toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Daily action */}
       {dailyAction && isVisible('action') && (

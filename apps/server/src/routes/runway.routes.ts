@@ -29,6 +29,17 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
   res.json({ ...score, streak });
 });
 
+// Safe-to-Spend calculation
+router.get('/safe-to-spend', authenticate, (req: AuthRequest, res: Response) => {
+  try {
+    const { getSafeToSpend } = require('../services/safe-to-spend.service');
+    const result = getSafeToSpend(getEffectiveUserId(req.userId!));
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: 'server_error', message: 'Failed to calculate safe-to-spend' });
+  }
+});
+
 // Smart tips (rotating actionable insights)
 router.get('/smart-tips', authenticate, (req: AuthRequest, res: Response) => {
   try {
