@@ -119,11 +119,12 @@ export async function sendFamilyInviteEmail(email: string, inviterName: string, 
       <strong>${inviterName}</strong> has invited you to join their Spenditure family plan. Collaborate on budgets, share financial goals, and keep everyone on the same page.
     </p>
     ${buttonHtml(joinUrl, 'Join Family Plan')}
+    <p style="margin:16px 0 0;color:#a1a1aa;font-size:12px;word-break:break-all;">
+      Or paste this link in your browser: ${joinUrl}
+    </p>
     <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.5;">
       If you don't know ${inviterName} or weren't expecting this invite, you can safely ignore this email.
-    </p>
-    <p style="margin:16px 0 0;color:#a1a1aa;font-size:12px;word-break:break-all;">
-      Or copy this link: ${joinUrl}
+      You received this because ${inviterName} entered your email address on Spenditure.
     </p>
   `);
   await sendEmail(email, `${inviterName} invited you to Spenditure`, html);

@@ -36,6 +36,7 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Budgets = lazy(() => import('./pages/Budgets'));
 const BudgetWizard = lazy(() => import('./pages/BudgetWizard'));
+const JoinFamily = lazy(() => import('./pages/JoinFamily'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function LazyFallback() {
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/join-family" element={<JoinFamily />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route
