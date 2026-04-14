@@ -324,18 +324,33 @@ export function importCsvTransactions(userId: string, rows: CsvRow[], targetAcco
 
 // Merchants that are variable spending, NOT fixed bills
 const NOT_BILL_KEYWORDS = [
-  'gas', 'shell', 'exxon', 'chevron', 'bp ', 'marathon', 'citgo', 'sunoco', 'valero', 'speedway', 'racetrac', 'wawa', 'quiktrip', 'fuel',
-  'grocery', 'groceries', 'walmart', 'target', 'costco', 'kroger', 'heb', 'publix', 'aldi', 'trader joe', 'whole foods', 'safeway', 'food lion', 'winco', 'meijer',
+  // Gas stations
+  'gas', 'shell', 'exxon', 'chevron', 'bp ', 'marathon', 'citgo', 'sunoco', 'valero', 'speedway', 'racetrac', 'wawa', 'quiktrip', 'fuel', 'buc-ee', 'bucee',
+  // Grocery stores
+  'grocery', 'groceries', 'walmart', 'target', 'costco', 'kroger', 'heb', 'publix', 'aldi', 'trader joe', 'whole foods', 'safeway', 'food lion', 'winco', 'meijer', 'sam\'s club', 'sams club',
+  // Restaurants & fast food
   'restaurant', 'chipotle', 'mcdonald', 'chick-fil', 'starbucks', 'dunkin', 'taco bell', 'wendy', 'burger', 'pizza', 'subway', 'panda express', 'sonic', 'whataburger',
-  'amazon', 'amzn',
-  'doordash', 'grubhub', 'uber eats', 'ubereats', 'postmates',
+  'wingstop', 'wing stop', 'popeyes', 'five guys', 'in-n-out', 'jack in the box', 'arby', 'dairy queen', 'ihop', 'denny', 'waffle house', 'cracker barrel',
+  'olive garden', 'applebee', 'chili\'s', 'outback', 'red lobster', 'texas roadhouse', 'buffalo wild', 'hooters', 'noodles',
+  'cafe', 'coffee', 'bakery', 'diner', 'grill', 'tavern', 'pub ', 'bar ', 'brewery', 'bistro', 'lilly', 'joe\'s',
+  // Delivery
+  'doordash', 'grubhub', 'uber eats', 'ubereats', 'postmates', 'instacart',
+  // Rideshare
   'uber trip', 'lyft',
-  'sq *', 'tst*', 'clover*',  // Square, Toast, Clover POS = restaurants/shops
-  'best buy', 'hobby', 'home depot', 'lowes', 'lowe\'s',
-  'roblox', 'gemmint',
-  'facebooktec', 'facebook',  // ad spend, not a bill
-  'century games',             // gaming purchases
-  'printerval',                // one-time purchases
+  // POS systems (restaurants/retail)
+  'sq *', 'tst*', 'clover*',
+  // Retail / shopping
+  'amazon', 'amzn', 'best buy', 'hobby', 'home depot', 'lowes', 'lowe\'s', 'tj maxx', 'marshalls', 'ross ', 'old navy', 'gap ', 'zara',
+  // Healthcare / medical (visits, not subscriptions)
+  'infusion', 'clinic', 'medical', 'dr ', 'doctor', 'dental', 'dentist', 'urgent care', 'hospital', 'pharmacy', 'cvs', 'walgreen',
+  'labcorp', 'quest diag', 'renu', 'therapy', 'chiro', 'orthoped', 'dermat', 'optom', 'vision',
+  // Gaming / entertainment
+  'roblox', 'gemmint', 'century games', 'steam', 'playstation', 'xbox', 'nintendo',
+  // Social / misc
+  'facebooktec', 'facebook', 'tinder', 'bumble', 'hinge',
+  'printerval',
+  // Generic short names that are likely not bills
+  'home', 'shop', 'store', 'market',
 ];
 
 // One-time payment patterns — these are usually annual/one-off, not monthly bills
@@ -495,15 +510,21 @@ export function detectAndFlagRecurring(userId: string): number {
   let flagged = 0;
 
   for (const [merchant, txnList] of byMerchant) {
-    if (txnList.length < 2) continue;
+    // Require at least 3 transactions to consider recurring
+    // (2 is too easy to match by coincidence — two visits to the same restaurant a month apart)
+    if (txnList.length < 3) continue;
 
-    // Group by similar amounts (within 15% — bills can vary slightly)
+    // Skip merchants with very short names (too generic, high false positive rate)
+    if (merchant.length < 4) continue;
+
+    // Group by similar amounts (within 10% — tighter than before to reduce false positives)
     const amtGroups: { amount: number; txns: typeof txnList }[] = [];
     for (const t of txnList) {
       const absAmt = Math.abs(t.amount);
+      if (absAmt < 5) continue; // Skip tiny charges
       const match = amtGroups.find(g => {
         const diff = Math.abs(g.amount - absAmt);
-        return diff / g.amount < 0.15;
+        return diff / g.amount < 0.10;
       });
       if (match) {
         match.txns.push(t);
@@ -513,7 +534,11 @@ export function detectAndFlagRecurring(userId: string): number {
     }
 
     for (const grp of amtGroups) {
-      if (grp.txns.length < 2) continue;
+      if (grp.txns.length < 3) continue;
+
+      // Require transactions span at least 2 distinct calendar months
+      const months = new Set(grp.txns.map((t: any) => t.date.substring(0, 7)));
+      if (months.size < 2) continue;
 
       const sorted = grp.txns.sort((a: any, b: any) => a.date.localeCompare(b.date));
       const intervals: number[] = [];
@@ -527,22 +552,16 @@ export function detectAndFlagRecurring(userId: string): number {
       if (intervals.length === 0) continue;
       const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
 
-      // Check interval-based pattern
+      // Check interval-based pattern (must be consistent)
       const isIntervalRecurring = (avgInterval >= 5 && avgInterval <= 9) ||   // weekly
                                   (avgInterval >= 12 && avgInterval <= 16) ||  // biweekly
                                   (avgInterval >= 25 && avgInterval <= 35);    // monthly
 
-      // Also check day-of-month pattern — catches bills that land on same date each month
-      // even when intervals are uneven due to month lengths
+      // Also check day-of-month pattern
       const daysOfMonth = sorted.map((t: any) => new Date(t.date).getDate());
       const mostCommonDay = mode(daysOfMonth);
-      const nearSameDay = daysOfMonth.filter(d => Math.abs(d - mostCommonDay) <= 3).length;
-      // Require 3+ occurrences for day-of-month pattern (2 is too easy to match by coincidence)
-      const isSameDayOfMonth = nearSameDay >= Math.ceil(daysOfMonth.length * 0.6) && grp.txns.length >= 3;
-
-      // Extra guard: with only 2 occurrences, require very tight interval match
-      // (2 transactions 28-31 days apart is strong, but 2 transactions 45 days apart isn't)
-      if (grp.txns.length === 2 && !isIntervalRecurring) continue;
+      const nearSameDay = daysOfMonth.filter(d => Math.abs(d - mostCommonDay) <= 2).length;
+      const isSameDayOfMonth = nearSameDay >= Math.ceil(daysOfMonth.length * 0.7) && grp.txns.length >= 3;
 
       if (isIntervalRecurring || isSameDayOfMonth) {
         for (const t of grp.txns) {
