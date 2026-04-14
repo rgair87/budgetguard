@@ -282,7 +282,7 @@ export default function Calendar() {
         </div>
 
         {/* Right: Day detail panel */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 max-w-xl">
           {selectedDay ? (
             <div className="bg-white rounded-2xl border border-slate-200/60 shadow-lg p-5 space-y-5">
               {/* Date header */}
@@ -364,7 +364,7 @@ export default function Calendar() {
                   <div className="space-y-1.5">
                     {selectedDay.events.map((ev, i) => (
                       <div key={i} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2.5 border-l-2 border-orange-400">
-                        <span className="text-sm text-slate-700">{ev.name}</span>
+                        <span className="text-sm text-slate-700" title={ev.name}>{ev.name}</span>
                         <span className="text-sm font-semibold text-slate-900">-${fmt(ev.amount)}</span>
                       </div>
                     ))}
