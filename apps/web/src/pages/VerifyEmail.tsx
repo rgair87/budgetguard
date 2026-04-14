@@ -40,19 +40,24 @@ export default function VerifyEmail() {
             <p className="text-gray-500">Verifying your email...</p>
           )}
 
-          {status === 'success' && (
+          {status === 'success' && (() => {
+            const pendingFamily = localStorage.getItem('pending_family_token');
+            const destination = pendingFamily ? '/join-family' : '/';
+            const label = pendingFamily ? 'Join Family Plan' : 'Continue';
+            return (
             <>
               <div className="text-green-500 text-4xl mb-3">&#10003;</div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Email Verified</h2>
               <p className="text-gray-600 text-sm mb-4">{message}</p>
               <Link
-                to="/login"
+                to={destination}
                 className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
               >
-                Go to Login
+                {label}
               </Link>
             </>
-          )}
+            );
+          })()}
 
           {status === 'error' && (
             <>

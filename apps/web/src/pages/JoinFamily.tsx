@@ -7,7 +7,14 @@ import { useAuth } from '../context/AuthContext';
 export default function JoinFamily() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token') || localStorage.getItem('pending_family_token');
+  const urlToken = searchParams.get('token');
+  const savedToken = localStorage.getItem('pending_family_token');
+  const token = urlToken || savedToken;
+
+  // Always save the URL token to localStorage so it survives login/verify flows
+  useEffect(() => {
+    if (urlToken) localStorage.setItem('pending_family_token', urlToken);
+  }, [urlToken]);
   const { token: authToken, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'login_required'>('loading');
   const [message, setMessage] = useState('');
@@ -17,7 +24,7 @@ export default function JoinFamily() {
 
     if (!token) {
       setStatus('error');
-      setMessage('Invalid invite link. No token found.');
+      setMessage('No invite token found. Please click the link in your invitation email again.');
       return;
     }
 
