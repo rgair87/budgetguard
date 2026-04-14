@@ -29,6 +29,18 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
   res.json({ ...score, streak });
 });
 
+// Bill forecasts
+router.get('/bill-forecasts', authenticate, (req: AuthRequest, res: Response) => {
+  try {
+    const { getBillForecasts } = require('../services/forecast.service');
+    const effectiveId = getEffectiveUserId(req.userId!);
+    const forecasts = getBillForecasts(effectiveId);
+    res.json({ forecasts });
+  } catch (err: any) {
+    res.status(500).json({ error: 'server_error', message: 'Failed to generate forecasts' });
+  }
+});
+
 // Dashboard charts data
 router.get('/dashboard-charts', authenticate, (req: AuthRequest, res: Response) => {
   try {
