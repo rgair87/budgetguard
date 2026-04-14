@@ -29,6 +29,17 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
   res.json({ ...score, streak });
 });
 
+// Smart tips (rotating actionable insights)
+router.get('/smart-tips', authenticate, (req: AuthRequest, res: Response) => {
+  try {
+    const { getSmartTips } = require('../services/smart-tips.service');
+    const tips = getSmartTips(getEffectiveUserId(req.userId!));
+    res.json({ tips });
+  } catch (err: any) {
+    res.status(500).json({ error: 'server_error', message: 'Failed to generate tips' });
+  }
+});
+
 // Bill forecasts
 router.get('/bill-forecasts', authenticate, (req: AuthRequest, res: Response) => {
   try {

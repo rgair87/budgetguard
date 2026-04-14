@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Sparkles, Target, Phone, ChevronDown, ChevronRight, Wallet, CreditCard, CalendarClock, BrainCircuit, ExternalLink, Landmark, Upload, X, Beaker, ArrowRight, Clock, RefreshCw, Flame, PiggyBank, TrendingUp as TrendIcon, Settings2 } from 'lucide-react';
 import useDashboardConfig from '../hooks/useDashboardConfig';
 import DashboardConfig from '../components/DashboardConfig';
+import SmartTips from '../components/SmartTips';
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import RunwayScore from '../components/RunwayScore';
 import PaycheckPlan from '../components/PaycheckPlan';
@@ -517,6 +518,9 @@ export default function Home() {
         </Link>
       )}
 
+
+      {/* Smart tips (rotating) */}
+      {accounts.length > 0 && <SmartTips />}
 
       {/* Key numbers row */}
       {score && accounts.length > 0 && isVisible('stats') && (
