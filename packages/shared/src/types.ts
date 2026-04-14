@@ -77,6 +77,8 @@ export interface RunwayScore {
   runoutDate: string | null;
   dailyBurnRate: number;
   totalDebt: number;
+  debtExMortgage: number;
+  mortgageBalance: number;
   spendableBalance: number;
   cuttableMerchants: { name: string; monthlyAmount: number; category: string; occurrences?: number }[];
   monthlyCashFlow: number;

@@ -27,13 +27,13 @@ export function getDailyAction(userId: string): DailyAction | null {
       });
     }
 
-    // 2. Weekend/daily spending budget
-    if (runway.daysToPayday !== null && runway.daysToPayday > 0 && runway.daysToPayday <= 7) {
+    // 2. Daily budget - only when money is actually tight
+    if (runway.daysToPayday !== null && runway.daysToPayday > 0 && runway.daysToPayday <= 5 && runway.runwayDays < 30) {
       const dailyBudget = Math.round(runway.amount / runway.daysToPayday);
-      if (dailyBudget > 0) {
+      if (dailyBudget > 0 && dailyBudget < 200) { // Only show if budget feels constrained
         actions.push({
           title: `$${dailyBudget}/day until payday`,
-          body: `You have $${Math.round(runway.amount)} left and ${runway.daysToPayday} days until your next paycheck.`,
+          body: `${runway.daysToPayday} days until your next paycheck. Budget carefully.`,
           link: '/calendar',
           dollarImpact: dailyBudget,
           type: 'budget',
@@ -96,12 +96,9 @@ export function getDailyAction(userId: string): DailyAction | null {
       });
     }
 
-    // Return highest dollar-impact action, with "review" as tiebreaker
+    // Return highest dollar-impact action
+    // Prioritize: cuts > debt > budget > review > goals
     actions.sort((a, b) => b.dollarImpact - a.dollarImpact);
-    // If there's a budget/daily action and payday is close, prioritize it
-    const budgetAction = actions.find(a => a.type === 'budget');
-    if (budgetAction && budgetAction.dollarImpact > 0) return budgetAction;
-
     return actions[0] || null;
   } catch {
     return null;

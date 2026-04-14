@@ -499,22 +499,6 @@ export default function Home() {
         </Link>
       )}
 
-      {/* Wizard nudge */}
-      {!wizardCompleted && accounts.length > 0 && (
-        <Link to="/budget-wizard"
-          className="block bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 hover:bg-indigo-100 transition-colors">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-indigo-500" />
-              <div>
-                <p className="text-sm font-medium text-indigo-800">Set up your money plan</p>
-                <p className="text-xs text-indigo-600">Review your bills, debt, and spending targets for accurate tracking.</p>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-indigo-400" />
-          </div>
-        </Link>
-      )}
 
       {/* Key numbers row */}
       {score && accounts.length > 0 && (
@@ -682,159 +666,73 @@ export default function Home() {
         </div>
       )}
 
-      {/* Non-critical alerts - collapsed (hide when no data) */}
-      {accounts.length > 0 && otherAlerts.length > 0 && (
-        <Section title="Alerts" badge={`${otherAlerts.length}`} defaultOpen={false} icon={AlertTriangle}>
-          <div className="space-y-2">
-            {otherAlerts.slice(0, 5).map(alert => {
-              const colors: Record<string, string> = {
-                warning: 'bg-amber-50 border-amber-200 text-amber-900',
-                info: 'bg-blue-50 border-blue-200 text-blue-900',
-                win: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-              };
-              return (
-                <div key={alert.id} className={`border rounded-lg p-3 ${colors[alert.severity] || colors.info} flex items-start justify-between gap-2`}>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{alert.title}</p>
-                    <p className="text-xs opacity-80 mt-0.5">{alert.body}</p>
-                    {alert.action && alert.actionLink && (
-                      <Link to={alert.actionLink} className="text-xs font-medium mt-1 inline-block underline">{alert.action}</Link>
-                    )}
-                  </div>
-                  <button onClick={() => setDismissedAlerts(prev => new Set([...prev, alert.id]))}
-                    className="opacity-40 hover:opacity-70 text-sm leading-none shrink-0">&times;</button>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
 
-      {/* Advisor top insight - just 1 teaser */}
+      {/* Top alert inline */}
+      {otherAlerts.length > 0 && (() => {
+        const topAlert = otherAlerts[0];
+        const colors: Record<string, string> = {
+          warning: 'border-amber-200 bg-amber-50',
+          info: 'border-blue-200 bg-blue-50',
+          win: 'border-emerald-200 bg-emerald-50',
+          critical: 'border-red-200 bg-red-50',
+        };
+        return (
+          <div className={`border rounded-2xl p-4 ${colors[topAlert.severity] || colors.info} flex items-start justify-between gap-2`}>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-800">{topAlert.title}</p>
+              <p className="text-xs text-slate-600 mt-0.5">{topAlert.body}</p>
+              {topAlert.actionLink && (
+                <Link to={topAlert.actionLink} className="text-xs font-medium text-indigo-600 mt-1 inline-block">{topAlert.action}</Link>
+              )}
+            </div>
+            <button onClick={() => setDismissedAlerts(prev => new Set([...prev, topAlert.id]))}
+              className="text-slate-400 hover:text-slate-600 shrink-0"><X className="w-4 h-4" /></button>
+          </div>
+        );
+      })()}
+
+      {/* Advisor insight teaser */}
       {advisorSummary?.available && advisorSummary.topInsights && advisorSummary.topInsights.length > 0 && (
-        <Link to="/advisor" className="block bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 hover:shadow-md transition-shadow card-hover animate-fade-in">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                <BrainCircuit className="w-4 h-4 text-indigo-500" />
-              </div>
-              {(() => {
-                const sev: Record<InsightSeverity, { bg: string; text: string; label: string }> = {
-                  critical: { bg: 'bg-red-50', text: 'text-red-600', label: 'Urgent' },
-                  warning: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Warning' },
-                  info: { bg: 'bg-slate-50', text: 'text-slate-600', label: 'Tip' },
-                  win: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Win' },
-                };
-                const s = sev[advisorSummary.topInsights![0].severity] || sev.info;
-                return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>{s.label}</span>;
-              })()}
+        <Link to="/advisor" className="block bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+              <BrainCircuit className="w-4 h-4 text-indigo-500" />
             </div>
-            <span className="text-xs text-indigo-500 font-semibold shrink-0 flex items-center gap-1">View report <ChevronRight className="w-3 h-3" /></span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-800 line-clamp-1">{advisorSummary.topInsights[0].title}</p>
+              <p className="text-xs text-slate-500 line-clamp-1">{advisorSummary.topInsights[0].body}</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
           </div>
-          <p className="text-sm font-semibold text-slate-800 mb-0.5">{advisorSummary.topInsights[0].title}</p>
-          <p className="text-xs text-slate-500 line-clamp-2">{advisorSummary.topInsights[0].body}</p>
-        </Link>
-      )}
-      {advisorSummary && !advisorSummary.available && (
-        <Link to="/advisor" className="block bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-5 shadow-lg shadow-indigo-200/50 card-hover animate-fade-in">
-          <div className="flex items-center gap-2.5 mb-2">
-            <BrainCircuit className="w-5 h-5 text-white/80" />
-            <p className="text-sm font-bold text-white">Get your Financial Health Report</p>
-          </div>
-          <p className="text-xs text-indigo-100">Personalized analysis of your spending, debt, and savings.</p>
         </Link>
       )}
 
-      {/* Paycheck Plan - collapsed by default */}
-      <Section title="Paycheck Plan" linkTo="/calendar" linkLabel="Calendar" defaultOpen={false} icon={Wallet}>
-        <PaycheckPlan />
-      </Section>
-
-      {/* Debt & Goals quick cards */}
-      {score && score.totalDebt > 0 && (
-        <div className="grid grid-cols-2 gap-3 animate-fade-in">
-          <Link to="/debt" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 hover:border-amber-200 hover:shadow-md transition-all block">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Debt Focus</p>
-            <p className="text-lg font-bold text-slate-900">${Math.round(score.totalDebt).toLocaleString()}</p>
-            <p className="text-xs text-slate-500 mt-0.5">View payoff plan &rarr;</p>
-          </Link>
-          <Link to="/goals" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 hover:border-emerald-200 hover:shadow-md transition-all block">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Savings Goals</p>
-            <p className="text-lg font-bold text-slate-900">{plan ? `$${Math.round(plan.buckets.savings.amount).toLocaleString()}/mo` : 'Set up'}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Track progress &rarr;</p>
-          </Link>
-        </div>
-      )}
-
-      {/* Spending breakdown - collapsed, shows top 5 */}
-      <Section title="Where Your Money Goes" linkTo="/transactions" linkLabel="Transactions" defaultOpen={false} icon={CreditCard}>
-        <SpendingByCategory />
-      </Section>
-
-      {/* Accounts - collapsed */}
-      <Section title="Accounts" badge={`${accounts.length}`} linkTo="/settings" linkLabel="Manage" defaultOpen={false} icon={Wallet}>
-        <div className="space-y-2">
-          {accounts.map((acct) => (
-            <div key={acct.id} className="flex items-center justify-between py-1.5">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{acct.name}</p>
-                <p className="text-xs text-gray-400 capitalize">{acct.institution_name ? `${acct.institution_name} · ` : ''}{acct.type}</p>
-              </div>
-              <p className={`text-sm font-semibold ${acct.type === 'credit' ? 'text-red-600' : 'text-gray-900'}`}>
-                {acct.type === 'credit' ? '-' : ''}${Math.abs(Number(acct.current_balance)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* Upcoming events - collapsed */}
-      {events.length > 0 && (
-        <Section title="Upcoming Expenses" badge={`${events.length}`} linkTo="/calendar" linkLabel="Manage" defaultOpen={false} icon={CalendarClock}>
-          <div className="space-y-2">
-            {events.slice(0, 5).map((evt) => (
-              <div key={evt.id} className="flex items-center justify-between py-1.5">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{evt.name}</p>
-                  <p className="text-xs text-gray-400">
-                    {evt.expected_date
-                      ? new Date(evt.expected_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                      : 'Anytime'}
-                  </p>
+      {/* Account balances */}
+      {accounts.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Accounts</p>
+            <Link to="/settings" className="text-[10px] text-indigo-500 font-medium">Manage</Link>
+          </div>
+          <div className="space-y-2.5">
+            {accounts.map((acct) => (
+              <div key={acct.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${
+                    acct.type === 'checking' ? 'bg-indigo-500' :
+                    acct.type === 'savings' ? 'bg-emerald-500' :
+                    acct.type === 'credit' ? 'bg-red-400' : 'bg-amber-400'
+                  }`} />
+                  <p className="text-sm text-slate-700 truncate">{acct.name}</p>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">
-                  ${Number(evt.estimated_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                <p className={`text-sm font-semibold tabular-nums shrink-0 ${acct.type === 'credit' ? 'text-red-600' : 'text-slate-900'}`}>
+                  {acct.type === 'credit' ? '-' : ''}${Math.abs(Number(acct.current_balance)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
               </div>
             ))}
           </div>
-        </Section>
+        </div>
       )}
-
-      {/* Quick actions row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fade-in">
-        <Link to="/debt" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
-            <CreditCard className="w-5 h-5 text-white" />
-          </div>
-          <p className="text-xs font-semibold text-slate-700">Debt Payoff</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Your payoff plan</p>
-        </Link>
-        <Link to="/goals" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
-            <Target className="w-5 h-5 text-white" />
-          </div>
-          <p className="text-xs font-semibold text-slate-700">Goals</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Track savings</p>
-        </Link>
-        <Link to="/negotiate" className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 text-center card-hover group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
-            <Phone className="w-5 h-5 text-white" />
-          </div>
-          <p className="text-xs font-semibold text-slate-700">Negotiate</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Lower your bills</p>
-        </Link>
-      </div>
     </div>
   );
 }

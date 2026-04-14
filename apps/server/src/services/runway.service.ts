@@ -132,9 +132,12 @@ export function calculateRunway(userId: string): RunwayScore {
   const spendableBalance = spendableAccounts.reduce((sum, a) => sum + (a.available_balance ?? a.current_balance), 0);
 
   const DEBT_TYPES = ['credit', 'loan', 'mortgage', 'auto_loan', 'student_loan', 'personal_loan'];
+  const LONG_TERM_TYPES = ['mortgage'];
   // Only count debt accounts that have a real balance — skip $0 ghost accounts from CSV auto-detection
   const debtAccounts = accounts.filter(a => DEBT_TYPES.includes(a.type) && a.current_balance > 0);
   const totalDebt = debtAccounts.reduce((sum, a) => sum + a.current_balance, 0);
+  const mortgageBalance = debtAccounts.filter(a => LONG_TERM_TYPES.includes(a.type)).reduce((sum, a) => sum + a.current_balance, 0);
+  const debtExMortgage = totalDebt - mortgageBalance;
 
   // Get spend breakdown with outlier detection
   const breakdown = getSpendBreakdown(userId, 90);
@@ -440,6 +443,8 @@ export function calculateRunway(userId: string): RunwayScore {
     runoutDate,
     dailyBurnRate: rc(dailyBurnRate),
     totalDebt: rc(totalDebt),
+    debtExMortgage: rc(debtExMortgage),
+    mortgageBalance: rc(mortgageBalance),
     spendableBalance: rc(spendableBalance),
     cuttableMerchants,
     monthlyCashFlow: rc(monthlyCashFlow),

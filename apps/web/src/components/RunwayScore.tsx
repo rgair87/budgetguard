@@ -231,11 +231,14 @@ export default function RunwayScore({ score, plan }: Props) {
             <div className="p-1.5 bg-gray-50 rounded-lg">
               <CreditCard className="w-4 h-4 text-gray-500" />
             </div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide flex items-center gap-1">Total Debt <InfoTip text="Total owed across all your credit cards and loans." /></p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide flex items-center gap-1">Debt <InfoTip text="Credit cards, personal loans, and auto loans. Mortgage shown separately below." /></p>
           </div>
-          <p className={`text-2xl font-bold ${score.totalDebt > 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
-            {score.totalDebt > 0 ? `$${score.totalDebt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0'}
+          <p className={`text-2xl font-bold ${score.debtExMortgage > 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
+            {score.debtExMortgage > 0 ? `$${score.debtExMortgage.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '$0'}
           </p>
+          {score.mortgageBalance > 0 && (
+            <p className="text-[11px] text-slate-400 mt-1">+ ${score.mortgageBalance.toLocaleString('en-US', { maximumFractionDigits: 0 })} mortgage</p>
+          )}
         </Link>
       </div>
 
